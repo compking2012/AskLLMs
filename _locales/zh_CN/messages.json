@@ -1,0 +1,179 @@
+{
+  "extensionName": {
+    "message": "AI 多模型查询发送器",
+    "description": "扩展名称"
+  },
+  "extensionDescription": {
+    "message": "一键向多个流行且强大的大模型发送相同查询，方便对比不同AI的回答。",
+    "description": "扩展描述"
+  },
+  "title": {
+    "message": "AI 多模型对比查询",
+    "description": "弹窗标题"
+  },
+  "inputPlaceholder": {
+    "message": "输入问题，按 Enter 发送...",
+    "description": "输入框占位符"
+  },
+  "sendButton": {
+    "message": "发送",
+    "description": "发送按钮文本"
+  },
+  "sending": {
+    "message": "发送中...",
+    "description": "发送中状态"
+  },
+  "selectPlatforms": {
+    "message": "选择 AI 平台",
+    "description": "平台选择标签"
+  },
+  "statusSuccess": {
+    "message": "✓ 已发送到 $COUNT$ 个 AI",
+    "description": "成功消息",
+    "placeholders": {
+      "COUNT": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "statusError": {
+    "message": "错误：$MESSAGE$",
+    "description": "错误消息",
+    "placeholders": {
+      "MESSAGE": {
+        "content": "$1",
+        "example": "请输入问题"
+      }
+    }
+  },
+  "errorNoQuery": {
+    "message": "请输入问题",
+    "description": "查询为空时的错误"
+  },
+  "errorNoPlatform": {
+    "message": "请至少选择一个平台",
+    "description": "未选择平台时的错误"
+  },
+  "errorSendFailed": {
+    "message": "发送失败：$ERROR$",
+    "description": "发送失败时的错误",
+    "placeholders": {
+      "ERROR": {
+        "content": "$1",
+        "example": "网络错误"
+      }
+    }
+  },
+  "commandDescription": {
+    "message": "打开AI多模型查询窗口",
+    "description": "快捷键描述"
+  },
+  "progressStatus": {
+    "message": "准备中...",
+    "description": "进度状态文本"
+  },
+  "progressStarting": {
+    "message": "开始发送...",
+    "description": "开始发送时的文本"
+  },
+  "progressPreparing": {
+    "message": "准备中",
+    "description": "准备中的文本"
+  },
+  "progressOpened": {
+    "message": "已打开 $COUNT$ 个",
+    "description": "已打开的标签页数",
+    "placeholders": {
+      "COUNT": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "progressLoading": {
+    "message": "加载中 $COUNT$ 个",
+    "description": "加载中的标签页数",
+    "placeholders": {
+      "COUNT": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },
+  "progressCompleted": {
+    "message": "已完成 $COUNT$ 个",
+    "description": "已完成的标签页数",
+    "placeholders": {
+      "COUNT": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
+  "progressAllCompleted": {
+    "message": "全部完成",
+    "description": "全部完成时的文本"
+  },
+  "settingsTitle": {
+    "message": "设置",
+    "description": "设置页面标题"
+  },
+  "settingsTheme": {
+    "message": "主题",
+    "description": "主题设置标题"
+  },
+  "themeAuto": {
+    "message": "自动",
+    "description": "自动主题选项"
+  },
+  "themeLight": {
+    "message": "浅色",
+    "description": "浅色主题选项"
+  },
+  "themeDark": {
+    "message": "深色",
+    "description": "深色主题选项"
+  },
+  "settingsLanguage": {
+    "message": "界面语言",
+    "description": "语言设置标题"
+  },
+  "langAuto": {
+    "message": "自动",
+    "description": "自动语言选项"
+  },
+  "settingsVisiblePlatforms": {
+    "message": "显示的大模型",
+    "description": "可见平台设置标题"
+  },
+  "settingsTabGroupTitle": {
+    "message": "标签组标题",
+    "description": "标签组标题设置"
+  },
+  "settingsTabGroupTitleHint": {
+    "message": "留空则使用默认值（中文：大模型，英文：LLM）",
+    "description": "标签组标题提示"
+  },
+  "settingsTabGroupColor": {
+    "message": "标签组颜色",
+    "description": "标签组颜色设置"
+  },
+  "colorRandom": {
+    "message": "随机",
+    "description": "随机颜色选项"
+  },
+  "colorFixed": {
+    "message": "固定",
+    "description": "固定颜色选项"
+  },
+  "saveSettings": {
+    "message": "保存",
+    "description": "保存设置按钮"
+  },
+  "cancelSettings": {
+    "message": "取消",
+    "description": "取消设置按钮"
+  }
+}
+

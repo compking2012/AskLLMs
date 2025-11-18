@@ -1,0 +1,179 @@
+{
+  "extensionName": {
+    "message": "AI Multi-Model Query Sender",
+    "description": "Extension name"
+  },
+  "extensionDescription": {
+    "message": "Send the same query to multiple popular and powerful AI models with one click, making it easy to compare different AI responses.",
+    "description": "Extension description"
+  },
+  "title": {
+    "message": "AI Multi-Model Query",
+    "description": "Popup title"
+  },
+  "inputPlaceholder": {
+    "message": "Enter your question, press Enter to send...",
+    "description": "Input placeholder"
+  },
+  "sendButton": {
+    "message": "Send",
+    "description": "Send button text"
+  },
+  "sending": {
+    "message": "Sending...",
+    "description": "Sending status"
+  },
+  "selectPlatforms": {
+    "message": "Select AI Platforms",
+    "description": "Platform selection label"
+  },
+  "statusSuccess": {
+    "message": "✓ Sent to $COUNT$ AI(s)",
+    "description": "Success message",
+    "placeholders": {
+      "COUNT": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "statusError": {
+    "message": "Error: $MESSAGE$",
+    "description": "Error message",
+    "placeholders": {
+      "MESSAGE": {
+        "content": "$1",
+        "example": "Please enter a question"
+      }
+    }
+  },
+  "errorNoQuery": {
+    "message": "Please enter a question",
+    "description": "Error when query is empty"
+  },
+  "errorNoPlatform": {
+    "message": "Please select at least one platform",
+    "description": "Error when no platform is selected"
+  },
+  "errorSendFailed": {
+    "message": "Send failed: $ERROR$",
+    "description": "Error when send fails",
+    "placeholders": {
+      "ERROR": {
+        "content": "$1",
+        "example": "Network error"
+      }
+    }
+  },
+  "commandDescription": {
+    "message": "Open AI Multi-Model Query window",
+    "description": "Keyboard shortcut description"
+  },
+  "progressStatus": {
+    "message": "Preparing...",
+    "description": "Progress status text"
+  },
+  "progressStarting": {
+    "message": "Starting...",
+    "description": "Text when starting to send"
+  },
+  "progressPreparing": {
+    "message": "Preparing",
+    "description": "Text when preparing"
+  },
+  "progressOpened": {
+    "message": "$COUNT$ opened",
+    "description": "Number of opened tabs",
+    "placeholders": {
+      "COUNT": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "progressLoading": {
+    "message": "$COUNT$ loading",
+    "description": "Number of loading tabs",
+    "placeholders": {
+      "COUNT": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },
+  "progressCompleted": {
+    "message": "$COUNT$ completed",
+    "description": "Number of completed tabs",
+    "placeholders": {
+      "COUNT": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
+  "progressAllCompleted": {
+    "message": "All completed",
+    "description": "Text when all completed"
+  },
+  "settingsTitle": {
+    "message": "Settings",
+    "description": "Settings page title"
+  },
+  "settingsTheme": {
+    "message": "Theme",
+    "description": "Theme settings title"
+  },
+  "themeAuto": {
+    "message": "Auto",
+    "description": "Auto theme option"
+  },
+  "themeLight": {
+    "message": "Light",
+    "description": "Light theme option"
+  },
+  "themeDark": {
+    "message": "Dark",
+    "description": "Dark theme option"
+  },
+  "settingsLanguage": {
+    "message": "Interface Language",
+    "description": "Language settings title"
+  },
+  "langAuto": {
+    "message": "Auto",
+    "description": "Auto language option"
+  },
+  "settingsVisiblePlatforms": {
+    "message": "Visible AI Platforms",
+    "description": "Visible platforms settings title"
+  },
+  "settingsTabGroupTitle": {
+    "message": "Tab Group Title",
+    "description": "Tab group title settings"
+  },
+  "settingsTabGroupTitleHint": {
+    "message": "Leave empty to use default (Chinese: 大模型, English: LLM)",
+    "description": "Tab group title hint"
+  },
+  "settingsTabGroupColor": {
+    "message": "Tab Group Color",
+    "description": "Tab group color settings"
+  },
+  "colorRandom": {
+    "message": "Random",
+    "description": "Random color option"
+  },
+  "colorFixed": {
+    "message": "Fixed",
+    "description": "Fixed color option"
+  },
+  "saveSettings": {
+    "message": "Save",
+    "description": "Save settings button"
+  },
+  "cancelSettings": {
+    "message": "Cancel",
+    "description": "Cancel settings button"
+  }
+}
+
