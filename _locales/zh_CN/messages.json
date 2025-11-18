@@ -1,6 +1,6 @@
 {
   "extensionName": {
-    "message": "AI 多模型查询发送器",
+    "message": "问问大模型",
     "description": "扩展名称"
   },
   "extensionDescription": {
@@ -8,7 +8,7 @@
     "description": "扩展描述"
   },
   "title": {
-    "message": "AI 多模型对比查询",
+    "message": "问问大模型",
     "description": "弹窗标题"
   },
   "inputPlaceholder": {
@@ -143,6 +143,14 @@
     "message": "自动",
     "description": "自动语言选项"
   },
+  "langChinese": {
+    "message": "中文",
+    "description": "中文语言选项"
+  },
+  "langEnglish": {
+    "message": "English",
+    "description": "英文语言选项"
+  },
   "settingsVisiblePlatforms": {
     "message": "显示的大模型",
     "description": "可见平台设置标题"
@@ -174,6 +182,58 @@
   "cancelSettings": {
     "message": "取消",
     "description": "取消设置按钮"
+  },
+  "platformTongyi": {
+    "message": "通义千问",
+    "description": "平台名称：通义千问"
+  },
+  "platformDoubao": {
+    "message": "豆包",
+    "description": "平台名称：豆包"
+  },
+  "platformWenxin": {
+    "message": "文心一言",
+    "description": "平台名称：文心一言"
+  },
+  "platformChatGLM": {
+    "message": "智谱清言",
+    "description": "平台名称：智谱清言"
+  },
+  "platformYuanbao": {
+    "message": "腾讯元宝",
+    "description": "平台名称：腾讯元宝"
+  },
+  "colorGrey": {
+    "message": "灰色",
+    "description": "颜色名称：灰色"
+  },
+  "colorBlue": {
+    "message": "蓝色",
+    "description": "颜色名称：蓝色"
+  },
+  "colorRed": {
+    "message": "红色",
+    "description": "颜色名称：红色"
+  },
+  "colorYellow": {
+    "message": "黄色",
+    "description": "颜色名称：黄色"
+  },
+  "colorGreen": {
+    "message": "绿色",
+    "description": "颜色名称：绿色"
+  },
+  "colorPink": {
+    "message": "粉色",
+    "description": "颜色名称：粉色"
+  },
+  "colorPurple": {
+    "message": "紫色",
+    "description": "颜色名称：紫色"
+  },
+  "colorCyan": {
+    "message": "青色",
+    "description": "颜色名称：青色"
   }
 }
 

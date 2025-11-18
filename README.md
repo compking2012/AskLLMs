@@ -1,4 +1,4 @@
-# AI Multi-Model Query Sender
+# Ask LLMs / 问问大模型
 
 一键向多个大模型发送相同问题，同时对比 ChatGPT、Claude、Gemini、通义千问、豆包、DeepSeek、Kimi、Grok 的回答。
 

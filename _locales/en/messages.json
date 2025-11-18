@@ -1,6 +1,6 @@
 {
   "extensionName": {
-    "message": "AI Multi-Model Query Sender",
+    "message": "Ask LLMs",
     "description": "Extension name"
   },
   "extensionDescription": {
@@ -8,7 +8,7 @@
     "description": "Extension description"
   },
   "title": {
-    "message": "AI Multi-Model Query",
+    "message": "Ask LLMs",
     "description": "Popup title"
   },
   "inputPlaceholder": {
@@ -66,7 +66,7 @@
     }
   },
   "commandDescription": {
-    "message": "Open AI Multi-Model Query window",
+    "message": "Open Ask LLMs window",
     "description": "Keyboard shortcut description"
   },
   "progressStatus": {
@@ -143,6 +143,14 @@
     "message": "Auto",
     "description": "Auto language option"
   },
+  "langChinese": {
+    "message": "Chinese",
+    "description": "Chinese language option"
+  },
+  "langEnglish": {
+    "message": "English",
+    "description": "English language option"
+  },
   "settingsVisiblePlatforms": {
     "message": "Visible AI Platforms",
     "description": "Visible platforms settings title"
@@ -174,6 +182,58 @@
   "cancelSettings": {
     "message": "Cancel",
     "description": "Cancel settings button"
+  },
+  "platformTongyi": {
+    "message": "Qwen",
+    "description": "Platform name: Tongyi Qianwen"
+  },
+  "platformDoubao": {
+    "message": "Doubao",
+    "description": "Platform name: Doubao"
+  },
+  "platformWenxin": {
+    "message": "ERNIE",
+    "description": "Platform name: Wenxin Yiyan"
+  },
+  "platformChatGLM": {
+    "message": "ChatGLM",
+    "description": "Platform name: ChatGLM"
+  },
+  "platformYuanbao": {
+    "message": "Yuanbao",
+    "description": "Platform name: Tencent Yuanbao"
+  },
+  "colorGrey": {
+    "message": "Grey",
+    "description": "Color name: Grey"
+  },
+  "colorBlue": {
+    "message": "Blue",
+    "description": "Color name: Blue"
+  },
+  "colorRed": {
+    "message": "Red",
+    "description": "Color name: Red"
+  },
+  "colorYellow": {
+    "message": "Yellow",
+    "description": "Color name: Yellow"
+  },
+  "colorGreen": {
+    "message": "Green",
+    "description": "Color name: Green"
+  },
+  "colorPink": {
+    "message": "Pink",
+    "description": "Color name: Pink"
+  },
+  "colorPurple": {
+    "message": "Purple",
+    "description": "Color name: Purple"
+  },
+  "colorCyan": {
+    "message": "Cyan",
+    "description": "Color name: Cyan"
   }
 }
 

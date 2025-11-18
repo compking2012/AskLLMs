@@ -976,7 +976,7 @@ const AI_SITES = [
       } catch (e) {
         // 如果 i18n 不可用，返回默认英文
         const defaults = {
-          'title': 'AI Multi-Model Query',
+          'title': 'Ask LLMs',
           'inputPlaceholder': 'Enter your question, press Enter to send...',
           'sendButton': 'Send',
           'selectPlatforms': 'Select AI Platforms',
@@ -1327,7 +1327,8 @@ const AI_SITES = [
         opened: opened,
         loading: loading,
         completed: completed,
-        currentAction: this.currentAction
+        currentAction: this.currentAction,
+        statuses: { ...this.statuses } // 返回每个平台的状态
       };
     }
     

@@ -1,10 +1,90 @@
-// i18n 支持函数
+// 消息缓存
+let messagesCache = {
+  en: null,
+  zh_CN: null
+};
+
+// 当前语言（同步访问）
+let currentLanguage = null;
+
+// 加载消息文件
+async function loadMessages(locale) {
+  if (messagesCache[locale]) {
+    return messagesCache[locale];
+  }
+  
+  try {
+    const response = await fetch(chrome.runtime.getURL(`_locales/${locale}/messages.json`));
+    const messages = await response.json();
+    messagesCache[locale] = messages;
+    return messages;
+  } catch (e) {
+    console.error(`Failed to load messages for ${locale}:`, e);
+    return null;
+  }
+}
+
+// 获取当前语言设置（同步版本，使用缓存）
+function getCurrentLanguageSync() {
+  if (currentLanguage !== null) {
+    return currentLanguage;
+  }
+  
+  // 如果缓存未设置，使用浏览器语言作为默认值
+  const browserLang = chrome.i18n.getUILanguage();
+  return browserLang.startsWith('zh') ? 'zh_CN' : 'en';
+}
+
+// 更新当前语言（从设置中读取）
+async function updateCurrentLanguage() {
+  const result = await new Promise(resolve => {
+    chrome.storage.local.get(['settings'], resolve);
+  });
+  const language = result.settings?.language || 'auto';
+  
+  if (language === 'auto') {
+    // 使用浏览器语言
+    const browserLang = chrome.i18n.getUILanguage();
+    currentLanguage = browserLang.startsWith('zh') ? 'zh_CN' : 'en';
+  } else {
+    currentLanguage = language;
+  }
+  
+  // 预加载当前语言的消息
+  await loadMessages(currentLanguage);
+}
+
+// i18n 支持函数（同步版本，支持用户语言设置）
 function i18n(messageName, substitutions) {
+  const locale = getCurrentLanguageSync();
+  const messages = messagesCache[locale];
+  
+  if (messages && messages[messageName]) {
+    let message = messages[messageName].message;
+    
+    // 处理占位符
+    if (substitutions && messages[messageName].placeholders) {
+      Object.keys(messages[messageName].placeholders).forEach(placeholder => {
+        const placeholderInfo = messages[messageName].placeholders[placeholder];
+        const index = parseInt(placeholderInfo.content.replace('$', '')) - 1;
+        if (substitutions[index] !== undefined) {
+          message = message.replace(`$${placeholder}$`, substitutions[index]);
+        }
+      });
+    }
+    
+    return message;
+  }
+  
+  // 回退到 Chrome 默认 i18n
   return chrome.i18n.getMessage(messageName, substitutions);
 }
 
 // 初始化 i18n
-function initI18n() {
+async function initI18n() {
+  // 更新当前语言
+  await updateCurrentLanguage();
+  
   // 翻译所有带有 data-i18n 属性的元素
   document.querySelectorAll('[data-i18n]').forEach(element => {
     const messageName = element.getAttribute('data-i18n');
@@ -21,6 +101,14 @@ function initI18n() {
   document.querySelectorAll('[data-i18n-title]').forEach(element => {
     const messageName = element.getAttribute('data-i18n-title');
     element.title = i18n(messageName);
+  });
+  
+  // 更新平台按钮的 tooltip 和 title（支持 i18n）
+  platformBtns.forEach(btn => {
+    const platform = btn.dataset.platform;
+    const displayName = getPlatformDisplayName(platform);
+    btn.setAttribute('data-tooltip', displayName);
+    btn.setAttribute('title', displayName);
   });
 }
 
@@ -39,8 +127,6 @@ const mainPage = document.getElementById('main-page');
 const settingsPage = document.getElementById('settings-page');
 const settingsBtn = document.getElementById('settings-btn');
 const backBtn = document.getElementById('back-btn');
-const saveSettingsBtn = document.getElementById('save-settings-btn');
-const cancelSettingsBtn = document.getElementById('cancel-settings-btn');
 
 // 平台图标映射
 const PLATFORM_ICONS = {
@@ -57,6 +143,24 @@ const PLATFORM_ICONS = {
   "MiniMax": "icons/minimax.png",
   "腾讯元宝": "icons/yuanbao.png"
 };
+
+// 平台名称到 i18n 键的映射（只对中文名字）
+const PLATFORM_I18N_KEYS = {
+  "通义千问": "platformTongyi",
+  "豆包": "platformDoubao",
+  "文心一言": "platformWenxin",
+  "智谱清言": "platformChatGLM",
+  "腾讯元宝": "platformYuanbao"
+};
+
+// 获取平台显示名称（支持 i18n）
+function getPlatformDisplayName(platform) {
+  const i18nKey = PLATFORM_I18N_KEYS[platform];
+  if (i18nKey) {
+    return i18n(i18nKey);
+  }
+  return platform; // 英文名字直接返回
+}
 
 // 默认设置
 const DEFAULT_SETTINGS = {
@@ -144,6 +248,9 @@ function applyVisiblePlatforms(visiblePlatforms) {
   });
 }
 
+// 设置页面事件监听器初始化标志
+let settingsEventListenersInitialized = false;
+
 // 初始化设置页面
 function initSettingsPage() {
   // 生成平台复选框
@@ -154,10 +261,11 @@ function initSettingsPage() {
   allPlatforms.forEach(platform => {
     const checkbox = document.createElement('label');
     checkbox.className = 'settings-checkbox';
+    const displayName = getPlatformDisplayName(platform);
     checkbox.innerHTML = `
       <input type="checkbox" value="${platform}" data-platform="${platform}">
       <span class="icon"><img src="${PLATFORM_ICONS[platform]}" alt="${platform}"></span>
-      <span>${platform}</span>
+      <span>${displayName}</span>
     `;
     platformCheckboxes.appendChild(checkbox);
   });
@@ -165,17 +273,55 @@ function initSettingsPage() {
   // 加载设置并填充表单
   loadSettingsToForm();
   
-  // 颜色模式切换
-  document.querySelectorAll('input[name="color-mode"]').forEach(radio => {
-    radio.addEventListener('change', (e) => {
-      const colorSelector = document.getElementById('color-selector');
-      if (e.target.value === 'fixed') {
-        colorSelector.style.display = 'block';
-      } else {
-        colorSelector.style.display = 'none';
-      }
+  // 只初始化一次事件监听器（避免重复添加）
+  if (!settingsEventListenersInitialized) {
+    // 颜色模式切换
+    document.querySelectorAll('input[name="color-mode"]').forEach(radio => {
+      radio.addEventListener('change', async (e) => {
+        const colorSelector = document.getElementById('color-selector');
+        if (e.target.value === 'fixed') {
+          colorSelector.style.display = 'block';
+        } else {
+          colorSelector.style.display = 'none';
+        }
+        // 立即保存
+        await saveSettings();
+      });
     });
-  });
+    
+    // 为主题单选按钮添加立即保存
+    document.querySelectorAll('input[name="theme"]').forEach(radio => {
+      radio.addEventListener('change', async () => {
+        await saveSettings();
+      });
+    });
+    
+    // 为语言单选按钮添加立即保存
+    document.querySelectorAll('input[name="language"]').forEach(radio => {
+      radio.addEventListener('change', async () => {
+        await saveSettings();
+      });
+    });
+    
+    // 为颜色单选按钮添加立即保存
+    document.querySelectorAll('input[name="color"]').forEach(radio => {
+      radio.addEventListener('change', async () => {
+        await saveSettings();
+      });
+    });
+    
+    // 为标签组标题输入框添加立即保存（使用 debounce）
+    const tabGroupTitleInput = document.getElementById('tab-group-title');
+    let titleInputTimeout = null;
+    tabGroupTitleInput.addEventListener('input', () => {
+      clearTimeout(titleInputTimeout);
+      titleInputTimeout = setTimeout(async () => {
+        await saveSettings();
+      }, 500); // 500ms 延迟，避免频繁保存
+    });
+    
+    settingsEventListenersInitialized = true;
+  }
 }
 
 // 加载设置到表单
@@ -215,20 +361,22 @@ async function loadSettingsToForm() {
     document.querySelector(`input[name="color"][value="${settings.fixedColor}"]`).checked = true;
   }
   
-  // 复选框点击事件
+  // 复选框点击事件（立即保存）
   document.querySelectorAll('#platform-checkboxes input[type="checkbox"]').forEach(checkbox => {
-    checkbox.addEventListener('change', (e) => {
+    checkbox.addEventListener('change', async (e) => {
       const label = e.target.closest('.settings-checkbox');
       if (e.target.checked) {
         label.classList.add('active');
       } else {
         label.classList.remove('active');
       }
+      // 立即保存
+      await saveSettings();
     });
   });
 }
 
-// 保存设置
+// 保存设置（立即保存，不返回主页面）
 async function saveSettings() {
   const settings = {
     theme: document.querySelector('input[name="theme"]:checked').value,
@@ -244,11 +392,17 @@ async function saveSettings() {
     chrome.storage.local.set({ settings }, resolve);
   });
   
-  // 应用设置
+  // 立即应用设置
   await loadAndApplySettings();
   
-  // 返回主页面
-  showMainPage();
+  // 更新语言缓存并重新初始化 i18n，让语言设置立即生效
+  currentLanguage = null; // 清除缓存，强制重新读取
+  await initI18n();
+  
+  // 如果在设置页面，需要重新生成平台复选框以更新名称
+  if (settingsPage.classList.contains('active')) {
+    initSettingsPage();
+  }
 }
 
 // 页面切换
@@ -268,14 +422,47 @@ function showSettingsPage() {
 // 事件监听
 settingsBtn.addEventListener('click', showSettingsPage);
 backBtn.addEventListener('click', showMainPage);
-cancelSettingsBtn.addEventListener('click', showMainPage);
-saveSettingsBtn.addEventListener('click', saveSettings);
 
 // 初始化 i18n
 initI18n();
 
 // 加载设置
 loadAndApplySettings();
+
+// 检查是否有进行中的进度并恢复
+async function checkAndRestoreProgress() {
+  const result = await new Promise(resolve => {
+    chrome.storage.local.get(['progressUpdate', 'progressComplete', 'progressUpdateTime'], resolve);
+  });
+  
+  // 检查是否有进度数据，且不是已完成状态，且时间在最近5分钟内（避免恢复过期的进度）
+  if (result.progressUpdate && !result.progressComplete) {
+    const timeDiff = Date.now() - (result.progressUpdateTime || 0);
+    const fiveMinutes = 5 * 60 * 1000;
+    
+    if (timeDiff < fiveMinutes) {
+      console.log('[Popup] Restoring progress:', result.progressUpdate);
+      
+      // 恢复进度显示
+      updateProgress(result.progressUpdate);
+      
+      // 禁用输入框和按钮
+      textarea.disabled = true;
+      sendBtn.disabled = true;
+      sendBtn.textContent = i18n('sending');
+      
+      // 重新启动进度监听
+      startProgressListening();
+    } else {
+      // 进度过期，清除
+      console.log('[Popup] Progress expired, clearing');
+      chrome.storage.local.remove(['progressUpdate', 'progressUpdateTime', 'progressComplete']);
+    }
+  }
+}
+
+// 页面加载时检查并恢复进度
+checkAndRestoreProgress();
 
 // 获取所有平台名称（只返回可见的）
 function getAllPlatforms() {
@@ -342,13 +529,62 @@ textarea.addEventListener('input', () => {
   textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
 });
 
+// 更新平台按钮的进度条
+function updatePlatformProgress(platform, status) {
+  const btn = Array.from(platformBtns).find(b => b.dataset.platform === platform);
+  if (!btn) return;
+  
+  const progressRing = btn.querySelector('.progress-ring');
+  const progressCircle = btn.querySelector('.progress-circle');
+  if (!progressRing || !progressCircle) return;
+  
+  // 计算进度
+  let progress = 0;
+  if (status === 'opening') {
+    progress = 25; // 25% - 正在打开
+    btn.classList.add('loading');
+    btn.classList.remove('completed', 'error');
+  } else if (status === 'loading') {
+    progress = 75; // 75% - 正在加载
+    btn.classList.add('loading');
+    btn.classList.remove('completed', 'error');
+  } else if (status === 'completed') {
+    progress = 100; // 100% - 完成
+    btn.classList.remove('loading');
+    btn.classList.add('completed');
+  } else {
+    // 未知状态，隐藏进度条
+    btn.classList.remove('loading', 'completed', 'error');
+    progress = 0;
+  }
+  
+  // 更新进度条
+  const circumference = 2 * Math.PI * 18; // r=18
+  const offset = circumference - (progress / 100) * circumference;
+  progressCircle.style.strokeDashoffset = offset;
+  
+  // 显示/隐藏进度条
+  if (progress > 0) {
+    progressRing.style.opacity = '1';
+  } else {
+    progressRing.style.opacity = '0';
+  }
+}
+
 // 更新进度条
 function updateProgress(progress) {
-  const { total, opened, loading, completed, currentAction } = progress;
+  const { total, opened, loading, completed, currentAction, statuses } = progress;
   
   // 显示进度容器
   progressContainer.classList.add('active');
   statusDiv.style.display = 'none';
+  
+  // 更新每个平台按钮的进度条
+  if (statuses) {
+    Object.entries(statuses).forEach(([platform, status]) => {
+      updatePlatformProgress(platform, status);
+    });
+  }
   
   // 计算进度百分比（已完成的算100%，加载中的算50%，已打开的算25%）
   const progressValue = (completed * 100 + loading * 50 + (opened - loading - completed) * 25) / total;
@@ -389,6 +625,17 @@ function resetProgress() {
   progressCount.textContent = '0/0';
   progressDetail.textContent = '';
   statusDiv.style.display = '';
+  
+  // 重置所有平台按钮的进度条
+  platformBtns.forEach(btn => {
+    btn.classList.remove('loading', 'completed', 'error');
+    const progressRing = btn.querySelector('.progress-ring');
+    const progressCircle = btn.querySelector('.progress-circle');
+    if (progressRing && progressCircle) {
+      progressRing.style.opacity = '0';
+      progressCircle.style.strokeDashoffset = '113'; // 重置为0%
+    }
+  });
 }
 
 // 进度监听器
@@ -428,6 +675,7 @@ function startProgressListening() {
               resetProgress();
               textarea.value = '';
               textarea.style.height = 'auto';
+              textarea.disabled = false;
               sendBtn.disabled = false;
               sendBtn.textContent = i18n('sendButton');
               
@@ -463,6 +711,7 @@ function startProgressListening() {
             resetProgress();
             textarea.value = '';
             textarea.style.height = 'auto';
+            textarea.disabled = false;
             sendBtn.disabled = false;
             sendBtn.textContent = i18n('sendButton');
             
@@ -543,25 +792,28 @@ function sendQuery() {
     return;
   }
   
-  // 禁用按钮
+  // 禁用输入框和按钮
+  textarea.disabled = true;
   sendBtn.disabled = true;
   sendBtn.textContent = i18n('sending');
   
-  // 暂时禁用进度条功能
-  // resetProgress();
-  // const initialProgress = {
-  //   total: selectedPlatforms.length,
-  //   opened: 0,
-  //   loading: 0,
-  //   completed: 0,
-  //   currentAction: i18n('progressStarting')
-  // };
-  // updateProgress(initialProgress);
-  // chrome.storage.local.set({
-  //   progressUpdate: initialProgress,
-  //   progressUpdateTime: Date.now()
-  // }).catch(() => {});
-  // startProgressListening();
+  // 重置并启动进度条
+  resetProgress();
+  const initialProgress = {
+    total: selectedPlatforms.length,
+    opened: 0,
+    loading: 0,
+    completed: 0,
+    currentAction: i18n('progressStarting'),
+    statuses: {}
+  };
+  updateProgress(initialProgress);
+  chrome.storage.local.set({
+    progressUpdate: initialProgress,
+    progressUpdateTime: Date.now(),
+    progressComplete: false
+  }).catch(() => {});
+  startProgressListening();
   
   // 发送消息到 background，包含选中的平台
   chrome.runtime.sendMessage({ 
@@ -570,24 +822,15 @@ function sendQuery() {
     platforms: selectedPlatforms
   }, (response) => {
     if (chrome.runtime.lastError) {
-      // stopProgressListening();
+      stopProgressListening();
       showStatus(i18n('errorSendFailed', [chrome.runtime.lastError.message]), 'error');
-      // resetProgress();
+      resetProgress();
+      textarea.disabled = false;
       sendBtn.disabled = false;
       sendBtn.textContent = i18n('sendButton');
-      // chrome.storage.local.remove(['progressUpdate', 'progressUpdateTime', 'progressComplete']);
-    } else {
-      showStatus(i18n('statusSuccess', [selectedPlatforms.length.toString()]), 'success');
-      textarea.value = '';
-      textarea.style.height = 'auto';
-      sendBtn.disabled = false;
-      sendBtn.textContent = i18n('sendButton');
-      
-      // 1秒后关闭popup
-      setTimeout(() => {
-        window.close();
-      }, 1000);
+      chrome.storage.local.remove(['progressUpdate', 'progressUpdateTime', 'progressComplete']);
     }
+    // 注意：成功的情况由进度监听器处理
   });
 }
 

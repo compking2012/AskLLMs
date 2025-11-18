@@ -40,7 +40,7 @@
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
     },
-    "default_title": "Send to Multiple AIs",
+    "default_title": "Ask LLMs",
     "default_popup": "popup.html"
   },
   "commands": {
