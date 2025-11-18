@@ -14,3 +14,4 @@ Claude：在Search and Tools中打开Use style，选Normal和Thinking Claude
 10）增加打开/关闭“生成图片”的功能（如果模型支持的话）
 11）增加针对每一个模型提供商进行模型选择的功能（如果模型支持的话）
 12）弹出窗口更专业美观，别透出来一股子山寨风
+13）利用Chrome ASR语音输入
