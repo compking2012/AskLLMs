@@ -234,6 +234,10 @@
   "colorCyan": {
     "message": "青色",
     "description": "颜色名称：青色"
+  },
+  "deepThinking": {
+    "message": "深度思考",
+    "description": "深度思考开关标签"
   }
 }
 

@@ -234,6 +234,10 @@
   "colorCyan": {
     "message": "Cyan",
     "description": "Color name: Cyan"
+  },
+  "deepThinking": {
+    "message": "Deep Thinking",
+    "description": "Deep thinking toggle label"
   }
 }
 

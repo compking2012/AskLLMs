@@ -121,6 +121,7 @@ const progressBar = document.getElementById('progress-bar');
 const progressText = document.getElementById('progress-text');
 const progressCount = document.getElementById('progress-count');
 const progressDetail = document.getElementById('progress-detail');
+const deepThinkingToggle = document.getElementById('deep-thinking-toggle');
 
 // 页面元素
 const mainPage = document.getElementById('main-page');
@@ -169,7 +170,8 @@ const DEFAULT_SETTINGS = {
   visiblePlatforms: ['ChatGPT', 'Claude', 'Gemini', 'Grok', '通义千问', '豆包', 'DeepSeek', 'Kimi', '文心一言', '智谱清言', 'MiniMax', '腾讯元宝'],
   tabGroupTitle: '',
   colorMode: 'random',
-  fixedColor: 'blue'
+  fixedColor: 'blue',
+  deepThinking: false
 };
 
 // 应用主题
@@ -523,6 +525,29 @@ platformBtns.forEach(btn => {
 // 初始化
 initPlatformButtons();
 
+// 初始化深度思考开关
+async function initDeepThinkingToggle() {
+  const result = await new Promise(resolve => {
+    chrome.storage.local.get(['settings'], resolve);
+  });
+  const settings = result.settings || DEFAULT_SETTINGS;
+  deepThinkingToggle.checked = settings.deepThinking || false;
+  
+  // 监听开关变化并保存
+  deepThinkingToggle.addEventListener('change', async () => {
+    const result = await new Promise(resolve => {
+      chrome.storage.local.get(['settings'], resolve);
+    });
+    const currentSettings = result.settings || DEFAULT_SETTINGS;
+    currentSettings.deepThinking = deepThinkingToggle.checked;
+    await new Promise(resolve => {
+      chrome.storage.local.set({ settings: currentSettings }, resolve);
+    });
+  });
+}
+
+initDeepThinkingToggle();
+
 // 自动调整输入框高度
 textarea.addEventListener('input', () => {
   textarea.style.height = 'auto';
@@ -815,11 +840,15 @@ function sendQuery() {
   }).catch(() => {});
   startProgressListening();
   
-  // 发送消息到 background，包含选中的平台
+  // 获取深度思考状态
+  const deepThinking = deepThinkingToggle.checked;
+  
+  // 发送消息到 background，包含选中的平台和深度思考状态
   chrome.runtime.sendMessage({ 
     action: 'sendToAllAIs', 
     query,
-    platforms: selectedPlatforms
+    platforms: selectedPlatforms,
+    deepThinking: deepThinking
   }, (response) => {
     if (chrome.runtime.lastError) {
       stopProgressListening();

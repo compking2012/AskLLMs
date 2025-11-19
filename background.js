@@ -14,7 +14,7 @@ const AI_SITES = [
   ];
   
   // 注入到目标 AI 页面的脚本（发送 query）
-  function sendQueryToPage(query) {
+  function sendQueryToPage(query, deepThinking) {
     const host = window.location.hostname;
   
     // 等待元素出现
@@ -129,10 +129,286 @@ const AI_SITES = [
       el.dispatchEvent(new Event('input', { bubbles: true }));
       el.dispatchEvent(new Event('change', { bubbles: true }));
     }
+    
+    // 辅助函数：查找包含文本的元素
+    function findElementByText(selector, text, timeout = 5000) {
+      return new Promise((resolve) => {
+        const startTime = Date.now();
+        const check = () => {
+          const elements = Array.from(document.querySelectorAll(selector));
+          const found = elements.find(el => {
+            const elText = el.textContent.trim().toLowerCase();
+            const searchText = text.toLowerCase();
+            return elText.includes(searchText);
+          });
+          
+          if (found) {
+            resolve(found);
+            return;
+          }
+          
+          if (Date.now() - startTime < timeout) {
+            setTimeout(check, 200);
+          } else {
+            resolve(null);
+          }
+        };
+        check();
+      });
+    }
+    
+    // 深度思考功能实现函数
+    async function enableDeepThinking(platform, enabled) {
+      if (!enabled) return; // 如果未启用，直接返回
+      
+      console.log(`[MultiAI] Enabling deep thinking for ${platform}...`);
+      
+      try {
+        switch(platform) {
+          case 'chatgpt.com':
+            // ChatGPT：在"+"中打开或关闭"思考"
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            // 先检查是否已经开启了思考模式（通过查找关闭按钮）
+            const existingThinkingPill = await waitForElement('button.__composer-pill[aria-label*="思考"]', 2000);
+            if (existingThinkingPill) {
+              console.log('[MultiAI] ChatGPT deep thinking already enabled ✓');
+              break;
+            }
+            
+            // 点击"+"按钮
+            const chatgptPlusBtn = await waitForElement('button[data-testid="composer-plus-btn"]', 5000);
+            if (chatgptPlusBtn) {
+              chatgptPlusBtn.click();
+              await new Promise(resolve => setTimeout(resolve, 500));
+              // 查找包含"思考"文本的menuitemradio
+              const thinkingOption = await findElementByText('div[role="menuitemradio"]', '思考') || await findElementByText('div[role="menuitemradio"]', 'Thinking');
+              if (thinkingOption) {
+                thinkingOption.click();
+                console.log('[MultiAI] ChatGPT deep thinking enabled ✓');
+              } else {
+                console.log('[MultiAI] ChatGPT thinking option not found');
+              }
+            } else {
+              console.log('[MultiAI] ChatGPT plus button not found');
+            }
+            break;
+            
+          case 'claude.ai':
+            // Claude：在Search and Tools中打开Use style，选Normal和Thinking Claude
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            const claudeToolsBtn = await findElementByText('button', 'Search and Tools') || await waitForElement('button[aria-label*="Tools"]', 5000);
+            if (claudeToolsBtn) {
+              claudeToolsBtn.click();
+              await new Promise(resolve => setTimeout(resolve, 500));
+              const useStyleBtn = await findElementByText('button', 'Use style') || await waitForElement('button[aria-label*="Use style"]', 3000);
+              if (useStyleBtn) {
+                useStyleBtn.click();
+                await new Promise(resolve => setTimeout(resolve, 500));
+                const thinkingClaude = await findElementByText('button, [role="menuitem"]', 'Thinking Claude');
+                if (thinkingClaude) {
+                  thinkingClaude.click();
+                  console.log('[MultiAI] Claude deep thinking enabled ✓');
+                }
+              }
+            }
+            break;
+            
+          case 'gemini.google.com':
+            // Gemini：在工具栏选"快速"或"思考"
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            const geminiThinkingBtn = await findElementByText('button', '思考') || await findElementByText('button', 'Thinking') || await waitForElement('button[aria-label*="思考"], button[aria-label*="Thinking"]', 5000);
+            if (geminiThinkingBtn) {
+              geminiThinkingBtn.click();
+              console.log('[MultiAI] Gemini deep thinking enabled ✓');
+            }
+            break;
+            
+          case 'grok.com':
+            // Grok：在输入框中选"快速模式"或"专家模式"
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            const grokModeBtn = await findElementByText('button', '快速模式') || await findElementByText('button', 'Fast mode') || await findElementByText('button', '专家模式') || await findElementByText('button', 'Expert mode') || await waitForElement('button[aria-label*="mode"]', 5000);
+            if (grokModeBtn) {
+              // 检查当前模式，如果不是专家模式则切换
+              const btnText = grokModeBtn.textContent.trim();
+              const isExpert = btnText.includes('专家') || btnText.includes('Expert');
+              if (!isExpert) {
+                grokModeBtn.click();
+                await new Promise(resolve => setTimeout(resolve, 500));
+                const expertMode = await findElementByText('button, [role="menuitem"]', '专家模式') || await findElementByText('button, [role="menuitem"]', 'Expert mode') || await findElementByText('button, [role="menuitem"]', '专家') || await findElementByText('button, [role="menuitem"]', 'Expert');
+                if (expertMode) {
+                  expertMode.click();
+                  console.log('[MultiAI] Grok deep thinking enabled ✓');
+                }
+              } else {
+                console.log('[MultiAI] Grok already in expert mode ✓');
+              }
+            }
+            break;
+            
+          case 'www.tongyi.com':
+            // 千问：在工具栏选"深度思考"
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            // 通过data-log-params中包含deepThink来查找（不依赖文本，支持i18n）
+            const tongyiThinkingBtn = await waitForElement('div[data-log-params*="deepThink"]', 5000);
+            if (tongyiThinkingBtn) {
+              tongyiThinkingBtn.click();
+              console.log('[MultiAI] 通义千问 deep thinking enabled ✓');
+            } else {
+              console.log('[MultiAI] 通义千问 deep thinking button not found');
+            }
+            break;
+            
+          case 'www.doubao.com':
+            // 豆包：在工具栏选"深度思考"
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            // 使用div的data-testid选择器（不是button）
+            const doubaoThinkingContainer = await waitForElement('div[data-testid="use-deep-thinking-switch-btn"]', 5000);
+            if (doubaoThinkingContainer) {
+              // 查找内部的button元素
+              const doubaoThinkingBtn = doubaoThinkingContainer.querySelector('button');
+              if (doubaoThinkingBtn) {
+                // 检查是否已经选中
+                const isChecked = doubaoThinkingBtn.getAttribute('data-checked') === 'true';
+                if (!isChecked) {
+                  // 先聚焦，再点击
+                  doubaoThinkingBtn.focus();
+                  await new Promise(resolve => setTimeout(resolve, 100));
+                  doubaoThinkingBtn.click();
+                  // 等待一下，然后验证是否成功
+                  await new Promise(resolve => setTimeout(resolve, 300));
+                  const newChecked = doubaoThinkingBtn.getAttribute('data-checked') === 'true';
+                  if (newChecked) {
+                    console.log('[MultiAI] 豆包 deep thinking enabled ✓');
+                  } else {
+                    // 如果点击button没效果，尝试点击容器
+                    console.log('[MultiAI] 豆包 button click failed, trying container');
+                    doubaoThinkingContainer.click();
+                    console.log('[MultiAI] 豆包 deep thinking enabled (via container) ✓');
+                  }
+                } else {
+                  console.log('[MultiAI] 豆包 deep thinking already enabled ✓');
+                }
+              } else {
+                // 如果找不到button，直接点击容器
+                doubaoThinkingContainer.click();
+                console.log('[MultiAI] 豆包 deep thinking enabled (via container, no button) ✓');
+              }
+            } else {
+              console.log('[MultiAI] 豆包 deep thinking container not found');
+            }
+            break;
+            
+          case 'chat.deepseek.com':
+            // DeepSeek：在工具栏选"深度思考"
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            // 等待至少一个button出现
+            await waitForElement('button.ds-atom-button.ds-toggle-button', 5000);
+            // 查找所有符合条件的button，选择第一个（深度思考）
+            const allToggleButtons = Array.from(document.querySelectorAll('button.ds-atom-button.ds-toggle-button'));
+            if (allToggleButtons.length > 0) {
+              // 第一个就是深度思考按钮
+              const deepseekThinkingBtn = allToggleButtons[0];
+              // 检查是否已经选中（class包含selected）
+              // const isSelected = deepseekThinkingBtn.classList.contains('ds-toggle-button--selected');
+              // if (!isSelected) {
+                deepseekThinkingBtn.click();
+                console.log('[MultiAI] DeepSeek deep thinking enabled ✓');
+              // } else {
+              //   deepseekThinkingBtn.click();
+              //   console.log('[MultiAI] DeepSeek deep thinking already enabled ✓');
+              // }
+            } else {
+              console.log('[MultiAI] DeepSeek deep thinking button not found');
+            }
+            break;
+            
+          case 'www.kimi.com':
+            // Kimi：在工具栏选"长思考"
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            const kimiThinkingBtn = await findElementByText('button', '长思考') || await waitForElement('button[aria-label*="长思考"], [class*="long-thinking"], [class*="thinking"]', 5000);
+            if (kimiThinkingBtn) {
+              kimiThinkingBtn.click();
+              console.log('[MultiAI] Kimi deep thinking enabled ✓');
+            }
+            break;
+            
+          case 'yiyan.baidu.com':
+            // 文心一言：在工具栏思考选"开启"
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            const wenxinThinkingBtn = await findElementByText('button', '思考') || await waitForElement('button[aria-label*="思考"], [class*="thinking"]', 5000);
+            if (wenxinThinkingBtn) {
+              wenxinThinkingBtn.click();
+              await new Promise(resolve => setTimeout(resolve, 500));
+              const enableThinking = await findElementByText('button, [role="menuitem"]', '开启');
+              if (enableThinking) {
+                enableThinking.click();
+                console.log('[MultiAI] 文心一言 deep thinking enabled ✓');
+              }
+            }
+            break;
+            
+          case 'chatglm.cn':
+            // 智谱清言：在工具栏选"推理"
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            const chatglmThinkingBtn = await findElementByText('button', '推理') || await waitForElement('button[aria-label*="推理"], [class*="reasoning"], [class*="thinking"]', 5000);
+            if (chatglmThinkingBtn) {
+              chatglmThinkingBtn.click();
+              console.log('[MultiAI] 智谱清言 deep thinking enabled ✓');
+            }
+            break;
+            
+          case 'agent.minimaxi.com':
+            // MiniMax：不支持
+            console.log('[MultiAI] MiniMax does not support deep thinking');
+            break;
+            
+          case 'yuanbao.tencent.com':
+            // 腾讯元宝：在工具栏选"深度思考"
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            // 优先使用class选择器
+            let yuanbaoThinkingBtn = await waitForElement('div.yb-switch-model-btn', 5000);
+            if (yuanbaoThinkingBtn) {
+              // 检查是否包含"深度思考"文本
+              const btnText = yuanbaoThinkingBtn.textContent || '';
+              if (btnText.includes('深度思考')) {
+                // 检查是否已经选中（class包含checked）
+                const isChecked = yuanbaoThinkingBtn.classList.contains('checked');
+                if (!isChecked) {
+                  yuanbaoThinkingBtn.click();
+                  console.log('[MultiAI] 腾讯元宝 deep thinking enabled ✓');
+                } else {
+                  console.log('[MultiAI] 腾讯元宝 deep thinking already enabled ✓');
+                }
+              } else {
+                // 如果找到的按钮不是深度思考，尝试通过文本查找所有yb-switch-model-btn
+                const allBtns = Array.from(document.querySelectorAll('div.yb-switch-model-btn'));
+                yuanbaoThinkingBtn = allBtns.find(btn => btn.textContent.includes('深度思考'));
+                if (yuanbaoThinkingBtn) {
+                  const isChecked = yuanbaoThinkingBtn.classList.contains('checked');
+                  if (!isChecked) {
+                    yuanbaoThinkingBtn.click();
+                    console.log('[MultiAI] 腾讯元宝 deep thinking enabled ✓');
+                  }
+                }
+              }
+            } else {
+              console.log('[MultiAI] 腾讯元宝 deep thinking button not found');
+            }
+            break;
+        }
+      } catch (e) {
+        console.warn(`[MultiAI] Failed to enable deep thinking for ${platform}:`, e);
+      }
+    }
   
     const actions = {
       'chatgpt.com': async () => {
         console.log('[MultiAI] ChatGPT - waiting for input...');
+        
+        // 如果启用深度思考，先设置
+        if (deepThinking) {
+          await enableDeepThinking('chatgpt.com', true);
+        }
         
         // 等待输入框出现
         const el = await waitForElement('div.ProseMirror#prompt-textarea[contenteditable="true"]');
@@ -161,6 +437,11 @@ const AI_SITES = [
       'claude.ai': async () => {
         console.log('[MultiAI] Claude - waiting for input...');
         
+        // 如果启用深度思考，先设置
+        if (deepThinking) {
+          await enableDeepThinking('claude.ai', true);
+        }
+        
         const el = await waitForElement('div[data-testid="chat-input"][contenteditable="true"]');
         if (!el) {
           console.log('[MultiAI] Claude input not found after waiting');
@@ -185,6 +466,11 @@ const AI_SITES = [
       'gemini.google.com': async () => {
         console.log('[MultiAI] Gemini - waiting for input...');
         
+        // 如果启用深度思考，先设置
+        if (deepThinking) {
+          await enableDeepThinking('gemini.google.com', true);
+        }
+        
         const el = await waitForElement('rich-textarea .ql-editor[contenteditable="true"]');
         if (!el) {
           console.log('[MultiAI] Gemini input not found after waiting');
@@ -208,6 +494,11 @@ const AI_SITES = [
       },
       'www.tongyi.com': async () => {
         console.log('[MultiAI] Tongyi - waiting for input...');
+        
+        // 如果启用深度思考，先设置
+        if (deepThinking) {
+          await enableDeepThinking('www.tongyi.com', true);
+        }
         
         // 使用父容器定位 textarea
         const el = await waitForElement('div.text-area-slot-container textarea');
@@ -270,6 +561,11 @@ const AI_SITES = [
       'www.doubao.com': async () => {
         console.log('[MultiAI] Doubao - waiting for input...');
         
+        // 如果启用深度思考，先设置
+        if (deepThinking) {
+          await enableDeepThinking('www.doubao.com', true);
+        }
+        
         // 豆包使用真正的 textarea
         const el = await waitForElement('textarea.semi-input-textarea');
         if (!el) {
@@ -316,6 +612,11 @@ const AI_SITES = [
       },
       'deepseek.com': async () => {
         console.log('[MultiAI] DeepSeek - waiting for input...');
+        
+        // 如果启用深度思考，先设置
+        if (deepThinking) {
+          await enableDeepThinking('chat.deepseek.com', true);
+        }
         
         // 尝试多个可能的选择器
         const el = await waitForElement('textarea[class*="ds-"], textarea[placeholder*="消息"], textarea[placeholder*="Message"], textarea');
@@ -391,6 +692,11 @@ const AI_SITES = [
       },
       'www.kimi.com': async () => {
         console.log('[MultiAI] Kimi - waiting for input...');
+        
+        // 如果启用深度思考，先设置
+        if (deepThinking) {
+          await enableDeepThinking('www.kimi.com', true);
+        }
         
         // Kimi 使用 Lexical 编辑器，是 contenteditable div
         // 优先选择精确的 Lexical 编辑器选择器
@@ -513,6 +819,11 @@ const AI_SITES = [
       'grok.com': async () => {
         console.log('[MultiAI] Grok - waiting for input...');
         
+        // 如果启用深度思考，先设置
+        if (deepThinking) {
+          await enableDeepThinking('grok.com', true);
+        }
+        
         const el = await waitForElement('textarea[placeholder*="Ask"], textarea[placeholder*="问"], textarea, div[contenteditable="true"]');
         if (!el) {
           console.log('[MultiAI] Grok input not found after waiting');
@@ -586,6 +897,11 @@ const AI_SITES = [
       'yiyan.baidu.com': async () => {
         console.log('[MultiAI] 文心一言 - waiting for input...');
         
+        // 如果启用深度思考，先设置
+        if (deepThinking) {
+          await enableDeepThinking('yiyan.baidu.com', true);
+        }
+        
         // 百度文心一言可能使用 textarea 或 contenteditable
         const el = await waitForElement('textarea[placeholder*="输入"], textarea[placeholder*="请输入"], textarea, div[contenteditable="true"][role="textbox"]');
         if (!el) {
@@ -627,6 +943,11 @@ const AI_SITES = [
       },
       'chatglm.cn': async () => {
         console.log('[MultiAI] 智谱清言 - waiting for input...');
+        
+        // 如果启用深度思考，先设置
+        if (deepThinking) {
+          await enableDeepThinking('chatglm.cn', true);
+        }
         
         // 智谱清言可能使用 textarea 或 contenteditable
         const el = await waitForElement('textarea[placeholder*="输入"], textarea[placeholder*="请输入"], textarea, div[contenteditable="true"]');
@@ -711,6 +1032,11 @@ const AI_SITES = [
       },
       'yuanbao.tencent.com': async () => {
         console.log('[MultiAI] 腾讯元宝 - waiting for input...');
+        
+        // 如果启用深度思考，先设置
+        if (deepThinking) {
+          await enableDeepThinking('yuanbao.tencent.com', true);
+        }
         
         // 腾讯元宝可能使用 textarea 或 contenteditable
         const el = await waitForElement('textarea[placeholder*="输入"], textarea[placeholder*="请输入"], textarea, div[contenteditable="true"]');
@@ -1184,7 +1510,7 @@ const AI_SITES = [
   }
   
   // 打开或复用 AI 标签页并发送
-  async function openAndSend(url, query, progressTracker, siteName) {
+  async function openAndSend(url, query, progressTracker, siteName, deepThinking) {
     console.log('[Background] Opening:', url, 'for site:', siteName);
     
     // 提取域名用于更灵活的匹配
@@ -1242,7 +1568,7 @@ const AI_SITES = [
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: sendQueryToPage,
-        args: [query]
+        args: [query, deepThinking]
       });
       console.log('[Background] Script injected to tab:', tab.id);
       // 注意：状态已经在tab监听器中更新为completed了
@@ -1618,10 +1944,12 @@ const AI_SITES = [
     if (request.action === 'sendToAllAIs') {
       const query = request.query;
       const selectedPlatforms = request.platforms || AI_SITES.map(s => s.name); // 默认全部
+      const deepThinking = request.deepThinking || false;
       
       console.log('[Background] Received sendToAllAIs request');
       console.log('[Background] Query:', query);
       console.log('[Background] Selected platforms:', selectedPlatforms);
+      console.log('[Background] Deep thinking:', deepThinking);
       
       // 根据选中的平台过滤要打开的站点
       const sitesToOpen = AI_SITES.filter(site => selectedPlatforms.includes(site.name));
@@ -1642,8 +1970,8 @@ const AI_SITES = [
       
       for (const site of sitesToOpen) {
         console.log('[Background] Processing:', site.name, site.url);
-        // 直接传递 progressTracker 和 siteName
-        const promise = openAndSend(site.url, query, progressTracker, site.name).then(id => {
+        // 直接传递 progressTracker、siteName 和 deepThinking
+        const promise = openAndSend(site.url, query, progressTracker, site.name, deepThinking).then(id => {
           console.log('[Background] Completed:', site.name, 'tab id:', id);
           return id;
         }).catch(err => {
