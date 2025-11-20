@@ -1,1296 +1,173 @@
-const AI_SITES = [
-    { name: "ChatGPT", url: "https://chatgpt.com" },
-    { name: "Claude", url: "https://claude.ai" },
-    { name: "Gemini", url: "https://gemini.google.com" },
-    { name: "Grok", url: "https://grok.com" },
-    { name: "通义千问", url: "https://www.tongyi.com" },
-    { name: "豆包", url: "https://www.doubao.com" },
-    { name: "DeepSeek", url: "https://chat.deepseek.com" },
-    { name: "Kimi", url: "https://www.kimi.com" },
-    { name: "文心一言", url: "https://yiyan.baidu.com" },
-    { name: "智谱清言", url: "https://chatglm.cn" },
-    { name: "MiniMax", url: "https://agent.minimaxi.com" },
-    { name: "腾讯元宝", url: "https://yuanbao.tencent.com" }
-  ];
+// ============================================================================
+// 导入模块文件（按顺序加载）
+// ============================================================================
+importScripts(
+  'models/ai-model-base.js',           // 1. 基类定义
+  'models/ai-model-factory.js',        // 2. 工厂类
+  'models/ai-model-utils.js',          // 3. 工具函数
+  'models/chatgpt-model.js',           // 4. 各模型实现
+  'models/claude-model.js',
+  'models/gemini-model.js',
+  'models/grok-model.js',
+  'models/tongyi-model.js',
+  'models/doubao-model.js',
+  'models/deepseek-model.js',
+  'models/kimi-model.js',
+  'models/wenxin-model.js',
+  'models/chatglm-model.js',
+  'models/minimax-model.js',
+  'models/yuanbao-model.js',
+  'models/ai-model-implementations.js' // 最后：注册所有模型
+);
+
+// 临时保留 AI_SITES 以保持兼容性，后续会移除
+// 现在可以从 AIModelFactory 获取所有模型信息
+const AI_SITES = AIModelFactory.getAllModels().map(model => ({
+  name: model.getName(),
+  url: model.getUrl()
+}));
   
-  // 注入到目标 AI 页面的脚本（发送 query）
-  function sendQueryToPage(query, deepThinking) {
-    const host = window.location.hostname;
-  
-    // 等待元素出现
-    function waitForElement(selector, timeout = 10000) {
-      return new Promise((resolve) => {
-        const element = document.querySelector(selector);
-        if (element) {
-          resolve(element);
-          return;
-        }
-        
-        const observer = new MutationObserver(() => {
+  // 根据模型生成注入代码的函数
+  function generateInjectionCode(model, query, deepThinking) {
+    // 工具函数代码（从 ai-model-utils.js 提取）
+    const utilsCode = `
+      function waitForElement(selector, timeout = 10000) {
+        return new Promise((resolve) => {
           const element = document.querySelector(selector);
           if (element) {
-            observer.disconnect();
             resolve(element);
-          }
-        });
-        
-        observer.observe(document.body, {
-          childList: true,
-          subtree: true
-        });
-        
-        setTimeout(() => {
-          observer.disconnect();
-          resolve(null);
-        }, timeout);
-      });
-    }
-  
-    // 通用函数：设置contenteditable元素的内容
-    function setContentEditable(el, text) {
-      el.focus();
-      
-      // 清空现有内容
-        el.innerHTML = '';
-      
-      // 创建段落元素
-      const p = document.createElement('p');
-      p.textContent = text;
-      el.appendChild(p);
-      
-      // 触发各种输入事件
-      el.dispatchEvent(new Event('input', { bubbles: true }));
-      el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: text }));
-      el.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-    
-    // 专门用于 Lexical 编辑器的输入函数（同步版本）
-    function setLexicalEditor(el, text) {
-      el.focus();
-      el.click();
-      
-      // 方法1: 尝试使用 execCommand (适用于 Lexical)
-      // execCommand 会自动触发 input 事件，所以不需要手动触发
-      try {
-        // 选中所有内容
-        const range = document.createRange();
-        range.selectNodeContents(el);
-        const selection = window.getSelection();
-        selection.removeAllRanges();
-        selection.addRange(range);
-        
-        // 删除选中的内容
-        document.execCommand('delete', false, null);
-        // 插入文本（这会自动触发 input 事件）
-        document.execCommand('insertText', false, text);
-        console.log('[MultiAI] Lexical editor: text inserted via execCommand');
-        return; // execCommand 成功，直接返回，不需要手动触发事件
-      } catch (e) {
-        console.log('[MultiAI] execCommand failed, trying Range API');
-        // 方法2: 使用 Range 和 Selection API（需要手动触发事件）
-        const range = document.createRange();
-        range.selectNodeContents(el);
-        range.deleteContents();
-        
-        const textNode = document.createTextNode(text);
-        range.insertNode(textNode);
-        range.collapse(false);
-        
-        const selection = window.getSelection();
-        selection.removeAllRanges();
-        selection.addRange(range);
-        
-        // 只在 Range API 方法时触发事件（因为 execCommand 已经自动触发了）
-        el.dispatchEvent(new InputEvent('beforeinput', { 
-          bubbles: true, 
-          cancelable: true, 
-          inputType: 'insertText', 
-          data: text 
-        }));
-        el.dispatchEvent(new InputEvent('input', { 
-          bubbles: true, 
-          inputType: 'insertText', 
-          data: text 
-        }));
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-        el.dispatchEvent(new Event('change', { bubbles: true }));
-      }
-    }
-  
-    // 通用函数：设置textarea的内容
-    function setTextarea(el, text) {
-      el.focus();
-      
-      // 使用原生setter触发React
-      const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
-      nativeInputValueSetter.call(el, text);
-      
-      // 触发事件
-      el.dispatchEvent(new Event('input', { bubbles: true }));
-      el.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-    
-    // 辅助函数：查找包含文本的元素
-    function findElementByText(selector, text, timeout = 5000) {
-      return new Promise((resolve) => {
-        const startTime = Date.now();
-        const check = () => {
-          const elements = Array.from(document.querySelectorAll(selector));
-          const found = elements.find(el => {
-            const elText = el.textContent.trim().toLowerCase();
-            const searchText = text.toLowerCase();
-            return elText.includes(searchText);
-          });
-          
-          if (found) {
-            resolve(found);
             return;
           }
-          
-          if (Date.now() - startTime < timeout) {
-            setTimeout(check, 200);
-          } else {
-            resolve(null);
-          }
-        };
-        check();
-      });
-    }
-    
-    // 深度思考功能实现函数
-    async function enableDeepThinking(platform, enabled) {
-      if (!enabled) return; // 如果未启用，直接返回
-      
-      console.log(`[MultiAI] Enabling deep thinking for ${platform}...`);
-      
-      try {
-        switch(platform) {
-          case 'chatgpt.com':
-            // ChatGPT：在"+"中打开或关闭"思考"
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            // 先检查是否已经开启了思考模式（通过查找关闭按钮）
-            const existingThinkingPill = await waitForElement('button.__composer-pill[aria-label*="思考"]', 2000);
-            if (existingThinkingPill) {
-              console.log('[MultiAI] ChatGPT deep thinking already enabled ✓');
-              break;
+          const observer = new MutationObserver(() => {
+            const element = document.querySelector(selector);
+            if (element) {
+              observer.disconnect();
+              resolve(element);
             }
-            
-            // 点击"+"按钮
-            const chatgptPlusBtn = await waitForElement('button[data-testid="composer-plus-btn"]', 5000);
-            if (chatgptPlusBtn) {
-              chatgptPlusBtn.click();
-              await new Promise(resolve => setTimeout(resolve, 500));
-              // 查找包含"思考"文本的menuitemradio
-              const thinkingOption = await findElementByText('div[role="menuitemradio"]', '思考') || await findElementByText('div[role="menuitemradio"]', 'Thinking');
-              if (thinkingOption) {
-                thinkingOption.click();
-                console.log('[MultiAI] ChatGPT deep thinking enabled ✓');
-              } else {
-                console.log('[MultiAI] ChatGPT thinking option not found');
-              }
-            } else {
-              console.log('[MultiAI] ChatGPT plus button not found');
-            }
-            break;
-            
-          case 'claude.ai':
-            // Claude：在Search and Tools中打开Use style，选Normal和Thinking Claude
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            const claudeToolsBtn = await findElementByText('button', 'Search and Tools') || await waitForElement('button[aria-label*="Tools"]', 5000);
-            if (claudeToolsBtn) {
-              claudeToolsBtn.click();
-              await new Promise(resolve => setTimeout(resolve, 500));
-              const useStyleBtn = await findElementByText('button', 'Use style') || await waitForElement('button[aria-label*="Use style"]', 3000);
-              if (useStyleBtn) {
-                useStyleBtn.click();
-                await new Promise(resolve => setTimeout(resolve, 500));
-                const thinkingClaude = await findElementByText('button, [role="menuitem"]', 'Thinking Claude');
-                if (thinkingClaude) {
-                  thinkingClaude.click();
-                  console.log('[MultiAI] Claude deep thinking enabled ✓');
-                }
-              }
-            }
-            break;
-            
-          case 'gemini.google.com':
-            // Gemini：在工具栏选"快速"或"思考"
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            const geminiThinkingBtn = await findElementByText('button', '思考') || await findElementByText('button', 'Thinking') || await waitForElement('button[aria-label*="思考"], button[aria-label*="Thinking"]', 5000);
-            if (geminiThinkingBtn) {
-              geminiThinkingBtn.click();
-              console.log('[MultiAI] Gemini deep thinking enabled ✓');
-            }
-            break;
-            
-          case 'grok.com':
-            // Grok：在输入框中选"快速模式"或"专家模式"
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            const grokModeBtn = await findElementByText('button', '快速模式') || await findElementByText('button', 'Fast mode') || await findElementByText('button', '专家模式') || await findElementByText('button', 'Expert mode') || await waitForElement('button[aria-label*="mode"]', 5000);
-            if (grokModeBtn) {
-              // 检查当前模式，如果不是专家模式则切换
-              const btnText = grokModeBtn.textContent.trim();
-              const isExpert = btnText.includes('专家') || btnText.includes('Expert');
-              if (!isExpert) {
-                grokModeBtn.click();
-                await new Promise(resolve => setTimeout(resolve, 500));
-                const expertMode = await findElementByText('button, [role="menuitem"]', '专家模式') || await findElementByText('button, [role="menuitem"]', 'Expert mode') || await findElementByText('button, [role="menuitem"]', '专家') || await findElementByText('button, [role="menuitem"]', 'Expert');
-                if (expertMode) {
-                  expertMode.click();
-                  console.log('[MultiAI] Grok deep thinking enabled ✓');
-                }
-              } else {
-                console.log('[MultiAI] Grok already in expert mode ✓');
-              }
-            }
-            break;
-            
-          case 'www.tongyi.com':
-            // 千问：在工具栏选"深度思考"
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            // 通过data-log-params中包含deepThink来查找（不依赖文本，支持i18n）
-            const tongyiThinkingBtn = await waitForElement('div[data-log-params*="deepThink"]', 5000);
-            if (tongyiThinkingBtn) {
-              tongyiThinkingBtn.click();
-              console.log('[MultiAI] 通义千问 deep thinking enabled ✓');
-            } else {
-              console.log('[MultiAI] 通义千问 deep thinking button not found');
-            }
-            break;
-            
-          case 'www.doubao.com':
-            // 豆包：在工具栏选"深度思考"
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            // 使用div的data-testid选择器（不是button）
-            const doubaoThinkingContainer = await waitForElement('div[data-testid="use-deep-thinking-switch-btn"]', 5000);
-            if (doubaoThinkingContainer) {
-              // 查找内部的button元素
-              const doubaoThinkingBtn = doubaoThinkingContainer.querySelector('button');
-              if (doubaoThinkingBtn) {
-                // 检查是否已经选中
-                const isChecked = doubaoThinkingBtn.getAttribute('data-checked') === 'true';
-                if (!isChecked) {
-                  // 先聚焦，再点击
-                  doubaoThinkingBtn.focus();
-                  await new Promise(resolve => setTimeout(resolve, 100));
-                  doubaoThinkingBtn.click();
-                  // 等待一下，然后验证是否成功
-                  await new Promise(resolve => setTimeout(resolve, 300));
-                  const newChecked = doubaoThinkingBtn.getAttribute('data-checked') === 'true';
-                  if (newChecked) {
-                    console.log('[MultiAI] 豆包 deep thinking enabled ✓');
-                  } else {
-                    // 如果点击button没效果，尝试点击容器
-                    console.log('[MultiAI] 豆包 button click failed, trying container');
-                    doubaoThinkingContainer.click();
-                    console.log('[MultiAI] 豆包 deep thinking enabled (via container) ✓');
-                  }
-                } else {
-                  console.log('[MultiAI] 豆包 deep thinking already enabled ✓');
-                }
-              } else {
-                // 如果找不到button，直接点击容器
-                doubaoThinkingContainer.click();
-                console.log('[MultiAI] 豆包 deep thinking enabled (via container, no button) ✓');
-              }
-            } else {
-              console.log('[MultiAI] 豆包 deep thinking container not found');
-            }
-            break;
-            
-          case 'chat.deepseek.com':
-            // DeepSeek：在工具栏选"深度思考"
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            // 等待至少一个button出现
-            await waitForElement('button.ds-atom-button.ds-toggle-button', 5000);
-            // 查找所有符合条件的button，选择第一个（深度思考）
-            const allToggleButtons = Array.from(document.querySelectorAll('button.ds-atom-button.ds-toggle-button'));
-            if (allToggleButtons.length > 0) {
-              // 第一个就是深度思考按钮
-              const deepseekThinkingBtn = allToggleButtons[0];
-              // 检查是否已经选中（class包含selected）
-              // const isSelected = deepseekThinkingBtn.classList.contains('ds-toggle-button--selected');
-              // if (!isSelected) {
-                deepseekThinkingBtn.click();
-                console.log('[MultiAI] DeepSeek deep thinking enabled ✓');
-              // } else {
-              //   deepseekThinkingBtn.click();
-              //   console.log('[MultiAI] DeepSeek deep thinking already enabled ✓');
-              // }
-            } else {
-              console.log('[MultiAI] DeepSeek deep thinking button not found');
-            }
-            break;
-            
-          case 'www.kimi.com':
-            // Kimi：在工具栏选"长思考"
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            const kimiThinkingBtn = await findElementByText('button', '长思考') || await waitForElement('button[aria-label*="长思考"], [class*="long-thinking"], [class*="thinking"]', 5000);
-            if (kimiThinkingBtn) {
-              kimiThinkingBtn.click();
-              console.log('[MultiAI] Kimi deep thinking enabled ✓');
-            }
-            break;
-            
-          case 'yiyan.baidu.com':
-            // 文心一言：在工具栏思考选"开启"
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            const wenxinThinkingBtn = await findElementByText('button', '思考') || await waitForElement('button[aria-label*="思考"], [class*="thinking"]', 5000);
-            if (wenxinThinkingBtn) {
-              wenxinThinkingBtn.click();
-              await new Promise(resolve => setTimeout(resolve, 500));
-              const enableThinking = await findElementByText('button, [role="menuitem"]', '开启');
-              if (enableThinking) {
-                enableThinking.click();
-                console.log('[MultiAI] 文心一言 deep thinking enabled ✓');
-              }
-            }
-            break;
-            
-          case 'chatglm.cn':
-            // 智谱清言：在工具栏选"推理"
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            const chatglmThinkingBtn = await findElementByText('button', '推理') || await waitForElement('button[aria-label*="推理"], [class*="reasoning"], [class*="thinking"]', 5000);
-            if (chatglmThinkingBtn) {
-              chatglmThinkingBtn.click();
-              console.log('[MultiAI] 智谱清言 deep thinking enabled ✓');
-            }
-            break;
-            
-          case 'agent.minimaxi.com':
-            // MiniMax：不支持
-            console.log('[MultiAI] MiniMax does not support deep thinking');
-            break;
-            
-          case 'yuanbao.tencent.com':
-            // 腾讯元宝：在工具栏选"深度思考"
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            // 优先使用class选择器
-            let yuanbaoThinkingBtn = await waitForElement('div.yb-switch-model-btn', 5000);
-            if (yuanbaoThinkingBtn) {
-              // 检查是否包含"深度思考"文本
-              const btnText = yuanbaoThinkingBtn.textContent || '';
-              if (btnText.includes('深度思考')) {
-                // 检查是否已经选中（class包含checked）
-                const isChecked = yuanbaoThinkingBtn.classList.contains('checked');
-                if (!isChecked) {
-                  yuanbaoThinkingBtn.click();
-                  console.log('[MultiAI] 腾讯元宝 deep thinking enabled ✓');
-                } else {
-                  console.log('[MultiAI] 腾讯元宝 deep thinking already enabled ✓');
-                }
-              } else {
-                // 如果找到的按钮不是深度思考，尝试通过文本查找所有yb-switch-model-btn
-                const allBtns = Array.from(document.querySelectorAll('div.yb-switch-model-btn'));
-                yuanbaoThinkingBtn = allBtns.find(btn => btn.textContent.includes('深度思考'));
-                if (yuanbaoThinkingBtn) {
-                  const isChecked = yuanbaoThinkingBtn.classList.contains('checked');
-                  if (!isChecked) {
-                    yuanbaoThinkingBtn.click();
-                    console.log('[MultiAI] 腾讯元宝 deep thinking enabled ✓');
-                  }
-                }
-              }
-            } else {
-              console.log('[MultiAI] 腾讯元宝 deep thinking button not found');
-            }
-            break;
-        }
-      } catch (e) {
-        console.warn(`[MultiAI] Failed to enable deep thinking for ${platform}:`, e);
-      }
-    }
-  
-    const actions = {
-      'chatgpt.com': async () => {
-        console.log('[MultiAI] ChatGPT - waiting for input...');
-        
-        // 如果启用深度思考，先设置
-        if (deepThinking) {
-          await enableDeepThinking('chatgpt.com', true);
-        }
-        
-        // 等待输入框出现
-        const el = await waitForElement('div.ProseMirror#prompt-textarea[contenteditable="true"]');
-        if (!el) {
-          console.log('[MultiAI] ChatGPT input not found after waiting');
-          return false;
-        }
-        
-        console.log('[MultiAI] ChatGPT input found, setting text...');
-        setContentEditable(el, query);
-        console.log('[MultiAI] ChatGPT text set:', query);
-        
-        // 等待发送按钮出现并激活
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        const btn = await waitForElement('button[data-testid="send-button"]:not([disabled])');
-        if (btn) {
-          btn.click();
-          console.log('[MultiAI] ChatGPT sent ✓');
-        } else {
-          console.log('[MultiAI] ChatGPT button not ready');
-        }
-        
-        return true;
-      },
-      'claude.ai': async () => {
-        console.log('[MultiAI] Claude - waiting for input...');
-        
-        // 如果启用深度思考，先设置
-        if (deepThinking) {
-          await enableDeepThinking('claude.ai', true);
-        }
-        
-        const el = await waitForElement('div[data-testid="chat-input"][contenteditable="true"]');
-        if (!el) {
-          console.log('[MultiAI] Claude input not found after waiting');
-          return false;
-        }
-        
-        console.log('[MultiAI] Claude input found, setting text...');
-        setContentEditable(el, query);
-        
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        const btn = await waitForElement('button[aria-label="Send message"]');
-        if (btn) {
-          btn.click();
-          console.log('[MultiAI] Claude sent ✓');
-        } else {
-          console.log('[MultiAI] Claude button not found');
-        }
-        
-        return true;
-      },
-      'gemini.google.com': async () => {
-        console.log('[MultiAI] Gemini - waiting for input...');
-        
-        // 如果启用深度思考，先设置
-        if (deepThinking) {
-          await enableDeepThinking('gemini.google.com', true);
-        }
-        
-        const el = await waitForElement('rich-textarea .ql-editor[contenteditable="true"]');
-        if (!el) {
-          console.log('[MultiAI] Gemini input not found after waiting');
-          return false;
-        }
-        
-        console.log('[MultiAI] Gemini input found, setting text...');
-        setContentEditable(el, query);
-        
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        const btn = await waitForElement('button.send-button[aria-label="发送"], button[aria-label*="发送"]');
-        if (btn && !btn.disabled) {
-          btn.click();
-          console.log('[MultiAI] Gemini sent ✓');
-        } else {
-          console.log('[MultiAI] Gemini button not ready');
-        }
-        
-        return true;
-      },
-      'www.tongyi.com': async () => {
-        console.log('[MultiAI] Tongyi - waiting for input...');
-        
-        // 如果启用深度思考，先设置
-        if (deepThinking) {
-          await enableDeepThinking('www.tongyi.com', true);
-        }
-        
-        // 使用父容器定位 textarea
-        const el = await waitForElement('div.text-area-slot-container textarea');
-        if (!el) {
-          console.log('[MultiAI] Tongyi input not found after waiting');
-          // 打印所有textarea元素帮助调试
-          const allTextareas = document.querySelectorAll('textarea');
-          console.log('[MultiAI] Tongyi found textareas:', allTextareas.length);
-          allTextareas.forEach((ta, i) => {
-            console.log(`  [${i}] placeholder: "${ta.placeholder}", class: "${ta.className}"`);
           });
-          return false;
-        }
-        
-        console.log('[MultiAI] Tongyi input found:', el.placeholder);
-        
-        // 聚焦
+          observer.observe(document.body, { childList: true, subtree: true });
+          setTimeout(() => {
+            observer.disconnect();
+            resolve(null);
+          }, timeout);
+        });
+      }
+
+      function setContentEditable(el, text) {
+        el.focus();
+        el.innerHTML = '';
+        const p = document.createElement('p');
+        p.textContent = text;
+        el.appendChild(p);
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: text }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+
+      function setLexicalEditor(el, text) {
         el.focus();
         el.click();
-        
-        // 设置值 - 使用原生setter触发React
+        try {
+          const range = document.createRange();
+          range.selectNodeContents(el);
+          const selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(range);
+          document.execCommand('delete', false, null);
+          document.execCommand('insertText', false, text);
+          console.log('[MultiAI] Lexical editor: text inserted via execCommand');
+          return;
+        } catch (e) {
+          console.log('[MultiAI] execCommand failed, trying Range API');
+          const range = document.createRange();
+          range.selectNodeContents(el);
+          range.deleteContents();
+          const textNode = document.createTextNode(text);
+          range.insertNode(textNode);
+          range.collapse(false);
+          const selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(range);
+          el.dispatchEvent(new InputEvent('beforeinput', { bubbles: true, cancelable: true, inputType: 'insertText', data: text }));
+          el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: text }));
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }
+
+      function setTextarea(el, text) {
+        el.focus();
         const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
-        nativeInputValueSetter.call(el, query);
-        
-        // 触发多种事件
+        nativeInputValueSetter.call(el, text);
         el.dispatchEvent(new Event('input', { bubbles: true }));
         el.dispatchEvent(new Event('change', { bubbles: true }));
-        el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText' }));
-        el.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true }));
-        el.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
-        
-        console.log('[MultiAI] Tongyi text set:', query);
-        
-        // 等待更长时间让按钮激活
-        await new Promise(resolve => setTimeout(resolve, 800));
-        
-        // 尝试找发送按钮 - 优先直接选择 div.operateBtn
-        let btn = document.querySelector('div[class*="operateBtn"]');
-        
-        // 如果没找到，通过 span.anticon 找到父级 div
-        if (!btn) {
-          const iconSpan = document.querySelector('span.anticon');
-          if (iconSpan && iconSpan.parentElement && iconSpan.parentElement.tagName === 'DIV') {
-            btn = iconSpan.parentElement;
-          }
-        }
-        
-        console.log('[MultiAI] Tongyi button found:', !!btn, 'tag:', btn?.tagName, 'class:', btn?.className);
-        
-        if (btn) {
-          // 点击 div，即使它有 disabled 属性也尝试点击
-          btn.click();
-          console.log('[MultiAI] Tongyi sent ✓');
-        } else {
-          console.log('[MultiAI] Tongyi button not found');
-        }
-        
-        return true;
-      },
-      'www.doubao.com': async () => {
-        console.log('[MultiAI] Doubao - waiting for input...');
-        
-        // 如果启用深度思考，先设置
-        if (deepThinking) {
-          await enableDeepThinking('www.doubao.com', true);
-        }
-        
-        // 豆包使用真正的 textarea
-        const el = await waitForElement('textarea.semi-input-textarea');
-        if (!el) {
-          console.log('[MultiAI] Doubao input not found after waiting');
-          return false;
-        }
-        
-        console.log('[MultiAI] Doubao input found:', el.placeholder);
-        setTextarea(el, query);
-        
-        // 等待更长时间让按钮激活
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // 查找发送按钮 - 使用具体的 ID
-        let btn = document.querySelector('button[id="flow-end-msg-send"]');
-        
-        console.log('[MultiAI] Doubao button found:', !!btn, 'disabled:', btn?.disabled);
-        
-        if (btn && !btn.disabled) {
-          btn.click();
-          console.log('[MultiAI] Doubao sent via button ✓');
-        } else if (!btn) {
-          // 如果找不到按钮，尝试模拟 Enter 键
-          console.log('[MultiAI] Doubao button not found, trying Enter key');
-          el.dispatchEvent(new KeyboardEvent('keydown', { 
-            key: 'Enter', 
-            code: 'Enter', 
-            keyCode: 13,
-            which: 13,
-            bubbles: true,
-            cancelable: true
-          }));
-          console.log('[MultiAI] Doubao sent via Enter ✓');
-        } else {
-          console.log('[MultiAI] Doubao button disabled, waiting...');
-          await new Promise(resolve => setTimeout(resolve, 500));
-          if (!btn.disabled) {
-            btn.click();
-            console.log('[MultiAI] Doubao sent after retry ✓');
-          }
-        }
-        
-        return true;
-      },
-      'deepseek.com': async () => {
-        console.log('[MultiAI] DeepSeek - waiting for input...');
-        
-        // 如果启用深度思考，先设置
-        if (deepThinking) {
-          await enableDeepThinking('chat.deepseek.com', true);
-        }
-        
-        // 尝试多个可能的选择器
-        const el = await waitForElement('textarea[class*="ds-"], textarea[placeholder*="消息"], textarea[placeholder*="Message"], textarea');
-        if (!el) {
-          console.log('[MultiAI] DeepSeek input not found after waiting');
-          // 打印所有textarea帮助调试
-          const allTextareas = document.querySelectorAll('textarea');
-          console.log('[MultiAI] DeepSeek found textareas:', allTextareas.length);
-          allTextareas.forEach((ta, i) => {
-            console.log(`  [${i}] placeholder: "${ta.placeholder}", class: "${ta.className}"`);
-          });
-          return false;
-        }
-        
-        console.log('[MultiAI] DeepSeek input found:', el.placeholder);
-        setTextarea(el, query);
-        
-        // 等待更长时间
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // 尝试多种方式查找按钮
-        let btn = null;
-        
-        // 方法1: 通过 class (ds-前缀)
-        btn = document.querySelector('button[class*="ds-"][class*="send"]');
-        console.log('[MultiAI] DeepSeek button method 1 (ds-class):', !!btn);
-        
-        // 方法2: 通过 aria-label
-        if (!btn) {
-          btn = document.querySelector('button[aria-label*="Send"], button[aria-label*="发送"]');
-          console.log('[MultiAI] DeepSeek button method 2 (aria-label):', !!btn);
-        }
-        
-        // 方法3: 查找所有按钮
-        if (!btn) {
-          const buttons = Array.from(document.querySelectorAll('button'));
-          console.log('[MultiAI] DeepSeek total buttons:', buttons.length);
-          
-          btn = buttons.find(b => {
-            const text = b.textContent.trim().toLowerCase();
-            const ariaLabel = (b.getAttribute('aria-label') || '').toLowerCase();
-            const className = b.className.toLowerCase();
-            
-            // 查找包含发送相关关键词的按钮
-            const keywords = ['send', 'submit', '发送'];
-            const matches = keywords.some(kw => 
-              text.includes(kw) || ariaLabel.includes(kw) || className.includes(kw)
-            );
-            
-            return matches && !b.disabled;
-          });
-          console.log('[MultiAI] DeepSeek button method 3 (search):', !!btn);
-        }
-        
-        // 方法4: 如果还没找到，尝试模拟 Enter 键
-        if (!btn || btn.disabled) {
-          console.log('[MultiAI] DeepSeek button not found or disabled, trying Enter key');
-          el.dispatchEvent(new KeyboardEvent('keydown', { 
-            key: 'Enter', 
-            code: 'Enter', 
-            keyCode: 13,
-            which: 13,
-            bubbles: true,
-            cancelable: true
-          }));
-          console.log('[MultiAI] DeepSeek sent via Enter ✓');
-        } else {
-          btn.click();
-          console.log('[MultiAI] DeepSeek sent via button ✓');
-        }
-        
-        return true;
-      },
-      'www.kimi.com': async () => {
-        console.log('[MultiAI] Kimi - waiting for input...');
-        
-        // 如果启用深度思考，先设置
-        if (deepThinking) {
-          await enableDeepThinking('www.kimi.com', true);
-        }
-        
-        // Kimi 使用 Lexical 编辑器，是 contenteditable div
-        // 优先选择精确的 Lexical 编辑器选择器
-        const el = await waitForElement('div.chat-input-editor[contenteditable="true"][data-lexical-editor="true"]');
-        if (!el) {
-          // 备选选择器
-          const el2 = await waitForElement('div[contenteditable="true"][data-lexical-editor="true"], div.chat-input-editor[contenteditable="true"], textarea[placeholder*="请输入"], textarea[placeholder*="输入"]');
-          if (!el2) {
-            console.log('[MultiAI] Kimi input not found after waiting');
-            return false;
-          }
-          console.log('[MultiAI] Kimi input found (fallback), tag:', el2.tagName, 'contenteditable:', el2.contentEditable);
-          if (el2.tagName === 'TEXTAREA') {
-            setTextarea(el2, query);
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            // 尝试点击发送按钮或按 Enter
-            const btn = document.querySelector('button[aria-label*="发送"], button[type="submit"]');
-            if (btn && !btn.disabled) {
-              btn.click();
-              console.log('[MultiAI] Kimi sent via button ✓');
-            } else {
-              el2.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
-              console.log('[MultiAI] Kimi sent via Enter ✓');
-            }
-            return true;
-          } else {
-            setLexicalEditor(el2, query);
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            // 尝试点击发送按钮或按 Enter
-            const btn = document.querySelector('button[aria-label*="发送"], button[type="submit"]');
-            if (btn && !btn.disabled) {
-              btn.click();
-              console.log('[MultiAI] Kimi sent via button ✓');
-            } else {
-              el2.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
-              console.log('[MultiAI] Kimi sent via Enter ✓');
-            }
-            return true;
-          }
-        }
-        
-        console.log('[MultiAI] Kimi input found, tag:', el.tagName, 'contenteditable:', el.contentEditable, 'data-lexical-editor:', el.getAttribute('data-lexical-editor'));
-        
-        // 使用专门的 Lexical 编辑器输入函数
-        setLexicalEditor(el, query);
-        console.log('[MultiAI] Kimi text set:', query);
-        
-        // 等待更长时间让按钮激活
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // 尝试多种方式查找按钮
-        let btn = null;
-        
-        // 方法1: 通过 aria-label
-        btn = document.querySelector('button[aria-label*="发送"]');
-        console.log('[MultiAI] Kimi button method 1 (aria-label):', !!btn);
-        
-        // 方法2: 通过 class
-        if (!btn) {
-          btn = document.querySelector('button.send-button');
-          console.log('[MultiAI] Kimi button method 2 (class):', !!btn);
-        }
-        
-        // 方法3: 通过 type
-        if (!btn) {
-          btn = document.querySelector('button[type="submit"]:not([disabled])');
-          console.log('[MultiAI] Kimi button method 3 (type):', !!btn);
-        }
-        
-        // 方法4: 查找所有按钮
-        if (!btn) {
-          const buttons = Array.from(document.querySelectorAll('button'));
-          console.log('[MultiAI] Kimi total buttons:', buttons.length);
-          
-          btn = buttons.find(b => {
-            const text = b.textContent.trim().toLowerCase();
-            const ariaLabel = (b.getAttribute('aria-label') || '').toLowerCase();
-            const keywords = ['发送', 'send', 'submit'];
-            const matches = keywords.some(kw => text.includes(kw) || ariaLabel.includes(kw));
-            return matches && !b.disabled;
-          });
-          console.log('[MultiAI] Kimi button method 4 (search):', !!btn);
-        }
-        
-        // 方法5: 如果还没找到，尝试模拟 Enter 键
-        if (!btn || btn.disabled) {
-          console.log('[MultiAI] Kimi button not found or disabled, trying Enter key');
-          el.dispatchEvent(new KeyboardEvent('keydown', { 
-            key: 'Enter', 
-            code: 'Enter', 
-            keyCode: 13,
-            which: 13,
-            bubbles: true,
-            cancelable: true
-          }));
-          el.dispatchEvent(new KeyboardEvent('keypress', { 
-            key: 'Enter', 
-            code: 'Enter', 
-            keyCode: 13,
-            which: 13,
-            bubbles: true,
-            cancelable: true
-          }));
-          el.dispatchEvent(new KeyboardEvent('keyup', { 
-            key: 'Enter', 
-            code: 'Enter', 
-            keyCode: 13,
-            which: 13,
-            bubbles: true,
-            cancelable: true
-          }));
-          console.log('[MultiAI] Kimi sent via Enter ✓');
-        } else {
-          btn.click();
-          console.log('[MultiAI] Kimi sent via button ✓');
-        }
-        
-        return true;
-      },
-      'grok.com': async () => {
-        console.log('[MultiAI] Grok - waiting for input...');
-        
-        // 如果启用深度思考，先设置
-        if (deepThinking) {
-          await enableDeepThinking('grok.com', true);
-        }
-        
-        const el = await waitForElement('textarea[placeholder*="Ask"], textarea[placeholder*="问"], textarea, div[contenteditable="true"]');
-        if (!el) {
-          console.log('[MultiAI] Grok input not found after waiting');
-          return false;
-        }
-        
-        console.log('[MultiAI] Grok input found, tag:', el.tagName);
-        
-        if (el.tagName === 'TEXTAREA') {
-          setTextarea(el, query);
-        } else {
-          setContentEditable(el, query);
-        }
-        
-        // 等待更长时间
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // 尝试多种方式查找按钮
-        let btn = null;
-        
-        // 方法1: 通过 data-testid
-        btn = document.querySelector('button[data-testid="send-button"], button[data-testid*="send"]');
-        console.log('[MultiAI] Grok button method 1 (data-testid):', !!btn);
-        
-        // 方法2: 通过 aria-label
-        if (!btn) {
-          btn = document.querySelector('button[aria-label*="Send"], button[aria-label*="发送"]');
-          console.log('[MultiAI] Grok button method 2 (aria-label):', !!btn);
-        }
-        
-        // 方法3: 查找所有按钮
-        if (!btn) {
-          const buttons = Array.from(document.querySelectorAll('button'));
-          console.log('[MultiAI] Grok total buttons:', buttons.length);
-          
-          btn = buttons.find(b => {
-            const text = b.textContent.trim().toLowerCase();
-            const ariaLabel = (b.getAttribute('aria-label') || '').toLowerCase();
-            const dataTestId = (b.getAttribute('data-testid') || '').toLowerCase();
-            
-            // 查找包含发送相关关键词的按钮
-            const keywords = ['send', 'submit', '发送'];
-            const matches = keywords.some(kw => 
-              text.includes(kw) || ariaLabel.includes(kw) || dataTestId.includes(kw)
-            );
-            
-            return matches && !b.disabled;
-          });
-          console.log('[MultiAI] Grok button method 3 (search):', !!btn);
-        }
-        
-        // 方法4: 如果还没找到，尝试模拟 Enter 键
-        if (!btn || btn.disabled) {
-          console.log('[MultiAI] Grok button not found or disabled, trying Enter key');
-          el.dispatchEvent(new KeyboardEvent('keydown', { 
-            key: 'Enter', 
-            code: 'Enter', 
-            keyCode: 13,
-            which: 13,
-            bubbles: true,
-            cancelable: true
-          }));
-          console.log('[MultiAI] Grok sent via Enter ✓');
-        } else {
-          btn.click();
-          console.log('[MultiAI] Grok sent via button ✓');
-        }
-        
-        return true;
-      },
-      'yiyan.baidu.com': async () => {
-        console.log('[MultiAI] 文心一言 - waiting for input...');
-        
-        // 如果启用深度思考，先设置
-        if (deepThinking) {
-          await enableDeepThinking('yiyan.baidu.com', true);
-        }
-        
-        // 百度文心一言可能使用 textarea 或 contenteditable
-        const el = await waitForElement('textarea[placeholder*="输入"], textarea[placeholder*="请输入"], textarea, div[contenteditable="true"][role="textbox"]');
-        if (!el) {
-          console.log('[MultiAI] 文心一言 input not found after waiting');
-          return false;
-        }
-        
-        console.log('[MultiAI] 文心一言 input found, tag:', el.tagName);
-        
-        if (el.tagName === 'TEXTAREA') {
-          setTextarea(el, query);
-        } else {
-          setContentEditable(el, query);
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // 尝试多种方式查找按钮
-        let btn = document.querySelector('button[aria-label*="发送"], button[type="submit"], button[class*="send"]');
-        
-        if (!btn) {
-          const buttons = Array.from(document.querySelectorAll('button'));
-          btn = buttons.find(b => {
-            const text = b.textContent.trim().toLowerCase();
-            const ariaLabel = (b.getAttribute('aria-label') || '').toLowerCase();
-            return (text.includes('发送') || ariaLabel.includes('发送')) && !b.disabled;
-          });
-        }
-        
-        if (btn && !btn.disabled) {
-          btn.click();
-          console.log('[MultiAI] 文心一言 sent via button ✓');
-        } else {
-          el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
-          console.log('[MultiAI] 文心一言 sent via Enter ✓');
-        }
-        
-        return true;
-      },
-      'chatglm.cn': async () => {
-        console.log('[MultiAI] 智谱清言 - waiting for input...');
-        
-        // 如果启用深度思考，先设置
-        if (deepThinking) {
-          await enableDeepThinking('chatglm.cn', true);
-        }
-        
-        // 智谱清言可能使用 textarea 或 contenteditable
-        const el = await waitForElement('textarea[placeholder*="输入"], textarea[placeholder*="请输入"], textarea, div[contenteditable="true"]');
-        if (!el) {
-          console.log('[MultiAI] 智谱清言 input not found after waiting');
-          return false;
-        }
-        
-        console.log('[MultiAI] 智谱清言 input found, tag:', el.tagName);
-        
-        if (el.tagName === 'TEXTAREA') {
-          setTextarea(el, query);
-        } else {
-          setContentEditable(el, query);
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // 尝试多种方式查找按钮
-        let btn = document.querySelector('button[aria-label*="发送"], button[type="submit"], button[class*="send"]');
-        
-        if (!btn) {
-          const buttons = Array.from(document.querySelectorAll('button'));
-          btn = buttons.find(b => {
-            const text = b.textContent.trim().toLowerCase();
-            const ariaLabel = (b.getAttribute('aria-label') || '').toLowerCase();
-            return (text.includes('发送') || ariaLabel.includes('发送')) && !b.disabled;
-          });
-        }
-        
-        if (btn && !btn.disabled) {
-          btn.click();
-          console.log('[MultiAI] 智谱清言 sent via button ✓');
-        } else {
-          el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
-          console.log('[MultiAI] 智谱清言 sent via Enter ✓');
-        }
-        
-        return true;
-      },
-      'agent.minimaxi.com': async () => {
-        console.log('[MultiAI] MiniMax - waiting for input...');
-        
-        // MiniMax 可能使用 textarea 或 contenteditable
-        const el = await waitForElement('textarea[placeholder*="输入"], textarea[placeholder*="请输入"], textarea, div[contenteditable="true"]');
-        if (!el) {
-          console.log('[MultiAI] MiniMax input not found after waiting');
-          return false;
-        }
-        
-        console.log('[MultiAI] MiniMax input found, tag:', el.tagName);
-        
-        if (el.tagName === 'TEXTAREA') {
-          setTextarea(el, query);
-        } else {
-          setContentEditable(el, query);
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // 尝试多种方式查找按钮
-        let btn = document.querySelector('button[aria-label*="发送"], button[aria-label*="Send"], button[type="submit"], button[class*="send"]');
-        
-        if (!btn) {
-          const buttons = Array.from(document.querySelectorAll('button'));
-          btn = buttons.find(b => {
-            const text = b.textContent.trim().toLowerCase();
-            const ariaLabel = (b.getAttribute('aria-label') || '').toLowerCase();
-            return (text.includes('发送') || text.includes('send') || ariaLabel.includes('发送') || ariaLabel.includes('send')) && !b.disabled;
-          });
-        }
-        
-        if (btn && !btn.disabled) {
-          btn.click();
-          console.log('[MultiAI] MiniMax sent via button ✓');
-        } else {
-          el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
-          console.log('[MultiAI] MiniMax sent via Enter ✓');
-        }
-        
-        return true;
-      },
-      'yuanbao.tencent.com': async () => {
-        console.log('[MultiAI] 腾讯元宝 - waiting for input...');
-        
-        // 如果启用深度思考，先设置
-        if (deepThinking) {
-          await enableDeepThinking('yuanbao.tencent.com', true);
-        }
-        
-        // 腾讯元宝可能使用 textarea 或 contenteditable
-        const el = await waitForElement('textarea[placeholder*="输入"], textarea[placeholder*="请输入"], textarea, div[contenteditable="true"]');
-        if (!el) {
-          console.log('[MultiAI] 腾讯元宝 input not found after waiting');
-          return false;
-        }
-        
-        console.log('[MultiAI] 腾讯元宝 input found, tag:', el.tagName);
-        
-        if (el.tagName === 'TEXTAREA') {
-          setTextarea(el, query);
-        } else {
-          setContentEditable(el, query);
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // 尝试多种方式查找按钮
-        let btn = document.querySelector('button[aria-label*="发送"], button[type="submit"], button[class*="send"]');
-        
-        if (!btn) {
-          const buttons = Array.from(document.querySelectorAll('button'));
-          btn = buttons.find(b => {
-            const text = b.textContent.trim().toLowerCase();
-            const ariaLabel = (b.getAttribute('aria-label') || '').toLowerCase();
-            return (text.includes('发送') || ariaLabel.includes('发送')) && !b.disabled;
-          });
-        }
-        
-        if (btn && !btn.disabled) {
-          btn.click();
-          console.log('[MultiAI] 腾讯元宝 sent via button ✓');
-        } else {
-          el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
-          console.log('[MultiAI] 腾讯元宝 sent via Enter ✓');
-        }
-        
-        return true;
       }
-    };
-  
-    // 使用立即执行的async函数来处理
-    (async () => {
-    for (const domain in actions) {
-      if (host.includes(domain)) {
-          console.log('[MultiAI] Detected:', domain);
-          await actions[domain]();
-          return;
-        }
+
+      function findElementByText(selector, text, timeout = 5000) {
+        return new Promise((resolve) => {
+          const startTime = Date.now();
+          const check = () => {
+            const elements = Array.from(document.querySelectorAll(selector));
+            const found = elements.find(el => {
+              const elText = el.textContent.trim().toLowerCase();
+              const searchText = text.toLowerCase();
+              return elText.includes(searchText);
+            });
+            if (found) {
+              resolve(found);
+              return;
+            }
+            if (Date.now() - startTime < timeout) {
+              setTimeout(check, 200);
+            } else {
+              resolve(null);
+            }
+          };
+          check();
+        });
       }
-      console.log('[MultiAI] Unknown domain:', host);
-    })();
+    `;
+
+    // 深度思考代码
+    const deepThinkingCode = deepThinking && model.canEnableDeepThinking() 
+      ? model.getEnableDeepThinkingCode() 
+      : 'async function enableDeepThinking() { /* not supported */ }';
+
+    // 执行查询代码
+    const executeQueryCode = model.getExecuteQueryCode();
+
+    // 组合完整代码
+    return `
+      (async function() {
+        ${utilsCode}
+        ${deepThinkingCode}
+        ${executeQueryCode}
+        
+        try {
+          if (${deepThinking} && ${model.canEnableDeepThinking()}) {
+            await enableDeepThinking();
+          }
+          await executeQuery(${JSON.stringify(query)}, ${deepThinking});
+        } catch (e) {
+          console.error('[MultiAI] Error executing query:', e);
+        }
+      })();
+    `;
+  }
+
+  // 注入到目标 AI 页面的脚本（发送 query）
+  // 重构后：使用模型类系统动态生成注入代码
+  function sendQueryToPage(query, deepThinking, injectionCode) {
+    // 直接执行传入的注入代码
+    eval(injectionCode);
   }
   
   // 注入到当前页面的临时输入 UI 脚本
-  function injectInputUI() {
+  function injectInputUI(modelsInfo) {
     if (document.getElementById('ai-multi-prompt-overlay')) return; // 防重复
-  
+
     const style = document.createElement('style');
-    style.textContent = `
-      #ai-multi-prompt-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 9999999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        backdrop-filter: blur(4px);
-      }
-      #ai-multi-prompt-ui {
-        position: relative;
-        background: #ffffff;
-        border-radius: 12px;
-        padding: 24px;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
-        width: 680px;
-        max-width: 90%;
-      }
-      #ai-multi-prompt-ui .header {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 20px;
-        padding-bottom: 16px;
-        border-bottom: 1px solid #e8e8e8;
-      }
-      #ai-multi-prompt-ui .emoji {
-        font-size: 24px;
-      }
-      #ai-multi-prompt-ui .title {
-        font-size: 18px;
-        font-weight: 600;
-        color: #1a1a1a;
-        letter-spacing: -0.02em;
-        flex: 1;
-      }
-      #ai-multi-prompt-ui .close {
-        cursor: pointer;
-        font-size: 20px;
-        color: #999;
-        line-height: 1;
-        width: 28px;
-        height: 28px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 6px;
-        transition: all 0.2s;
-      }
-      #ai-multi-prompt-ui .close:hover {
-        background: #f0f0f0;
-        color: #333;
-      }
-      #ai-multi-prompt-ui .input-wrapper {
-        display: flex;
-        gap: 12px;
-        align-items: flex-start;
-        margin-bottom: 20px;
-      }
-      #ai-multi-prompt-ui textarea {
-        flex: 1;
-        min-height: 48px;
-        max-height: 200px;
-        padding: 12px 16px;
-        border: 1px solid #d1d5db;
-        border-radius: 10px;
-        resize: vertical;
-        box-sizing: border-box;
-        font-family: inherit;
-        font-size: 14px;
-        line-height: 1.6;
-        transition: all 0.2s;
-        outline: none;
-        background: #fafafa;
-      }
-      #ai-multi-prompt-ui textarea:focus {
-        border-color: #6366f1;
-        background: #ffffff;
-        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-      }
-      #ai-multi-prompt-ui textarea::placeholder {
-        color: #9ca3af;
-      }
-      #ai-multi-prompt-ui #ai-send-btn {
-        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-        color: white;
-        border: none;
-        padding: 0 24px;
-        height: 48px;
-        border-radius: 10px;
-        cursor: pointer;
-        font-size: 14px;
-        font-weight: 600;
-        white-space: nowrap;
-        transition: all 0.2s;
-        box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
-      }
-      #ai-multi-prompt-ui #ai-send-btn:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 16px rgba(99, 102, 241, 0.35);
-        background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
-      }
-      #ai-multi-prompt-ui #ai-send-btn:active {
-        transform: translateY(0);
-      }
-      #ai-multi-prompt-ui .platforms-section {
-        margin-top: 20px;
-        padding-top: 20px;
-        border-top: 1px solid #e8e8e8;
-      }
-      #ai-multi-prompt-ui .platforms-label {
-        font-size: 13px;
-        font-weight: 600;
-        color: #4b5563;
-        margin-bottom: 12px;
-        letter-spacing: -0.01em;
-      }
-      #ai-multi-prompt-ui .platforms-grid {
-        display: flex;
-        gap: 12px;
-        justify-content: center;
-      }
-      #ai-multi-prompt-ui .platform-btn {
-        position: relative;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 40px;
-        height: 40px;
-        padding: 0;
-        border: none;
-        border-radius: 10px;
-        background: transparent;
-        cursor: pointer;
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        user-select: none;
-      }
-      #ai-multi-prompt-ui .platform-btn .icon {
-        width: 32px;
-        height: 32px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 8px;
-        overflow: hidden;
-        transition: all 0.2s;
-      }
-      #ai-multi-prompt-ui .platform-btn .icon img {
-        width: 100%;
-        height: 100%;
-        object-fit: contain;
-        filter: grayscale(100%) opacity(0.2);
-        transition: all 0.2s;
-      }
-      #ai-multi-prompt-ui .platform-btn:hover .icon img {
-        filter: grayscale(50%) opacity(0.5);
-        transform: scale(1.1);
-      }
-      #ai-multi-prompt-ui .platform-btn.active .icon img {
-        filter: grayscale(0%) opacity(1);
-      }
-      #ai-multi-prompt-ui .platform-btn.active:hover .icon img {
-        filter: grayscale(0%) opacity(1);
-        transform: scale(1.1);
-      }
-      #ai-multi-prompt-ui .platform-btn::after {
-        content: attr(data-tooltip);
-        position: absolute;
-        bottom: -32px;
-        left: 50%;
-        transform: translateX(-50%) scale(0.9);
-        padding: 4px 10px;
-        background: rgba(0, 0, 0, 0.85);
-        color: white;
-        font-size: 11px;
-        font-weight: 500;
-        border-radius: 6px;
-        white-space: nowrap;
-        opacity: 0;
-        pointer-events: none;
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        z-index: 10;
-      }
-      #ai-multi-prompt-ui .platform-btn:hover::after {
-        opacity: 1;
-        transform: translateX(-50%) scale(1);
-      }
-    `;
+
     document.head.appendChild(style);
   
     const overlay = document.createElement('div');
@@ -1329,42 +206,11 @@ const AI_SITES = [
         <div class="platforms-section">
           <div class="platforms-label">${getI18nMessage('selectPlatforms')}</div>
           <div class="platforms-grid">
-            <button class="platform-btn active" data-platform="ChatGPT" data-tooltip="ChatGPT" title="ChatGPT">
-              <span class="icon"><img src="${chrome.runtime.getURL('icons/chatgpt.png')}" alt="ChatGPT"></span>
-            </button>
-            <button class="platform-btn active" data-platform="Claude" data-tooltip="Claude" title="Claude">
-              <span class="icon"><img src="${chrome.runtime.getURL('icons/claude.png')}" alt="Claude"></span>
-            </button>
-            <button class="platform-btn active" data-platform="Gemini" data-tooltip="Gemini" title="Gemini">
-              <span class="icon"><img src="${chrome.runtime.getURL('icons/gemini.png')}" alt="Gemini"></span>
-            </button>
-            <button class="platform-btn active" data-platform="Grok" data-tooltip="Grok" title="Grok">
-              <span class="icon"><img src="${chrome.runtime.getURL('icons/grok.png')}" alt="Grok"></span>
-            </button>
-            <button class="platform-btn active" data-platform="通义千问" data-tooltip="通义千问" title="通义千问">
-              <span class="icon"><img src="${chrome.runtime.getURL('icons/tongyi.png')}" alt="通义千问"></span>
-            </button>
-            <button class="platform-btn active" data-platform="豆包" data-tooltip="豆包" title="豆包">
-              <span class="icon"><img src="${chrome.runtime.getURL('icons/doubao.png')}" alt="豆包"></span>
-            </button>
-            <button class="platform-btn active" data-platform="DeepSeek" data-tooltip="DeepSeek" title="DeepSeek">
-              <span class="icon"><img src="${chrome.runtime.getURL('icons/deepseek.png')}" alt="DeepSeek"></span>
-            </button>
-            <button class="platform-btn active" data-platform="Kimi" data-tooltip="Kimi" title="Kimi">
-              <span class="icon"><img src="${chrome.runtime.getURL('icons/kimi.png')}" alt="Kimi"></span>
-            </button>
-            <button class="platform-btn active" data-platform="文心一言" data-tooltip="文心一言" title="文心一言">
-              <span class="icon"><img src="${chrome.runtime.getURL('icons/wenxin.png')}" alt="文心一言"></span>
-            </button>
-            <button class="platform-btn active" data-platform="智谱清言" data-tooltip="智谱清言" title="智谱清言">
-              <span class="icon"><img src="${chrome.runtime.getURL('icons/chatglm.png')}" alt="智谱清言"></span>
-            </button>
-            <button class="platform-btn active" data-platform="MiniMax" data-tooltip="MiniMax" title="MiniMax">
-              <span class="icon"><img src="${chrome.runtime.getURL('icons/minimax.png')}" alt="MiniMax"></span>
-            </button>
-            <button class="platform-btn active" data-platform="腾讯元宝" data-tooltip="腾讯元宝" title="腾讯元宝">
-              <span class="icon"><img src="${chrome.runtime.getURL('icons/yuanbao.png')}" alt="腾讯元宝"></span>
-            </button>
+            ${modelsInfo.map(model => `
+              <button class="platform-btn active" data-platform="${model.platformId}" data-tooltip="${model.displayName}" title="${model.displayName}">
+                <span class="icon"><img src="${chrome.runtime.getURL(model.iconPath)}" alt="${model.displayName}"></span>
+              </button>
+            `).join('')}
           </div>
         </div>
       </div>
@@ -1943,7 +789,7 @@ const AI_SITES = [
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'sendToAllAIs') {
       const query = request.query;
-      const selectedPlatforms = request.platforms || AI_SITES.map(s => s.name); // 默认全部
+      const selectedPlatforms = request.platforms || AIModelFactory.getAllModelNames(); // 默认全部
       const deepThinking = request.deepThinking || false;
       
       console.log('[Background] Received sendToAllAIs request');
@@ -1951,8 +797,11 @@ const AI_SITES = [
       console.log('[Background] Selected platforms:', selectedPlatforms);
       console.log('[Background] Deep thinking:', deepThinking);
       
-      // 根据选中的平台过滤要打开的站点
-      const sitesToOpen = AI_SITES.filter(site => selectedPlatforms.includes(site.name));
+      // 使用模型工厂获取选中的模型
+      const modelsToOpen = AIModelFactory.getModelsByNames(selectedPlatforms);
+      
+      // 转换为旧格式以保持兼容性（后续会重构 ProgressTracker）
+      const sitesToOpen = modelsToOpen.map(model => ({ name: model.getName(), url: model.getUrl() }));
       console.log('[Background] Will open', sitesToOpen.length, 'tabs');
       
       if (sitesToOpen.length === 0) {
@@ -2070,9 +919,18 @@ const AI_SITES = [
     if (!tab.url.startsWith('http')) return;
   
     try {
+      // 获取所有模型信息
+      const allModels = AIModelFactory.getAllModels();
+      const modelsInfo = allModels.map(model => ({
+        platformId: model.getPlatformId(),
+        displayName: model.getDisplayName(),
+        iconPath: model.getIconPath()
+      }));
+
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
-        func: injectInputUI
+        func: injectInputUI,
+        args: [modelsInfo]
       });
     } catch (e) {
       console.error("无法注入输入框，请确保页面允许脚本运行", e);

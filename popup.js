@@ -121,13 +121,15 @@ const progressBar = document.getElementById('progress-bar');
 const progressText = document.getElementById('progress-text');
 const progressCount = document.getElementById('progress-count');
 const progressDetail = document.getElementById('progress-detail');
-const deepThinkingToggle = document.getElementById('deep-thinking-toggle');
+const deepThinkingToggleBtn = document.getElementById('deep-thinking-toggle-btn');
 
 // 页面元素
 const mainPage = document.getElementById('main-page');
 const settingsPage = document.getElementById('settings-page');
+const historyPage = document.getElementById('history-page');
 const settingsBtn = document.getElementById('settings-btn');
 const backBtn = document.getElementById('back-btn');
+const historyBackBtn = document.getElementById('history-back-btn');
 
 // 平台图标映射
 const PLATFORM_ICONS = {
@@ -411,19 +413,42 @@ async function saveSettings() {
 function showMainPage() {
   mainPage.classList.add('active');
   settingsPage.classList.remove('active');
+  historyPage.classList.remove('active');
+  // 如果已登录，更新历史记录下拉框
+  (async () => {
+    const user = await checkLoginStatus();
+    if (user) {
+      updateHistoryDropdown();
+    }
+  })();
+}
+
+function showHistoryPage() {
+  mainPage.classList.remove('active');
+  settingsPage.classList.remove('active');
+  historyPage.classList.add('active');
+  loadHistory();
 }
 
 function showSettingsPage() {
   mainPage.classList.remove('active');
   settingsPage.classList.add('active');
+  historyPage.classList.remove('active');
   initSettingsPage();
   // 重新初始化i18n（设置页面可能刚显示）
   initI18n();
+  // 更新登录UI
+  updateLoginUI();
 }
 
 // 事件监听
 settingsBtn.addEventListener('click', showSettingsPage);
 backBtn.addEventListener('click', showMainPage);
+if (historyBackBtn) {
+  historyBackBtn.addEventListener('click', () => {
+    showSettingsPage();
+  });
+}
 
 // 初始化 i18n
 initI18n();
@@ -525,28 +550,259 @@ platformBtns.forEach(btn => {
 // 初始化
 initPlatformButtons();
 
-// 初始化深度思考开关
-async function initDeepThinkingToggle() {
+// 初始化工具栏toggle按钮
+async function initToolbarToggles() {
   const result = await new Promise(resolve => {
     chrome.storage.local.get(['settings'], resolve);
   });
   const settings = result.settings || DEFAULT_SETTINGS;
-  deepThinkingToggle.checked = settings.deepThinking || false;
   
-  // 监听开关变化并保存
-  deepThinkingToggle.addEventListener('change', async () => {
-    const result = await new Promise(resolve => {
-      chrome.storage.local.get(['settings'], resolve);
+  // 初始化所有toggle按钮（除了上传文件按钮，它有特殊处理）
+  const toggles = [
+    { id: 'deep-thinking-toggle-btn', key: 'deepThinking', element: deepThinkingToggleBtn },
+    { id: 'web-search-toggle-btn', key: 'webSearch', element: document.getElementById('web-search-toggle-btn') },
+    { id: 'generate-image-toggle-btn', key: 'generateImage', element: document.getElementById('generate-image-toggle-btn') }
+  ];
+  
+  toggles.forEach(({ element, key }) => {
+    if (!element) return;
+    
+    const isActive = settings[key] || false;
+    
+    // 设置初始状态
+    if (isActive) {
+      element.classList.add('active');
+    } else {
+      element.classList.remove('active');
+    }
+    
+    // 监听按钮点击并保存
+    element.addEventListener('click', async () => {
+      element.classList.toggle('active');
+      const isActive = element.classList.contains('active');
+      
+      const result = await new Promise(resolve => {
+        chrome.storage.local.get(['settings'], resolve);
+      });
+      const currentSettings = result.settings || DEFAULT_SETTINGS;
+      currentSettings[key] = isActive;
+      await new Promise(resolve => {
+        chrome.storage.local.set({ settings: currentSettings }, resolve);
+      });
     });
-    const currentSettings = result.settings || DEFAULT_SETTINGS;
-    currentSettings.deepThinking = deepThinkingToggle.checked;
-    await new Promise(resolve => {
-      chrome.storage.local.set({ settings: currentSettings }, resolve);
-    });
+  });
+  
+  // 初始化上传文件功能（特殊处理）
+  initUploadFile();
+}
+
+initToolbarToggles();
+
+// ============================================================================
+// 上传文件功能
+// ============================================================================
+
+// 初始化上传文件功能
+function initUploadFile() {
+  const uploadFileBtn = document.getElementById('upload-file-btn');
+  const fileInput = document.getElementById('file-input');
+  const uploadFileWrapper = document.getElementById('upload-file-wrapper');
+  const uploadFileDropdownList = document.getElementById('upload-file-dropdown-list');
+  const uploadFileDropdownArrow = document.getElementById('upload-file-dropdown-arrow');
+  
+  if (!uploadFileBtn || !fileInput || !uploadFileWrapper) return;
+  
+  // 点击上传文件按钮
+  uploadFileBtn.addEventListener('click', (e) => {
+    // 如果点击的是下拉箭头区域，打开/关闭下拉框
+    const rect = uploadFileBtn.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const buttonWidth = rect.width;
+    const arrowAreaStart = buttonWidth - 28; // 箭头区域从右边28px开始
+    
+    if (clickX >= arrowAreaStart && uploadFileDropdownArrow && uploadFileDropdownArrow.style.display !== 'none') {
+      // 点击了箭头区域，切换下拉框
+      e.stopPropagation();
+      uploadFileWrapper.classList.toggle('open');
+    } else {
+      // 点击了按钮主体，打开文件选择器
+      fileInput.click();
+    }
+  });
+  
+  // 文件选择处理
+  fileInput.addEventListener('change', async (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+    
+    // 保存文件信息
+    await saveUploadedFiles(files);
+    
+    // 更新UI
+    updateUploadFileUI();
+    
+    // 清空input，允许重复选择同一文件
+    fileInput.value = '';
+  });
+  
+  // 点击外部关闭下拉框
+  document.addEventListener('click', (e) => {
+    if (uploadFileWrapper && !uploadFileWrapper.contains(e.target)) {
+      uploadFileWrapper.classList.remove('open');
+    }
+  });
+  
+  // 初始化时更新UI
+  updateUploadFileUI();
+}
+
+// 检查文件是否已存在（通过文件名、大小和最后修改时间判断）
+function isFileDuplicate(file, existingFiles) {
+  return existingFiles.some(existingFile => 
+    existingFile.name === file.name &&
+    existingFile.size === file.size &&
+    existingFile.lastModified === file.lastModified
+  );
+}
+
+// 保存上传的文件信息
+async function saveUploadedFiles(newFiles) {
+  // 读取现有文件列表
+  const result = await new Promise(resolve => {
+    chrome.storage.local.get(['uploadedFiles'], resolve);
+  });
+  
+  const existingFiles = result.uploadedFiles || [];
+  
+  // 过滤掉重复的文件
+  const uniqueNewFiles = newFiles.filter(file => !isFileDuplicate(file, existingFiles));
+  
+  if (uniqueNewFiles.length === 0) {
+    // 所有文件都是重复的，显示提示
+    showStatus(i18n('errorDuplicateFiles') || '文件已存在，未添加重复文件', 'info');
+    return;
+  }
+  
+  // 如果有部分文件重复，显示提示
+  if (uniqueNewFiles.length < newFiles.length) {
+    const duplicateCount = newFiles.length - uniqueNewFiles.length;
+    showStatus(i18n('errorSomeDuplicateFiles') || `${duplicateCount}个文件已存在，已跳过`, 'info');
+  }
+  
+  // 将新文件转换为可存储的格式
+  const filesToAdd = await Promise.all(uniqueNewFiles.map(async (file) => {
+    // 将文件转换为base64（用于存储）
+    const base64 = await fileToBase64(file);
+    return {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      lastModified: file.lastModified,
+      base64: base64,
+      id: Date.now() + Math.random() // 唯一ID
+    };
+  }));
+  
+  // 合并到现有文件列表
+  const allFiles = [...existingFiles, ...filesToAdd];
+  
+  // 保存到storage
+  await new Promise(resolve => {
+    chrome.storage.local.set({ uploadedFiles: allFiles }, resolve);
+  });
+  
+  // 显示成功添加的提示
+  if (filesToAdd.length > 0) {
+    showStatus(i18n('successFilesAdded') || `成功添加${filesToAdd.length}个文件`, 'success');
+  }
+}
+
+// 将File对象转换为base64
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result.split(',')[1]; // 移除data:type;base64,前缀
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
   });
 }
 
-initDeepThinkingToggle();
+// 更新上传文件UI
+async function updateUploadFileUI() {
+  const uploadFileWrapper = document.getElementById('upload-file-wrapper');
+  const uploadFileBtn = document.getElementById('upload-file-btn');
+  const uploadFileDropdownList = document.getElementById('upload-file-dropdown-list');
+  const uploadFileDropdownArrow = document.getElementById('upload-file-dropdown-arrow');
+  
+  if (!uploadFileWrapper || !uploadFileBtn || !uploadFileDropdownList) return;
+  
+  // 读取已上传的文件
+  const result = await new Promise(resolve => {
+    chrome.storage.local.get(['uploadedFiles'], resolve);
+  });
+  
+  const files = result.uploadedFiles || [];
+  
+  // 更新按钮的has-files类和箭头显示
+  if (files.length > 0) {
+    uploadFileBtn.classList.add('has-files');
+    if (uploadFileDropdownArrow) {
+      uploadFileDropdownArrow.style.display = 'block';
+    }
+  } else {
+    uploadFileBtn.classList.remove('has-files');
+    if (uploadFileDropdownArrow) {
+      uploadFileDropdownArrow.style.display = 'none';
+    }
+    uploadFileWrapper.classList.remove('open');
+  }
+  
+  // 更新下拉列表
+  if (files.length === 0) {
+    uploadFileDropdownList.innerHTML = '';
+  } else {
+    uploadFileDropdownList.innerHTML = files.map((file) => {
+      // 转义file.id以防止XSS和特殊字符问题
+      const fileIdEscaped = String(file.id).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+      return `
+      <div class="upload-file-item" data-file-id="${fileIdEscaped}">
+        <span class="upload-file-item-name" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span>
+        <button class="upload-file-item-delete" data-file-id="${fileIdEscaped}" title="删除">×</button>
+      </div>
+    `;
+    }).join('');
+    
+    // 使用事件委托处理删除按钮点击
+    uploadFileDropdownList.querySelectorAll('.upload-file-item-delete').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const fileId = btn.getAttribute('data-file-id');
+        await deleteUploadedFile(fileId);
+      });
+    });
+  }
+}
+
+// 删除上传的文件（使用文件ID）
+async function deleteUploadedFile(fileId) {
+  const result = await new Promise(resolve => {
+    chrome.storage.local.get(['uploadedFiles'], resolve);
+  });
+  
+  const files = result.uploadedFiles || [];
+  // 使用字符串比较，因为fileId可能是字符串
+  const filteredFiles = files.filter(file => String(file.id) !== String(fileId));
+  
+  await new Promise(resolve => {
+    chrome.storage.local.set({ uploadedFiles: filteredFiles }, resolve);
+  });
+  
+  // 更新UI
+  updateUploadFileUI();
+}
 
 // 自动调整输入框高度
 textarea.addEventListener('input', () => {
@@ -802,7 +1058,7 @@ function stopProgressListening() {
 // });
 
 // 发送函数
-function sendQuery() {
+async function sendQuery() {
   const query = textarea.value.trim();
   
   if (!query) {
@@ -840,15 +1096,31 @@ function sendQuery() {
   }).catch(() => {});
   startProgressListening();
   
-  // 获取深度思考状态
-  const deepThinking = deepThinkingToggle.checked;
+  // 获取所有toggle按钮状态
+  const deepThinking = deepThinkingToggleBtn.classList.contains('active');
+  const webSearch = document.getElementById('web-search-toggle-btn')?.classList.contains('active') || false;
+  const generateImage = document.getElementById('generate-image-toggle-btn')?.classList.contains('active') || false;
   
-  // 发送消息到 background，包含选中的平台和深度思考状态
+  // 检查是否有上传的文件
+  const uploadedFilesResult = await new Promise(resolve => {
+    chrome.storage.local.get(['uploadedFiles'], resolve);
+  });
+  const uploadedFiles = uploadedFilesResult.uploadedFiles || [];
+  const uploadFile = uploadedFiles.length > 0;
+  
+  // 如果已登录，保存历史记录
+  saveQueryHistory(query);
+  
+  // 发送消息到 background，包含选中的平台和所有toggle状态
   chrome.runtime.sendMessage({ 
     action: 'sendToAllAIs', 
     query,
     platforms: selectedPlatforms,
-    deepThinking: deepThinking
+    deepThinking: deepThinking,
+    webSearch: webSearch,
+    uploadFile: uploadFile,
+    uploadedFiles: uploadedFiles, // 包含文件信息
+    generateImage: generateImage
   }, (response) => {
     if (chrome.runtime.lastError) {
       stopProgressListening();
@@ -868,7 +1140,8 @@ function showStatus(message, type) {
   statusDiv.textContent = message;
   statusDiv.className = 'status ' + type;
   
-  if (type === 'error') {
+  // error 和 info 类型自动隐藏
+  if (type === 'error' || type === 'info') {
     setTimeout(() => {
       statusDiv.className = 'status';
     }, 3000);
@@ -888,4 +1161,319 @@ textarea.addEventListener('keydown', (e) => {
 
 // 自动聚焦
 textarea.focus();
+
+// ============================================================================
+// 登录功能
+// ============================================================================
+
+// 检查登录状态
+async function checkLoginStatus() {
+  const result = await new Promise(resolve => {
+    chrome.storage.local.get(['user'], resolve);
+  });
+  return result.user || null;
+}
+
+// 模拟登录（后端未开发，简单验证）
+async function login(username, password) {
+  // 模拟登录：任何非空用户名和密码都可以登录
+  if (!username || !password) {
+    return { success: false, message: i18n('loginRequired') };
+  }
+  
+  // 模拟登录成功
+  const user = {
+    username: username,
+    loginTime: Date.now()
+  };
+  
+  await new Promise(resolve => {
+    chrome.storage.local.set({ user }, resolve);
+  });
+  
+  return { success: true, user };
+}
+
+// 登出
+async function logout() {
+  await new Promise(resolve => {
+    chrome.storage.local.remove(['user'], resolve);
+  });
+  updateLoginUI();
+}
+
+// 更新登录UI
+async function updateLoginUI() {
+  const user = await checkLoginStatus();
+  const loginSection = document.getElementById('login-section');
+  const loggedInSection = document.getElementById('logged-in-section');
+  const loggedInUsername = document.getElementById('logged-in-username');
+  const historyDropdownContainer = document.getElementById('history-dropdown-container');
+  
+  if (user) {
+    if (loginSection) loginSection.style.display = 'none';
+    if (loggedInSection) loggedInSection.style.display = 'block';
+    if (loggedInUsername) {
+      loggedInUsername.textContent = user.username;
+    }
+    // 显示历史记录下拉框
+    if (historyDropdownContainer) {
+      historyDropdownContainer.style.display = 'block';
+      updateHistoryDropdown();
+    }
+  } else {
+    if (loginSection) loginSection.style.display = 'block';
+    if (loggedInSection) loggedInSection.style.display = 'none';
+    // 隐藏历史记录下拉框
+    if (historyDropdownContainer) {
+      historyDropdownContainer.style.display = 'none';
+    }
+    // 清空输入框
+    const usernameInput = document.getElementById('login-username');
+    const passwordInput = document.getElementById('login-password');
+    if (usernameInput) usernameInput.value = '';
+    if (passwordInput) passwordInput.value = '';
+  }
+}
+
+// 初始化登录UI
+async function initLogin() {
+  await updateLoginUI();
+  
+  // 登录按钮事件
+  const loginBtn = document.getElementById('login-btn');
+  if (loginBtn) {
+    loginBtn.addEventListener('click', async () => {
+      const usernameInput = document.getElementById('login-username');
+      const passwordInput = document.getElementById('login-password');
+      if (!usernameInput || !passwordInput) return;
+      
+      const username = usernameInput.value.trim();
+      const password = passwordInput.value.trim();
+      
+      const result = await login(username, password);
+      if (result.success) {
+        await updateLoginUI();
+        showStatus(i18n('loginSuccess'), 'success');
+      } else {
+        showStatus(result.message || i18n('loginFailed'), 'error');
+      }
+    });
+  }
+  
+  // 登出按钮事件
+  const logoutBtn = document.getElementById('logout-btn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', async () => {
+      await logout();
+      showStatus(i18n('logoutButton'), 'success');
+    });
+  }
+  
+  // 查看历史按钮事件
+  const viewHistoryBtn = document.getElementById('view-history-btn');
+  if (viewHistoryBtn) {
+    viewHistoryBtn.addEventListener('click', () => {
+      showHistoryPage();
+    });
+  }
+}
+
+// 初始化登录功能
+initLogin();
+
+// 页面加载时检查登录状态并更新历史记录下拉框
+(async () => {
+  const user = await checkLoginStatus();
+  if (user) {
+    updateHistoryDropdown();
+  }
+})();
+
+// ============================================================================
+// 历史记录功能
+// ============================================================================
+
+// 保存查询历史
+async function saveQueryHistory(query) {
+  const user = await checkLoginStatus();
+  if (!user) return; // 未登录不保存
+  
+  const historyItem = {
+    query: query,
+    timestamp: Date.now(),
+    date: new Date().toLocaleString()
+  };
+  
+  const result = await new Promise(resolve => {
+    chrome.storage.local.get(['queryHistory'], resolve);
+  });
+  
+  const history = result.queryHistory || [];
+  // 添加到开头，避免重复
+  if (history.length === 0 || history[0].query !== query) {
+    history.unshift(historyItem);
+    // 最多保存100条
+    if (history.length > 100) {
+      history.pop();
+    }
+    
+    await new Promise(resolve => {
+      chrome.storage.local.set({ queryHistory: history }, resolve);
+    });
+    
+    // 更新下拉框
+    updateHistoryDropdown();
+  }
+}
+
+// 加载历史记录
+async function loadHistory() {
+  const historyList = document.getElementById('history-list');
+  if (!historyList) return;
+  
+  const result = await new Promise(resolve => {
+    chrome.storage.local.get(['queryHistory'], resolve);
+  });
+  
+  const history = result.queryHistory || [];
+  
+  if (history.length === 0) {
+    historyList.innerHTML = `<div class="history-empty" data-i18n="historyEmpty">${i18n('historyEmpty')}</div>`;
+    return;
+  }
+  
+  historyList.innerHTML = history.map((item, index) => `
+    <div class="history-item">
+      <div class="history-item-content">${escapeHtml(item.query)}</div>
+      <div class="history-item-meta">
+        <span>${item.date || new Date(item.timestamp).toLocaleString()}</span>
+        <div class="history-item-actions">
+          <button class="history-btn history-btn-use" onclick="useHistoryQuery('${escapeHtml(item.query).replace(/'/g, "\\'")}')" data-i18n="historyUse">${i18n('historyUse')}</button>
+          <button class="history-btn history-btn-delete" onclick="deleteHistoryItem(${index})" data-i18n="historyDelete">${i18n('historyDelete')}</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// 使用历史查询
+function useHistoryQuery(query) {
+  textarea.value = query;
+  textarea.focus();
+  showMainPage();
+}
+
+// 删除历史项
+async function deleteHistoryItem(index) {
+  const result = await new Promise(resolve => {
+    chrome.storage.local.get(['queryHistory'], resolve);
+  });
+  
+  const history = result.queryHistory || [];
+  history.splice(index, 1);
+  
+  await new Promise(resolve => {
+    chrome.storage.local.set({ queryHistory: history }, resolve);
+  });
+  
+  loadHistory();
+  // 更新下拉框
+  updateHistoryDropdown();
+}
+
+// HTML转义函数
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// 将函数暴露到全局作用域，供HTML中的onclick使用
+window.useHistoryQuery = useHistoryQuery;
+window.deleteHistoryItem = deleteHistoryItem;
+
+// ============================================================================
+// 历史记录下拉框功能
+// ============================================================================
+
+// 更新历史记录下拉框
+async function updateHistoryDropdown() {
+  const historyDropdownContainer = document.getElementById('history-dropdown-container');
+  const historyLastQuery = document.getElementById('history-last-query');
+  const historyDropdownList = document.getElementById('history-dropdown-list');
+  
+  if (!historyDropdownContainer || !historyLastQuery || !historyDropdownList) return;
+  
+  const result = await new Promise(resolve => {
+    chrome.storage.local.get(['queryHistory'], resolve);
+  });
+  
+  const history = result.queryHistory || [];
+  
+  // 更新最后一次查询显示
+  if (history.length > 0) {
+    const lastQuery = history[0].query;
+    // 如果太长，截断显示
+    const displayText = lastQuery.length > 30 ? lastQuery.substring(0, 30) + '...' : lastQuery;
+    historyLastQuery.textContent = displayText;
+    historyLastQuery.title = lastQuery; // 完整内容显示在title中
+  } else {
+    historyLastQuery.textContent = i18n('historyEmpty');
+    historyLastQuery.title = '';
+  }
+  
+  // 更新下拉列表
+  if (history.length === 0) {
+    historyDropdownList.innerHTML = `<div class="history-dropdown-item" style="cursor: default; color: #9ca3af;">${i18n('historyEmpty')}</div>`;
+  } else {
+    historyDropdownList.innerHTML = history.map((item, index) => `
+      <div class="history-dropdown-item" onclick="selectHistoryQuery('${escapeHtml(item.query).replace(/'/g, "\\'")}')">
+        <div>${escapeHtml(item.query.length > 50 ? item.query.substring(0, 50) + '...' : item.query)}</div>
+        <div class="history-dropdown-item-time">${item.date || new Date(item.timestamp).toLocaleString()}</div>
+      </div>
+    `).join('');
+  }
+}
+
+// 选择历史查询
+function selectHistoryQuery(query) {
+  textarea.value = query;
+  textarea.focus();
+  // 关闭下拉框
+  const historyDropdownContainer = document.getElementById('history-dropdown-container');
+  if (historyDropdownContainer) {
+    historyDropdownContainer.classList.remove('open');
+  }
+}
+
+// 初始化历史记录下拉框
+function initHistoryDropdown() {
+  const historyDropdownContainer = document.getElementById('history-dropdown-container');
+  const historyDropdownTrigger = document.getElementById('history-dropdown-trigger');
+  
+  if (!historyDropdownContainer || !historyDropdownTrigger) return;
+  
+  // 点击触发器打开/关闭下拉框
+  historyDropdownTrigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    historyDropdownContainer.classList.toggle('open');
+  });
+  
+  // 点击外部关闭下拉框
+  document.addEventListener('click', (e) => {
+    if (!historyDropdownContainer.contains(e.target)) {
+      historyDropdownContainer.classList.remove('open');
+    }
+  });
+  
+  // 初始化时更新下拉框
+  updateHistoryDropdown();
+}
+
+// 初始化历史记录下拉框
+initHistoryDropdown();
+
+// 将函数暴露到全局作用域
+window.selectHistoryQuery = selectHistoryQuery;
 

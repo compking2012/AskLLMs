@@ -151,6 +151,58 @@
     "message": "English",
     "description": "English language option"
   },
+  "loginTitle": {
+    "message": "Login",
+    "description": "Login section title"
+  },
+  "loginUsername": {
+    "message": "Username",
+    "description": "Username input label"
+  },
+  "loginPassword": {
+    "message": "Password",
+    "description": "Password input label"
+  },
+  "loginButton": {
+    "message": "Login",
+    "description": "Login button text"
+  },
+  "logoutButton": {
+    "message": "Logout",
+    "description": "Logout button text"
+  },
+  "loginSuccess": {
+    "message": "Login successful",
+    "description": "Login success message"
+  },
+  "loginFailed": {
+    "message": "Login failed. Please check your username and password.",
+    "description": "Login failed message"
+  },
+  "loginRequired": {
+    "message": "Please enter username and password",
+    "description": "Login required message"
+  },
+  "historyTitle": {
+    "message": "Query History",
+    "description": "Query history section title"
+  },
+  "historyEmpty": {
+    "message": "No query history yet",
+    "description": "Empty history message"
+  },
+  "historyViewButton": {
+    "message": "View History",
+    "description": "View history button text"
+  },
+  "historyDelete": {
+    "message": "Delete",
+    "description": "Delete history item button"
+  },
+  "historyUse": {
+    "message": "Use",
+    "description": "Use history item button"
+  },
   "settingsVisiblePlatforms": {
     "message": "Visible AI Platforms",
     "description": "Visible platforms settings title"
@@ -238,6 +290,18 @@
   "deepThinking": {
     "message": "Deep Thinking",
     "description": "Deep thinking toggle label"
+  },
+  "webSearch": {
+    "message": "Web Search",
+    "description": "Web search toggle button"
+  },
+  "uploadFile": {
+    "message": "Upload File",
+    "description": "Upload file toggle button"
+  },
+  "generateImage": {
+    "message": "Generate Image",
+    "description": "Generate image toggle button"
   }
 }
 

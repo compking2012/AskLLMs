@@ -12,7 +12,7 @@
     }
     
     body {
-      width: 500px;
+      width: 600px;
       min-height: 300px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
       background: #ffffff;
@@ -168,14 +168,133 @@
     }
     
     .header.with-settings-btn .header-content {
-      margin-right: 40px; /* 为设置按钮留出空间 */
+      margin-right: 200px; /* 为设置按钮和历史记录下拉框留出空间 */
     }
     
-    .settings-btn {
+    .header-actions {
       position: absolute;
       right: 0;
       top: 50%;
       transform: translateY(-50%);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 1;
+    }
+    
+    .history-dropdown-container {
+      position: relative;
+      display: none; /* 默认隐藏，登录后显示 */
+    }
+    
+    .history-dropdown-trigger {
+      max-width: 200px;
+      padding: 6px 12px;
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      color: #4b5563;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    body.dark-theme .history-dropdown-trigger {
+      background: #374151;
+      border-color: #4b5563;
+      color: #d1d5db;
+    }
+    
+    .history-dropdown-trigger:hover {
+      background: #e5e7eb;
+      border-color: #d1d5db;
+    }
+    
+    body.dark-theme .history-dropdown-trigger:hover {
+      background: #4b5563;
+      border-color: #6b7280;
+    }
+    
+    .history-dropdown-trigger::after {
+      content: '▼';
+      font-size: 10px;
+      opacity: 0.6;
+      transition: transform 0.2s;
+    }
+    
+    .history-dropdown-container.open .history-dropdown-trigger::after {
+      transform: rotate(180deg);
+    }
+    
+    .history-dropdown-list {
+      position: absolute;
+      top: calc(100% + 4px);
+      right: 0;
+      width: 300px;
+      max-height: 300px;
+      overflow-y: auto;
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      display: none;
+      z-index: 1000;
+    }
+    
+    body.dark-theme .history-dropdown-list {
+      background: #374151;
+      border-color: #4b5563;
+    }
+    
+    .history-dropdown-container.open .history-dropdown-list {
+      display: block;
+    }
+    
+    .history-dropdown-item {
+      padding: 10px 12px;
+      border-bottom: 1px solid #e5e7eb;
+      cursor: pointer;
+      transition: background 0.2s;
+      font-size: 12px;
+      color: #1f2937;
+      word-break: break-word;
+      line-height: 1.4;
+    }
+    
+    body.dark-theme .history-dropdown-item {
+      border-bottom-color: #4b5563;
+      color: #f9fafb;
+    }
+    
+    .history-dropdown-item:last-child {
+      border-bottom: none;
+    }
+    
+    .history-dropdown-item:hover {
+      background: #f3f4f6;
+    }
+    
+    body.dark-theme .history-dropdown-item:hover {
+      background: #4b5563;
+    }
+    
+    .history-dropdown-item-time {
+      font-size: 10px;
+      color: #9ca3af;
+      margin-top: 4px;
+    }
+    
+    body.dark-theme .history-dropdown-item-time {
+      color: #6b7280;
+    }
+    
+    .settings-btn {
       background: transparent;
       border: none;
       cursor: pointer;
@@ -184,7 +303,6 @@
       border-radius: 6px;
       transition: all 0.2s;
       color: #6b7280;
-      z-index: 1;
     }
     
     .settings-btn:hover {
@@ -661,6 +779,19 @@
       display: block;
     }
     
+    .status.info {
+      background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+      color: #1e40af;
+      border: 1px solid #93c5fd;
+      display: block;
+    }
+    
+    body.dark-theme .status.info {
+      background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+      color: #dbeafe;
+      border-color: #60a5fa;
+    }
+    
     .progress-container {
       margin-top: 16px;
       display: none;
@@ -702,76 +833,363 @@
       text-align: center;
     }
     
-    /* 深度思考开关样式 */
-    .deep-thinking-section {
+    /* 工具栏样式 */
+    .toolbar-section {
       margin-bottom: 16px;
-      padding: 12px 16px;
-      background: #f9fafb;
-      border-radius: 10px;
-      border: 1px solid #e5e7eb;
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
     }
     
-    body.dark-theme .deep-thinking-section {
+    .toggle-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      border-radius: 999px;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.2s ease;
+      font-size: 12px;
+      font-weight: 500;
+      color: #6b7280;
+    }
+    
+    body.dark-theme .toggle-btn {
+      background: #374151;
+      border-color: #4b5563;
+      color: #d1d5db;
+    }
+    
+    .toggle-btn:hover {
+      background: #e5e7eb;
+      border-color: #d1d5db;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    body.dark-theme .toggle-btn:hover {
+      background: #4b5563;
+      border-color: #6b7280;
+    }
+    
+    .toggle-btn.active {
+      background: rgba(99, 102, 241, 0.15);
+      border-color: rgba(99, 102, 241, 0.3);
+      color: #6366f1;
+    }
+    
+    body.dark-theme .toggle-btn.active {
+      background: rgba(99, 102, 241, 0.2);
+      border-color: rgba(99, 102, 241, 0.4);
+      color: #818cf8;
+    }
+    
+    .toggle-btn.active:hover {
+      background: rgba(99, 102, 241, 0.2);
+      border-color: rgba(99, 102, 241, 0.4);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 6px rgba(99, 102, 241, 0.2);
+    }
+    
+    body.dark-theme .toggle-btn.active:hover {
+      background: rgba(99, 102, 241, 0.25);
+      border-color: rgba(99, 102, 241, 0.5);
+    }
+    
+    .toggle-btn .toggle-icon {
+      width: 14px;
+      height: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+    }
+    
+    .toggle-btn .toggle-label {
+      font-size: 12px;
+      font-weight: 500;
+    }
+    
+    /* 上传文件相关样式 */
+    .upload-file-wrapper {
+      position: relative;
+      display: inline-flex;
+    }
+    
+    .upload-file-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      background: #ffffff;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.2s ease;
+      font-size: 12px;
+      font-weight: 500;
+      color: #374151;
+      position: relative;
+      padding-right: 28px; /* 为下拉箭头留出空间 */
+    }
+    
+    body.dark-theme .upload-file-btn {
+      background: #1f2937;
+      border-color: #4b5563;
+      color: #f9fafb;
+    }
+    
+    .upload-file-btn:hover {
+      background: #f9fafb;
+      border-color: #9ca3af;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    body.dark-theme .upload-file-btn:hover {
+      background: #374151;
+      border-color: #6b7280;
+    }
+    
+    .upload-file-btn.has-files {
+      background: #eff6ff;
+      border-color: #93c5fd;
+      color: #1e40af;
+    }
+    
+    body.dark-theme .upload-file-btn.has-files {
+      background: rgba(59, 130, 246, 0.2);
+      border-color: rgba(59, 130, 246, 0.4);
+      color: #93c5fd;
+    }
+    
+    .upload-file-btn.has-files:hover {
+      background: #dbeafe;
+      border-color: #60a5fa;
+    }
+    
+    body.dark-theme .upload-file-btn.has-files:hover {
+      background: rgba(59, 130, 246, 0.3);
+      border-color: rgba(59, 130, 246, 0.5);
+    }
+    
+    .upload-file-dropdown-arrow {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 10px;
+      color: inherit;
+      opacity: 0.7;
+      transition: transform 0.2s;
+      pointer-events: none;
+    }
+    
+    .upload-file-wrapper.open .upload-file-dropdown-arrow {
+      transform: translateY(-50%) rotate(180deg);
+    }
+    
+    .upload-file-btn .toggle-icon {
+      width: 14px;
+      height: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+    }
+    
+    .upload-file-btn .toggle-label {
+      font-size: 12px;
+      font-weight: 500;
+    }
+    
+    .upload-file-dropdown-list {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      width: 250px;
+      max-height: 200px;
+      overflow-y: auto;
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      display: none;
+      z-index: 1000;
+    }
+    
+    body.dark-theme .upload-file-dropdown-list {
       background: #374151;
       border-color: #4b5563;
     }
     
-    .deep-thinking-toggle {
+    .upload-file-wrapper.open .upload-file-dropdown-list {
+      display: block;
+    }
+    
+    .upload-file-item {
+      padding: 8px 12px;
+      border-bottom: 1px solid #e5e7eb;
       display: flex;
       align-items: center;
-      gap: 12px;
-      cursor: pointer;
-      user-select: none;
-    }
-    
-    .deep-thinking-toggle input[type="checkbox"] {
-      display: none;
-    }
-    
-    .toggle-slider {
-      position: relative;
-      width: 44px;
-      height: 24px;
-      background: #d1d5db;
-      border-radius: 12px;
-      transition: all 0.3s ease;
-      flex-shrink: 0;
-    }
-    
-    .toggle-slider::before {
-      content: '';
-      position: absolute;
-      top: 2px;
-      left: 2px;
-      width: 20px;
-      height: 20px;
-      background: white;
-      border-radius: 50%;
-      transition: all 0.3s ease;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    }
-    
-    .deep-thinking-toggle input[type="checkbox"]:checked + .toggle-slider {
-      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-    }
-    
-    .deep-thinking-toggle input[type="checkbox"]:checked + .toggle-slider::before {
-      transform: translateX(20px);
-    }
-    
-    .toggle-label {
-      font-size: 14px;
-      font-weight: 500;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 11px;
       color: #1f2937;
-      flex: 1;
     }
     
-    body.dark-theme .toggle-label {
+    body.dark-theme .upload-file-item {
+      border-bottom-color: #4b5563;
       color: #f9fafb;
     }
     
-    .deep-thinking-toggle:hover .toggle-slider {
-      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    .upload-file-item:last-child {
+      border-bottom: none;
+    }
+    
+    .upload-file-item-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    
+    .upload-file-item-delete {
+      width: 18px;
+      height: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      color: #ef4444;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    
+    .upload-file-item-delete:hover {
+      background: #fee2e2;
+      color: #dc2626;
+    }
+    
+    body.dark-theme .upload-file-item-delete:hover {
+      background: rgba(239, 68, 68, 0.2);
+    }
+    
+    .file-input-hidden {
+      display: none;
+    }
+    
+    /* 历史记录样式 */
+    .history-item {
+      padding: 12px;
+      margin-bottom: 8px;
+      background: #f9fafb;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+      transition: all 0.2s;
+    }
+    
+    body.dark-theme .history-item {
+      background: #374151;
+      border-color: #4b5563;
+    }
+    
+    .history-item:hover {
+      background: #f3f4f6;
+      border-color: #d1d5db;
+    }
+    
+    body.dark-theme .history-item:hover {
+      background: #4b5563;
+      border-color: #6b7280;
+    }
+    
+    .history-item-content {
+      font-size: 13px;
+      color: #1f2937;
+      margin-bottom: 8px;
+      word-break: break-word;
+      line-height: 1.5;
+    }
+    
+    body.dark-theme .history-item-content {
+      color: #f9fafb;
+    }
+    
+    .history-item-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: #6b7280;
+    }
+    
+    body.dark-theme .history-item-meta {
+      color: #9ca3af;
+    }
+    
+    .history-item-actions {
+      display: flex;
+      gap: 8px;
+    }
+    
+    .history-btn {
+      padding: 4px 12px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    
+    .history-btn-use {
+      background: #6366f1;
+      color: white;
+    }
+    
+    .history-btn-use:hover {
+      background: #4f46e5;
+    }
+    
+    .history-btn-delete {
+      background: #f3f4f6;
+      color: #6b7280;
+    }
+    
+    body.dark-theme .history-btn-delete {
+      background: #4b5563;
+      color: #d1d5db;
+    }
+    
+    .history-btn-delete:hover {
+      background: #e5e7eb;
+      color: #1f2937;
+    }
+    
+    body.dark-theme .history-btn-delete:hover {
+      background: #6b7280;
+      color: #f9fafb;
+    }
+    
+    .history-empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: #9ca3af;
+      font-size: 13px;
+    }
+    
+    body.dark-theme .history-empty {
+      color: #6b7280;
     }
   </style>
 </head>
@@ -783,7 +1201,17 @@
         <span class="emoji">💬</span>
         <div class="title" data-i18n="title">AI Multi-Model Query</div>
       </div>
-      <button id="settings-btn" class="settings-btn" title="Settings">⚙️</button>
+      <div class="header-actions">
+        <div id="history-dropdown-container" class="history-dropdown-container">
+          <div class="history-dropdown-trigger" id="history-dropdown-trigger">
+            <span id="history-last-query">No history</span>
+          </div>
+          <div class="history-dropdown-list" id="history-dropdown-list">
+            <!-- 历史记录将动态生成 -->
+          </div>
+        </div>
+        <button id="settings-btn" class="settings-btn" title="Settings">⚙️</button>
+      </div>
     </div>
   
   <div class="input-wrapper">
@@ -791,12 +1219,30 @@
     <button id="send-btn" data-i18n="sendButton">Send</button>
   </div>
   
-  <div class="deep-thinking-section">
-    <label class="deep-thinking-toggle">
-      <input type="checkbox" id="deep-thinking-toggle">
-      <span class="toggle-slider"></span>
+  <div class="toolbar-section">
+    <button id="deep-thinking-toggle-btn" class="toggle-btn" type="button">
+      <span class="toggle-icon">💭</span>
       <span class="toggle-label" data-i18n="deepThinking">深度思考</span>
-    </label>
+    </button>
+    <button id="web-search-toggle-btn" class="toggle-btn" type="button">
+      <span class="toggle-icon">🔍</span>
+      <span class="toggle-label" data-i18n="webSearch">网络搜索</span>
+    </button>
+    <div class="upload-file-wrapper" id="upload-file-wrapper">
+      <input type="file" id="file-input" class="file-input-hidden" multiple>
+      <button id="upload-file-btn" class="upload-file-btn" type="button">
+        <span class="toggle-icon">📎</span>
+        <span class="toggle-label" data-i18n="uploadFile">上传文件</span>
+        <span class="upload-file-dropdown-arrow" id="upload-file-dropdown-arrow" style="display: none;">▼</span>
+      </button>
+      <div class="upload-file-dropdown-list" id="upload-file-dropdown-list">
+        <!-- 文件列表将动态生成 -->
+      </div>
+    </div>
+    <button id="generate-image-toggle-btn" class="toggle-btn" type="button">
+      <span class="toggle-icon">🎨</span>
+      <span class="toggle-label" data-i18n="generateImage">生成图片</span>
+    </button>
   </div>
   
   <div class="platforms-section">
@@ -995,6 +1441,35 @@
     </div>
     
     <div class="settings-section">
+      <div class="settings-section-title" data-i18n="loginTitle">Login</div>
+      <div id="login-section">
+        <div class="settings-option">
+          <label class="settings-option-label" data-i18n="loginUsername">Username</label>
+          <input type="text" id="login-username" class="settings-input" placeholder="Enter username">
+        </div>
+        <div class="settings-option">
+          <label class="settings-option-label" data-i18n="loginPassword">Password</label>
+          <input type="password" id="login-password" class="settings-input" placeholder="Enter password">
+        </div>
+        <div class="settings-option">
+          <button id="login-btn" class="settings-btn-primary" data-i18n="loginButton">Login</button>
+        </div>
+      </div>
+      <div id="logged-in-section" style="display: none;">
+        <div class="settings-option">
+          <div style="font-size: 13px; color: #4b5563; margin-bottom: 12px;">
+            <span data-i18n="loginSuccess">Logged in as: </span>
+            <span id="logged-in-username" style="font-weight: 600;"></span>
+          </div>
+          <button id="logout-btn" class="settings-btn-secondary" data-i18n="logoutButton">Logout</button>
+        </div>
+        <div class="settings-option" style="margin-top: 16px;">
+          <button id="view-history-btn" class="settings-btn-secondary" data-i18n="historyViewButton">View History</button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="settings-section">
       <div class="settings-section-title" data-i18n="settingsTabGroupColor">Tab Group Color</div>
       <div class="settings-option">
         <div class="settings-radio-group">
@@ -1052,6 +1527,21 @@
           </label>
         </div>
       </div>
+    </div>
+  </div>
+  
+  <!-- 历史记录页面 -->
+  <div id="history-page" class="page">
+    <div class="header with-back-btn">
+      <button id="history-back-btn" class="back-btn" title="Back"><</button>
+      <div class="header-content">
+        <span class="emoji">📜</span>
+        <div class="title" data-i18n="historyTitle">Query History</div>
+      </div>
+    </div>
+    
+    <div id="history-list" style="max-height: 400px; overflow-y: auto;">
+      <!-- 历史记录将动态生成 -->
     </div>
   </div>
   

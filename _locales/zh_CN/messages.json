@@ -151,6 +151,58 @@
     "message": "English",
     "description": "英文语言选项"
   },
+  "loginTitle": {
+    "message": "登录",
+    "description": "登录部分标题"
+  },
+  "loginUsername": {
+    "message": "用户名",
+    "description": "用户名输入标签"
+  },
+  "loginPassword": {
+    "message": "密码",
+    "description": "密码输入标签"
+  },
+  "loginButton": {
+    "message": "登录",
+    "description": "登录按钮文本"
+  },
+  "logoutButton": {
+    "message": "退出登录",
+    "description": "退出登录按钮文本"
+  },
+  "loginSuccess": {
+    "message": "登录成功",
+    "description": "登录成功消息"
+  },
+  "loginFailed": {
+    "message": "登录失败，请检查用户名和密码",
+    "description": "登录失败消息"
+  },
+  "loginRequired": {
+    "message": "请输入用户名和密码",
+    "description": "需要登录消息"
+  },
+  "historyTitle": {
+    "message": "查询历史",
+    "description": "查询历史部分标题"
+  },
+  "historyEmpty": {
+    "message": "暂无查询历史",
+    "description": "空历史消息"
+  },
+  "historyViewButton": {
+    "message": "查看历史",
+    "description": "查看历史按钮文本"
+  },
+  "historyDelete": {
+    "message": "删除",
+    "description": "删除历史项按钮"
+  },
+  "historyUse": {
+    "message": "使用",
+    "description": "使用历史项按钮"
+  },
   "settingsVisiblePlatforms": {
     "message": "显示的大模型",
     "description": "可见平台设置标题"
@@ -238,6 +290,18 @@
   "deepThinking": {
     "message": "深度思考",
     "description": "深度思考开关标签"
+  },
+  "webSearch": {
+    "message": "网络搜索",
+    "description": "网络搜索切换按钮"
+  },
+  "uploadFile": {
+    "message": "上传文件",
+    "description": "上传文件切换按钮"
+  },
+  "generateImage": {
+    "message": "生成图片",
+    "description": "生成图片切换按钮"
   }
 }
 
