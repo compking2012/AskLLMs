@@ -1,7 +1,7 @@
-// 通义千问模型实现
-class TongyiModel extends AIModel {
+// 千问模型实现
+class QwenModel extends AIModel {
   constructor() {
-    super('通义千问', 'https://www.tongyi.com');
+    super('千问', 'https://www.qianwen.com');
   }
 
   canEnableDeepThinking() {
@@ -12,12 +12,12 @@ class TongyiModel extends AIModel {
     return `
       async function enableDeepThinking() {
         await new Promise(resolve => setTimeout(resolve, 1000));
-        const tongyiThinkingBtn = await waitForElement('div[data-log-params*="deepThink"]', 5000);
-        if (tongyiThinkingBtn) {
-          tongyiThinkingBtn.click();
-          console.log('[MultiAI] 通义千问 deep thinking enabled ✓');
+        const thinkingBtn = await waitForElement('div[data-log-params*="deepThink"]', 5000);
+        if (thinkingBtn) {
+          thinkingBtn.click();
+          console.log('[MultiAI] 千问 deep thinking enabled ✓');
         } else {
-          console.log('[MultiAI] 通义千问 deep thinking button not found');
+          console.log('[MultiAI] 千问 deep thinking button not found');
         }
       }
     `;
@@ -26,7 +26,7 @@ class TongyiModel extends AIModel {
   getExecuteQueryCode() {
     return `
       async function executeQuery(query, deepThinking) {
-        console.log('[MultiAI] Tongyi - waiting for input...');
+        console.log('[MultiAI] Qwen - waiting for input...');
         
         if (deepThinking) {
           await enableDeepThinking();
@@ -34,11 +34,11 @@ class TongyiModel extends AIModel {
         
         const el = await waitForElement('div.text-area-slot-container textarea');
         if (!el) {
-          console.log('[MultiAI] Tongyi input not found after waiting');
+          console.log('[MultiAI] Qwen input not found after waiting');
           return false;
         }
         
-        console.log('[MultiAI] Tongyi input found:', el.placeholder);
+        console.log('[MultiAI] Qwen input found:', el.placeholder);
         
         el.focus();
         el.click();
@@ -52,7 +52,7 @@ class TongyiModel extends AIModel {
         el.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true }));
         el.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
         
-        console.log('[MultiAI] Tongyi text set:', query);
+        console.log('[MultiAI] Qwen text set:', query);
         
         await new Promise(resolve => setTimeout(resolve, 800));
         
@@ -64,13 +64,13 @@ class TongyiModel extends AIModel {
           }
         }
         
-        console.log('[MultiAI] Tongyi button found:', !!btn);
+        console.log('[MultiAI] Qwen button found:', !!btn);
         
         if (btn) {
           btn.click();
-          console.log('[MultiAI] Tongyi sent ✓');
+          console.log('[MultiAI] Qwen sent ✓');
         } else {
-          console.log('[MultiAI] Tongyi button not found');
+          console.log('[MultiAI] Qwen button not found');
         }
         
         return true;
@@ -87,7 +87,7 @@ class TongyiModel extends AIModel {
   }
 
   getIconPath() {
-    return 'icons/tongyi.png';
+    return 'icons/qwen.png';
   }
 }
 

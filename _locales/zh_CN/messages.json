@@ -235,9 +235,9 @@
     "message": "取消",
     "description": "取消设置按钮"
   },
-  "platformTongyi": {
-    "message": "通义千问",
-    "description": "平台名称：通义千问"
+  "platformQwen": {
+    "message": "千问",
+    "description": "平台名称：千问"
   },
   "platformDoubao": {
     "message": "豆包",

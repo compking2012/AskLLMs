@@ -1,4 +1,7 @@
 // ============================================================================
+// Service Worker Version: 2.0 - 使用 code 参数直接注入，不使用 eval
+// ============================================================================
+console.log('[Background] Service Worker Version 2.0 loaded - Using code parameter injection (no eval)');
 // 导入模块文件（按顺序加载）
 // ============================================================================
 importScripts(
@@ -9,7 +12,7 @@ importScripts(
   'models/claude-model.js',
   'models/gemini-model.js',
   'models/grok-model.js',
-  'models/tongyi-model.js',
+  'models/qwen-model.js',
   'models/doubao-model.js',
   'models/deepseek-model.js',
   'models/kimi-model.js',
@@ -29,104 +32,8 @@ const AI_SITES = AIModelFactory.getAllModels().map(model => ({
   
   // 根据模型生成注入代码的函数
   function generateInjectionCode(model, query, deepThinking) {
-    // 工具函数代码（从 ai-model-utils.js 提取）
-    const utilsCode = `
-      function waitForElement(selector, timeout = 10000) {
-        return new Promise((resolve) => {
-          const element = document.querySelector(selector);
-          if (element) {
-            resolve(element);
-            return;
-          }
-          const observer = new MutationObserver(() => {
-            const element = document.querySelector(selector);
-            if (element) {
-              observer.disconnect();
-              resolve(element);
-            }
-          });
-          observer.observe(document.body, { childList: true, subtree: true });
-          setTimeout(() => {
-            observer.disconnect();
-            resolve(null);
-          }, timeout);
-        });
-      }
-
-      function setContentEditable(el, text) {
-        el.focus();
-        el.innerHTML = '';
-        const p = document.createElement('p');
-        p.textContent = text;
-        el.appendChild(p);
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-        el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: text }));
-        el.dispatchEvent(new Event('change', { bubbles: true }));
-      }
-
-      function setLexicalEditor(el, text) {
-        el.focus();
-        el.click();
-        try {
-          const range = document.createRange();
-          range.selectNodeContents(el);
-          const selection = window.getSelection();
-          selection.removeAllRanges();
-          selection.addRange(range);
-          document.execCommand('delete', false, null);
-          document.execCommand('insertText', false, text);
-          console.log('[MultiAI] Lexical editor: text inserted via execCommand');
-          return;
-        } catch (e) {
-          console.log('[MultiAI] execCommand failed, trying Range API');
-          const range = document.createRange();
-          range.selectNodeContents(el);
-          range.deleteContents();
-          const textNode = document.createTextNode(text);
-          range.insertNode(textNode);
-          range.collapse(false);
-          const selection = window.getSelection();
-          selection.removeAllRanges();
-          selection.addRange(range);
-          el.dispatchEvent(new InputEvent('beforeinput', { bubbles: true, cancelable: true, inputType: 'insertText', data: text }));
-          el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: text }));
-          el.dispatchEvent(new Event('input', { bubbles: true }));
-          el.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-      }
-
-      function setTextarea(el, text) {
-        el.focus();
-        const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
-        nativeInputValueSetter.call(el, text);
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-        el.dispatchEvent(new Event('change', { bubbles: true }));
-      }
-
-      function findElementByText(selector, text, timeout = 5000) {
-        return new Promise((resolve) => {
-          const startTime = Date.now();
-          const check = () => {
-            const elements = Array.from(document.querySelectorAll(selector));
-            const found = elements.find(el => {
-              const elText = el.textContent.trim().toLowerCase();
-              const searchText = text.toLowerCase();
-              return elText.includes(searchText);
-            });
-            if (found) {
-              resolve(found);
-              return;
-            }
-            if (Date.now() - startTime < timeout) {
-              setTimeout(check, 200);
-            } else {
-              resolve(null);
-            }
-          };
-          check();
-        });
-      }
-    `;
+    // 工具函数代码（从 ai-model-utils.js 获取）
+    const utilsCode = getModelUtilsCode();
 
     // 深度思考代码
     const deepThinkingCode = deepThinking && model.canEnableDeepThinking() 
@@ -137,30 +44,59 @@ const AI_SITES = AIModelFactory.getAllModels().map(model => ({
     const executeQueryCode = model.getExecuteQueryCode();
 
     // 组合完整代码
+    // 使用立即执行的异步函数（IIFE），确保代码立即执行
+    // 注意：使用 code 参数注入时，代码会在页面上下文中直接执行，不受 CSP 限制
+    // 重要：先定义所有函数（同步），然后执行异步逻辑
     return `
+      console.log('[MultiAI] ===== Code injection started (SYNC) =====');
+      console.log('[MultiAI] Document readyState:', document.readyState);
+      console.log('[MultiAI] Page URL:', window.location.href);
+      console.log('[MultiAI] Timestamp:', new Date().toISOString());
+      
+      // 定义所有工具函数（同步执行）
+      ${utilsCode}
+      
+      // 定义深度思考函数（同步执行）
+      ${deepThinkingCode}
+      
+      // 定义执行查询函数（同步执行）
+      ${executeQueryCode}
+      
+      console.log('[MultiAI] All functions defined (SYNC)');
+      console.log('[MultiAI] Query:', ${JSON.stringify(query)}, 'deepThinking:', ${deepThinking});
+      
+      // 立即执行异步逻辑
       (async function() {
-        ${utilsCode}
-        ${deepThinkingCode}
-        ${executeQueryCode}
-        
         try {
+          console.log('[MultiAI] ===== Async execution started =====');
+          
           if (${deepThinking} && ${model.canEnableDeepThinking()}) {
+            console.log('[MultiAI] Enabling deep thinking...');
             await enableDeepThinking();
+            console.log('[MultiAI] Deep thinking enabled');
           }
-          await executeQuery(${JSON.stringify(query)}, ${deepThinking});
+          
+          console.log('[MultiAI] Calling executeQuery...');
+          const result = await executeQuery(${JSON.stringify(query)}, ${deepThinking});
+          console.log('[MultiAI] Execution completed, result:', result);
+          console.log('[MultiAI] ===== Async execution finished =====');
         } catch (e) {
-          console.error('[MultiAI] Error executing query:', e);
+          console.error('[MultiAI] ===== ERROR in async execution =====');
+          console.error('[MultiAI] Error:', e);
+          console.error('[MultiAI] Error stack:', e.stack);
+          console.error('[MultiAI] Error name:', e.name);
+          console.error('[MultiAI] Error message:', e.message);
+          console.error('[MultiAI] ===== End of error =====');
         }
       })();
+      
+      console.log('[MultiAI] ===== Code injection finished (SYNC) =====');
     `;
   }
 
-  // 注入到目标 AI 页面的脚本（发送 query）
-  // 重构后：使用模型类系统动态生成注入代码
-  function sendQueryToPage(query, deepThinking, injectionCode) {
-    // 直接执行传入的注入代码
-    eval(injectionCode);
-  }
+  // 注意：sendQueryToPage 函数已废弃
+  // 现在直接使用 chrome.scripting.executeScript 的 code 参数注入代码
+  // 这样可以避免 CSP (Content Security Policy) 错误
   
   // 注入到当前页面的临时输入 UI 脚本
   function injectInputUI(modelsInfo) {
@@ -235,9 +171,56 @@ const AI_SITES = AIModelFactory.getAllModels().map(model => ({
       }
     });
   
+    // 拖拽选择功能
+    let isDragging = false;
+    let dragStartBtn = null;
+    let dragStartState = null;
+    let processedBtns = new Set();
+    let mouseDownX = 0;
+    let mouseDownY = 0;
+    let hasMoved = false;
+    
     // 平台按钮点击事件
     platformBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
+      // 鼠标按下事件
+      btn.addEventListener('mousedown', (e) => {
+        e.preventDefault(); // 防止拖动图标
+        mouseDownX = e.clientX;
+        mouseDownY = e.clientY;
+        hasMoved = false;
+        dragStartBtn = btn;
+        dragStartState = btn.classList.contains('active');
+        processedBtns.clear();
+        processedBtns.add(btn);
+      });
+      
+      // 鼠标移动事件（在按钮上）
+      btn.addEventListener('mouseenter', (e) => {
+        if (isDragging && dragStartBtn && !processedBtns.has(btn)) {
+          // dragStartState 是起始按钮切换前的状态
+          // 起始按钮切换后的状态应该是 !dragStartState
+          // 所以其他按钮应该被设置为与起始按钮切换后的状态一致
+          const targetState = !dragStartState;
+          const isCurrentlyActive = btn.classList.contains('active');
+          
+          // 如果目标状态与当前状态不一致，则切换
+          if (targetState !== isCurrentlyActive) {
+            btn.classList.toggle('active');
+          }
+          
+          processedBtns.add(btn);
+        }
+      });
+      
+      // 点击事件（用于非拖拽的点击）
+      btn.addEventListener('click', (e) => {
+        // 如果是在拖拽过程中，不执行点击逻辑
+        if (isDragging || hasMoved) {
+          e.preventDefault();
+          return;
+        }
+        
+        // 普通点击：切换状态
         btn.classList.toggle('active');
         
         // 保存选中状态
@@ -247,6 +230,75 @@ const AI_SITES = AIModelFactory.getAllModels().map(model => ({
         chrome.storage.local.set({ selectedPlatforms: selected });
       });
     });
+    
+    // 在 platforms-grid 容器上监听鼠标移动和释放事件
+    const platformsGrid = overlay.querySelector('.platforms-grid');
+    if (platformsGrid) {
+      // 监听鼠标移动，判断是否开始拖拽
+      platformsGrid.addEventListener('mousemove', (e) => {
+        if (dragStartBtn && !isDragging) {
+          const deltaX = Math.abs(e.clientX - mouseDownX);
+          const deltaY = Math.abs(e.clientY - mouseDownY);
+          // 如果移动距离超过5像素，开始拖拽
+          if (deltaX > 5 || deltaY > 5) {
+            hasMoved = true;
+            isDragging = true;
+            // 切换起始按钮的状态
+            dragStartBtn.classList.toggle('active');
+          }
+        }
+      });
+      
+      // 鼠标释放事件
+      platformsGrid.addEventListener('mouseup', () => {
+        if (isDragging) {
+          // 拖拽结束
+          isDragging = false;
+          dragStartBtn = null;
+          dragStartState = null;
+          processedBtns.clear();
+          
+          // 保存选中状态
+          const selected = Array.from(platformBtns)
+            .filter(b => b.classList.contains('active'))
+            .map(b => b.dataset.platform);
+          chrome.storage.local.set({ selectedPlatforms: selected });
+        } else if (dragStartBtn && !hasMoved) {
+          // 如果没有移动，说明是普通点击，已经在 click 事件中处理了
+          dragStartBtn = null;
+          dragStartState = null;
+          processedBtns.clear();
+        } else {
+          // 重置状态
+          dragStartBtn = null;
+          dragStartState = null;
+          processedBtns.clear();
+          hasMoved = false;
+        }
+      });
+      
+      // 鼠标离开容器时也结束拖拽
+      platformsGrid.addEventListener('mouseleave', () => {
+        if (isDragging) {
+          isDragging = false;
+          dragStartBtn = null;
+          dragStartState = null;
+          processedBtns.clear();
+          
+          // 保存选中状态
+          const selected = Array.from(platformBtns)
+            .filter(b => b.classList.contains('active'))
+            .map(b => b.dataset.platform);
+          chrome.storage.local.set({ selectedPlatforms: selected });
+        } else {
+          // 重置状态
+          dragStartBtn = null;
+          dragStartState = null;
+          processedBtns.clear();
+          hasMoved = false;
+        }
+      });
+    }
   
     // 自动聚焦到输入框
     setTimeout(() => textarea.focus(), 100);
@@ -411,15 +463,96 @@ const AI_SITES = AIModelFactory.getAllModels().map(model => ({
     }
   
     try {
-      await chrome.scripting.executeScript({
+      // 根据 siteName 获取对应的模型实例
+      const model = AIModelFactory.getModel(siteName);
+      if (!model) {
+        console.error('[Background] Model not found for site:', siteName);
+        progressTracker.updateStatus(siteName, 'completed');
+        sendProgressUpdate(progressTracker.getProgress());
+        return tab.id;
+      }
+
+      // 生成注入代码
+      const injectionCode = generateInjectionCode(model, query, deepThinking);
+      console.log('[Background] Generated injection code for:', siteName);
+      console.log('[Background] Injection code length:', injectionCode.length, 'characters');
+
+      // 验证注入代码不为空
+      if (!injectionCode || injectionCode.trim().length === 0) {
+        throw new Error('Generated injection code is empty');
+      }
+
+      // 验证注入代码不包含 eval 或 Function（防止 CSP 错误）
+      if (injectionCode.includes('eval(') || injectionCode.includes('Function(')) {
+        console.error('[Background] ERROR: Injection code contains eval or Function, which violates CSP!');
+        throw new Error('Injection code contains unsafe eval/Function calls');
+      }
+
+      // 等待页面 JavaScript 完全初始化（额外检查）
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: () => {
+            return new Promise((resolve) => {
+              console.log('[MultiAI] Page readiness check - readyState:', document.readyState);
+              if (document.readyState === 'complete') {
+                console.log('[MultiAI] Document ready, waiting 2 seconds for frameworks...');
+                setTimeout(() => {
+                  console.log('[MultiAI] Page readiness check complete');
+                  resolve();
+                }, 2000); // 增加等待时间到2秒
+              } else {
+                console.log('[MultiAI] Waiting for load event...');
+                window.addEventListener('load', () => {
+                  console.log('[MultiAI] Load event fired, waiting 2 seconds...');
+                  setTimeout(() => {
+                    console.log('[MultiAI] Page readiness check complete');
+                    resolve();
+                  }, 2000);
+                });
+              }
+            });
+          }
+        });
+        console.log('[Background] Page readiness check passed');
+      } catch (e) {
+        console.warn('[Background] Page readiness check failed, continuing anyway:', e.message);
+      }
+
+      // 使用 code 参数直接注入代码字符串，避免 CSP 错误
+      // 重要：使用 code 参数而不是 func 参数，因为 func 参数在页面上下文中执行时
+      // 如果包含 eval 会被 CSP 阻止
+      console.log('[Background] Injecting code using code parameter (CSP-safe)');
+      console.log('[Background] Injection code preview (first 300 chars):', injectionCode.substring(0, 300));
+      
+      // 先测试注入一个简单的同步代码，确保注入机制工作
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          code: `console.log('[MultiAI] Test injection successful - code injection mechanism works!');`
+        });
+        console.log('[Background] Test injection successful');
+      } catch (e) {
+        console.error('[Background] Test injection failed:', e);
+        throw e;
+      }
+      
+      // 等待一小段时间，确保测试代码执行完成
+      await new Promise(r => setTimeout(r, 100));
+      
+      // 现在注入实际的查询执行代码
+      const injectionResult = await chrome.scripting.executeScript({
         target: { tabId: tab.id },
-        func: sendQueryToPage,
-        args: [query, deepThinking]
+        code: injectionCode  // 直接注入代码字符串，不使用 func + eval
       });
-      console.log('[Background] Script injected to tab:', tab.id);
+      console.log('[Background] Script injected successfully to tab:', tab.id);
+      console.log('[Background] Injection result:', injectionResult);
+      console.log('[Background] IMPORTANT: Check page console (F12) for [MultiAI] logs');
+      console.log('[Background] If you see "Test injection successful" but no query execution, check the async function execution');
       // 注意：状态已经在tab监听器中更新为completed了
     } catch (e) {
       console.error("[Background] 发送失败", url, e);
+      console.error("[Background] Error details:", e.message, e.stack);
       // 即使失败也标记为完成（避免卡住）
       progressTracker.updateStatus(siteName, 'completed');
       sendProgressUpdate(progressTracker.getProgress());

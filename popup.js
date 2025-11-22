@@ -125,10 +125,8 @@ const deepThinkingToggleBtn = document.getElementById('deep-thinking-toggle-btn'
 
 // 页面元素
 const mainPage = document.getElementById('main-page');
-const settingsPage = document.getElementById('settings-page');
 const historyPage = document.getElementById('history-page');
 const settingsBtn = document.getElementById('settings-btn');
-const backBtn = document.getElementById('back-btn');
 const historyBackBtn = document.getElementById('history-back-btn');
 
 // 平台图标映射
@@ -137,7 +135,7 @@ const PLATFORM_ICONS = {
   "Claude": "icons/claude.png",
   "Gemini": "icons/gemini.png",
   "Grok": "icons/grok.png",
-  "通义千问": "icons/tongyi.png",
+  "千问": "icons/qwen.png",
   "豆包": "icons/doubao.png",
   "DeepSeek": "icons/deepseek.png",
   "Kimi": "icons/kimi.png",
@@ -149,7 +147,7 @@ const PLATFORM_ICONS = {
 
 // 平台名称到 i18n 键的映射（只对中文名字）
 const PLATFORM_I18N_KEYS = {
-  "通义千问": "platformTongyi",
+  "千问": "platformQwen",
   "豆包": "platformDoubao",
   "文心一言": "platformWenxin",
   "智谱清言": "platformChatGLM",
@@ -169,7 +167,7 @@ function getPlatformDisplayName(platform) {
 const DEFAULT_SETTINGS = {
   theme: 'auto',
   language: 'auto',
-  visiblePlatforms: ['ChatGPT', 'Claude', 'Gemini', 'Grok', '通义千问', '豆包', 'DeepSeek', 'Kimi', '文心一言', '智谱清言', 'MiniMax', '腾讯元宝'],
+  visiblePlatforms: ['ChatGPT', 'Claude', 'Gemini', 'Grok', '千问', '豆包', 'DeepSeek', 'Kimi', '文心一言', '智谱清言', 'MiniMax', '腾讯元宝'],
   tabGroupTitle: '',
   colorMode: 'random',
   fixedColor: 'blue',
@@ -252,167 +250,10 @@ function applyVisiblePlatforms(visiblePlatforms) {
   });
 }
 
-// 设置页面事件监听器初始化标志
-let settingsEventListenersInitialized = false;
-
-// 初始化设置页面
-function initSettingsPage() {
-  // 生成平台复选框
-  const platformCheckboxes = document.getElementById('platform-checkboxes');
-  platformCheckboxes.innerHTML = '';
-  
-  const allPlatforms = Array.from(platformBtns).map(btn => btn.dataset.platform);
-  allPlatforms.forEach(platform => {
-    const checkbox = document.createElement('label');
-    checkbox.className = 'settings-checkbox';
-    const displayName = getPlatformDisplayName(platform);
-    checkbox.innerHTML = `
-      <input type="checkbox" value="${platform}" data-platform="${platform}">
-      <span class="icon"><img src="${PLATFORM_ICONS[platform]}" alt="${platform}"></span>
-      <span>${displayName}</span>
-    `;
-    platformCheckboxes.appendChild(checkbox);
-  });
-  
-  // 加载设置并填充表单
-  loadSettingsToForm();
-  
-  // 只初始化一次事件监听器（避免重复添加）
-  if (!settingsEventListenersInitialized) {
-    // 颜色模式切换
-    document.querySelectorAll('input[name="color-mode"]').forEach(radio => {
-      radio.addEventListener('change', async (e) => {
-        const colorSelector = document.getElementById('color-selector');
-        if (e.target.value === 'fixed') {
-          colorSelector.style.display = 'block';
-        } else {
-          colorSelector.style.display = 'none';
-        }
-        // 立即保存
-        await saveSettings();
-      });
-    });
-    
-    // 为主题单选按钮添加立即保存
-    document.querySelectorAll('input[name="theme"]').forEach(radio => {
-      radio.addEventListener('change', async () => {
-        await saveSettings();
-      });
-    });
-    
-    // 为语言单选按钮添加立即保存
-    document.querySelectorAll('input[name="language"]').forEach(radio => {
-      radio.addEventListener('change', async () => {
-        await saveSettings();
-      });
-    });
-    
-    // 为颜色单选按钮添加立即保存
-    document.querySelectorAll('input[name="color"]').forEach(radio => {
-      radio.addEventListener('change', async () => {
-        await saveSettings();
-      });
-    });
-    
-    // 为标签组标题输入框添加立即保存（使用 debounce）
-    const tabGroupTitleInput = document.getElementById('tab-group-title');
-    let titleInputTimeout = null;
-    tabGroupTitleInput.addEventListener('input', () => {
-      clearTimeout(titleInputTimeout);
-      titleInputTimeout = setTimeout(async () => {
-        await saveSettings();
-      }, 500); // 500ms 延迟，避免频繁保存
-    });
-    
-    settingsEventListenersInitialized = true;
-  }
-}
-
-// 加载设置到表单
-async function loadSettingsToForm() {
-  const result = await new Promise(resolve => {
-    chrome.storage.local.get(['settings'], resolve);
-  });
-  
-  const settings = result.settings || DEFAULT_SETTINGS;
-  
-  // 主题设置
-  const themeValue = settings.theme || 'auto';
-  document.getElementById(`theme-${themeValue}`).checked = true;
-  
-  // 语言设置
-  document.getElementById(`lang-${settings.language === 'auto' ? 'auto' : settings.language === 'zh_CN' ? 'zh' : 'en'}`).checked = true;
-  
-  // 可见平台设置
-  document.querySelectorAll('#platform-checkboxes input[type="checkbox"]').forEach(checkbox => {
-    const platform = checkbox.dataset.platform;
-    checkbox.checked = settings.visiblePlatforms.includes(platform);
-    const label = checkbox.closest('.settings-checkbox');
-    if (checkbox.checked) {
-      label.classList.add('active');
-    } else {
-      label.classList.remove('active');
-    }
-  });
-  
-  // 标签组标题
-  document.getElementById('tab-group-title').value = settings.tabGroupTitle || '';
-  
-  // 颜色模式
-  document.getElementById(`color-${settings.colorMode}`).checked = true;
-  if (settings.colorMode === 'fixed') {
-    document.getElementById('color-selector').style.display = 'block';
-    document.querySelector(`input[name="color"][value="${settings.fixedColor}"]`).checked = true;
-  }
-  
-  // 复选框点击事件（立即保存）
-  document.querySelectorAll('#platform-checkboxes input[type="checkbox"]').forEach(checkbox => {
-    checkbox.addEventListener('change', async (e) => {
-      const label = e.target.closest('.settings-checkbox');
-      if (e.target.checked) {
-        label.classList.add('active');
-      } else {
-        label.classList.remove('active');
-      }
-      // 立即保存
-      await saveSettings();
-    });
-  });
-}
-
-// 保存设置（立即保存，不返回主页面）
-async function saveSettings() {
-  const settings = {
-    theme: document.querySelector('input[name="theme"]:checked').value,
-    language: document.querySelector('input[name="language"]:checked').value,
-    visiblePlatforms: Array.from(document.querySelectorAll('#platform-checkboxes input[type="checkbox"]:checked'))
-      .map(cb => cb.dataset.platform),
-    tabGroupTitle: document.getElementById('tab-group-title').value.trim(),
-    colorMode: document.querySelector('input[name="color-mode"]:checked').value,
-    fixedColor: document.querySelector('input[name="color"]:checked')?.value || 'blue'
-  };
-  
-  await new Promise(resolve => {
-    chrome.storage.local.set({ settings }, resolve);
-  });
-  
-  // 立即应用设置
-  await loadAndApplySettings();
-  
-  // 更新语言缓存并重新初始化 i18n，让语言设置立即生效
-  currentLanguage = null; // 清除缓存，强制重新读取
-  await initI18n();
-  
-  // 如果在设置页面，需要重新生成平台复选框以更新名称
-  if (settingsPage.classList.contains('active')) {
-    initSettingsPage();
-  }
-}
 
 // 页面切换
 function showMainPage() {
   mainPage.classList.add('active');
-  settingsPage.classList.remove('active');
   historyPage.classList.remove('active');
   // 如果已登录，更新历史记录下拉框
   (async () => {
@@ -425,28 +266,19 @@ function showMainPage() {
 
 function showHistoryPage() {
   mainPage.classList.remove('active');
-  settingsPage.classList.remove('active');
   historyPage.classList.add('active');
   loadHistory();
 }
 
-function showSettingsPage() {
-  mainPage.classList.remove('active');
-  settingsPage.classList.add('active');
-  historyPage.classList.remove('active');
-  initSettingsPage();
-  // 重新初始化i18n（设置页面可能刚显示）
-  initI18n();
-  // 更新登录UI
-  updateLoginUI();
-}
-
 // 事件监听
-settingsBtn.addEventListener('click', showSettingsPage);
-backBtn.addEventListener('click', showMainPage);
+if (settingsBtn) {
+  settingsBtn.addEventListener('click', () => {
+    chrome.tabs.create({ url: chrome.runtime.getURL('settings.html') });
+  });
+}
 if (historyBackBtn) {
   historyBackBtn.addEventListener('click', () => {
-    showSettingsPage();
+    showMainPage();
   });
 }
 
@@ -537,15 +369,126 @@ async function initPlatformButtons() {
   });
 }
 
+// 拖拽选择功能
+let isDragging = false;
+let dragStartBtn = null;
+let dragStartState = null;
+let processedBtns = new Set();
+let mouseDownX = 0;
+let mouseDownY = 0;
+let hasMoved = false;
+
 // 平台按钮点击事件
 platformBtns.forEach(btn => {
-  btn.addEventListener('click', () => {
-    btn.classList.toggle('active');
+  // 鼠标按下事件
+  btn.addEventListener('mousedown', (e) => {
+    e.preventDefault(); // 防止拖动图标
+    mouseDownX = e.clientX;
+    mouseDownY = e.clientY;
+    hasMoved = false;
+    dragStartBtn = btn;
+    dragStartState = btn.classList.contains('active');
+    processedBtns.clear();
+    processedBtns.add(btn);
+  });
+  
+  // 鼠标移动事件（在按钮上）
+  btn.addEventListener('mouseenter', (e) => {
+    if (isDragging && dragStartBtn && !processedBtns.has(btn)) {
+      // dragStartState 是起始按钮切换前的状态
+      // 起始按钮切换后的状态应该是 !dragStartState
+      // 所以其他按钮应该被设置为与起始按钮切换后的状态一致
+      const targetState = !dragStartState;
+      const isCurrentlyActive = btn.classList.contains('active');
+      
+      // 如果目标状态与当前状态不一致，则切换
+      if (targetState !== isCurrentlyActive) {
+        btn.classList.toggle('active');
+      }
+      
+      processedBtns.add(btn);
+    }
+  });
+  
+  // 点击事件（用于非拖拽的点击）
+  btn.addEventListener('click', (e) => {
+    // 如果是在拖拽过程中，不执行点击逻辑
+    if (isDragging || hasMoved) {
+      e.preventDefault();
+      return;
+    }
     
+    // 普通点击：切换状态
+    btn.classList.toggle('active');
     const selected = getSelectedPlatforms();
     saveSelectedPlatforms(selected);
   });
 });
+
+// 在 platforms-grid 容器上监听鼠标移动和释放事件
+const platformsGrid = document.querySelector('.platforms-grid');
+if (platformsGrid) {
+  // 监听鼠标移动，判断是否开始拖拽
+  platformsGrid.addEventListener('mousemove', (e) => {
+    if (dragStartBtn && !isDragging) {
+      const deltaX = Math.abs(e.clientX - mouseDownX);
+      const deltaY = Math.abs(e.clientY - mouseDownY);
+      // 如果移动距离超过5像素，开始拖拽
+      if (deltaX > 5 || deltaY > 5) {
+        hasMoved = true;
+        isDragging = true;
+        // 切换起始按钮的状态
+        dragStartBtn.classList.toggle('active');
+      }
+    }
+  });
+  
+  // 鼠标释放事件
+  platformsGrid.addEventListener('mouseup', () => {
+    if (isDragging) {
+      // 拖拽结束
+      isDragging = false;
+      dragStartBtn = null;
+      dragStartState = null;
+      processedBtns.clear();
+      
+      // 保存选中状态
+      const selected = getSelectedPlatforms();
+      saveSelectedPlatforms(selected);
+    } else if (dragStartBtn && !hasMoved) {
+      // 如果没有移动，说明是普通点击，已经在 click 事件中处理了
+      dragStartBtn = null;
+      dragStartState = null;
+      processedBtns.clear();
+    } else {
+      // 重置状态
+      dragStartBtn = null;
+      dragStartState = null;
+      processedBtns.clear();
+      hasMoved = false;
+    }
+  });
+  
+  // 鼠标离开容器时也结束拖拽
+  platformsGrid.addEventListener('mouseleave', () => {
+    if (isDragging) {
+      isDragging = false;
+      dragStartBtn = null;
+      dragStartState = null;
+      processedBtns.clear();
+      
+      // 保存选中状态
+      const selected = getSelectedPlatforms();
+      saveSelectedPlatforms(selected);
+    } else {
+      // 重置状态
+      dragStartBtn = null;
+      dragStartState = null;
+      processedBtns.clear();
+      hasMoved = false;
+    }
+  });
+}
 
 // 初始化
 initPlatformButtons();
@@ -1270,13 +1213,8 @@ async function initLogin() {
     });
   }
   
-  // 查看历史按钮事件
-  const viewHistoryBtn = document.getElementById('view-history-btn');
-  if (viewHistoryBtn) {
-    viewHistoryBtn.addEventListener('click', () => {
-      showHistoryPage();
-    });
-  }
+  // 查看历史按钮事件（在设置页面中，通过消息传递）
+  // 这个功能在 settings.js 中处理
 }
 
 // 初始化登录功能

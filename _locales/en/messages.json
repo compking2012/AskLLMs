@@ -235,9 +235,9 @@
     "message": "Cancel",
     "description": "Cancel settings button"
   },
-  "platformTongyi": {
+  "platformQwen": {
     "message": "Qwen",
-    "description": "Platform name: Tongyi Qianwen"
+    "description": "Platform name: Qianwen"
   },
   "platformDoubao": {
     "message": "Doubao",

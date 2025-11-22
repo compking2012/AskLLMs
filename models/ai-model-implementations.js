@@ -8,7 +8,7 @@ AIModelFactory.registerModel(new ChatGPTModel());
 AIModelFactory.registerModel(new ClaudeModel());
 AIModelFactory.registerModel(new GeminiModel());
 AIModelFactory.registerModel(new GrokModel());
-AIModelFactory.registerModel(new TongyiModel());
+AIModelFactory.registerModel(new QwenModel());
 AIModelFactory.registerModel(new DoubaoModel());
 AIModelFactory.registerModel(new DeepSeekModel());
 AIModelFactory.registerModel(new KimiModel());
