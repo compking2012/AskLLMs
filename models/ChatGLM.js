@@ -7,13 +7,11 @@ class ChatGLM extends AIModel {
   }
 
   getInputSelector() {
-    return ['textarea[placeholder*="输入"]', 'textarea[placeholder*="请输入"]', 'textarea', 'div[contenteditable="true"]'];
+    return 'div.input-box-inner textarea';
   }
 
   getSendButtonSelector() {
     return [
-      'button[aria-label*="发送"]',
-      'button[type="submit"]',
       'button[class*="send"]'
     ];
   }

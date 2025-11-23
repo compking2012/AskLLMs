@@ -7,13 +7,11 @@ class Wenxin extends AIModel {
   }
 
   getInputSelector() {
-    return ['textarea[placeholder*="输入"]', 'textarea[placeholder*="请输入"]', 'textarea', 'div[contenteditable="true"][role="textbox"]'];
+    return 'div.yc-editor[contenteditable="true"][role="textbox"]';
   }
 
   getSendButtonSelector() {
     return [
-      'button[aria-label*="发送"]',
-      'button[type="submit"]',
       'button[class*="send"]'
     ];
   }

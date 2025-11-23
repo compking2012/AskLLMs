@@ -7,11 +7,11 @@ class ChatGPT extends AIModel {
   }
 
   getInputSelector() {
-    return 'div.ProseMirror#prompt-textarea[contenteditable="true"]';
+    return 'div#prompt-textarea[contenteditable="true"]';
   }
 
   getSendButtonSelector() {
-    return 'button[data-testid="send-button"]:not([disabled])';
+    return 'button#composer-submit-button';
   }
 
   async sendQuery(query) {

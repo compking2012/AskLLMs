@@ -7,7 +7,7 @@ class Grok extends AIModel {
   }
 
   getInputSelector() {
-    return ['textarea[placeholder*="Ask"]', 'textarea[placeholder*="问"]', 'textarea', 'div[contenteditable="true"]'];
+    return 'div.ProseMirror[contenteditable="true"]';
   }
 
   getSendButtonSelector() {

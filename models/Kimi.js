@@ -7,20 +7,12 @@ class Kimi extends AIModel {
   }
 
   getInputSelector() {
-    return [
-      'div.chat-input-editor[contenteditable="true"][data-lexical-editor="true"]',
-      'div[contenteditable="true"][data-lexical-editor="true"]',
-      'div.chat-input-editor[contenteditable="true"]',
-      'textarea[placeholder*="请输入"]',
-      'textarea[placeholder*="输入"]'
-    ];
+    return 'div.chat-input-editor[contenteditable="true"]';
   }
 
   getSendButtonSelector() {
     return [
-      'button[aria-label*="发送"]',
-      'button.send-button',
-      'button[type="submit"]:not([disabled])'
+      'button.send-button'
     ];
   }
 

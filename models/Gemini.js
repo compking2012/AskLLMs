@@ -7,11 +7,11 @@ class Gemini extends AIModel {
   }
 
   getInputSelector() {
-    return 'rich-textarea .ql-editor[contenteditable="true"]';
+    return 'div.ql-editor.textarea[contenteditable="true"]';
   }
 
   getSendButtonSelector() {
-    return 'button.send-button[aria-label="发送"], button[aria-label*="发送"]';
+    return 'button.send-button';
   }
 
   async sendQuery(query) {
