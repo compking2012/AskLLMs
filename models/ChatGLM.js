@@ -2,18 +2,21 @@
  * 智谱清言模型类
  */
 class ChatGLM extends AIModel {
+  static NAME = '智谱清言';
+  static URL = 'https://chatglm.cn';
+  static ICON = 'icons/chatglm.png';
+  static I18N_KEY = 'platformChatGLM';
+
   constructor() {
     super('智谱清言', 'chatglm.cn');
   }
 
   getInputSelector() {
-    return ['textarea[placeholder*="输入"]', 'textarea[placeholder*="请输入"]', 'textarea', 'div[contenteditable="true"]'];
+    return 'div.input-box-inner textarea';
   }
 
   getSendButtonSelector() {
     return [
-      'button[aria-label*="发送"]',
-      'button[type="submit"]',
       'button[class*="send"]'
     ];
   }
@@ -64,16 +67,6 @@ class ChatGLM extends AIModel {
     return true;
   }
 
-  /**
-   * 静态方法：获取平台信息
-   * @returns {{name: string, url: string}}
-   */
-  static getSiteInfo() {
-    return {
-      name: '智谱清言',
-      url: 'https://chatglm.cn'
-    };
-  }
 
   /**
    * 静态回退方法（当模型类未正确加载时使用）

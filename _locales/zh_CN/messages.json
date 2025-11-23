@@ -234,6 +234,26 @@
   "colorCyan": {
     "message": "青色",
     "description": "颜色名称：青色"
+  },
+  "actionLoading": {
+    "message": "加载中：$PLATFORM$",
+    "description": "加载平台时的操作文本",
+    "placeholders": {
+      "PLATFORM": {
+        "content": "$1",
+        "example": "ChatGPT"
+      }
+    }
+  },
+  "actionOpening": {
+    "message": "打开中：$PLATFORM$",
+    "description": "打开平台时的操作文本",
+    "placeholders": {
+      "PLATFORM": {
+        "content": "$1",
+        "example": "ChatGPT"
+      }
+    }
   }
 }
 

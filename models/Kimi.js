@@ -2,25 +2,22 @@
  * Kimi 模型类
  */
 class Kimi extends AIModel {
+  static NAME = 'Kimi';
+  static URL = 'https://www.kimi.com';
+  static ICON = 'icons/kimi.png';
+  static I18N_KEY = null;
+
   constructor() {
     super('Kimi', 'www.kimi.com');
   }
 
   getInputSelector() {
-    return [
-      'div.chat-input-editor[contenteditable="true"][data-lexical-editor="true"]',
-      'div[contenteditable="true"][data-lexical-editor="true"]',
-      'div.chat-input-editor[contenteditable="true"]',
-      'textarea[placeholder*="请输入"]',
-      'textarea[placeholder*="输入"]'
-    ];
+    return 'div.chat-input-editor[contenteditable="true"]';
   }
 
   getSendButtonSelector() {
     return [
-      'button[aria-label*="发送"]',
-      'button.send-button',
-      'button[type="submit"]:not([disabled])'
+      'button.send-button'
     ];
   }
 
@@ -75,16 +72,6 @@ class Kimi extends AIModel {
     return true;
   }
 
-  /**
-   * 静态方法：获取平台信息
-   * @returns {{name: string, url: string}}
-   */
-  static getSiteInfo() {
-    return {
-      name: 'Kimi',
-      url: 'https://www.kimi.com'
-    };
-  }
 
   /**
    * 静态回退方法（当模型类未正确加载时使用）

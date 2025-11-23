@@ -552,15 +552,13 @@
     }
     
     .platform-btn.drag-selecting {
-      background: #e0e7ff !important;
-      transform: scale(1.1);
-      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-      z-index: 10;
+      background: transparent !important;
+      transform: translateY(-2px);
     }
     
     body.drag-select-mode .platform-btn:hover {
-      background: #e0e7ff !important;
-      transform: translateY(-2px) scale(1.05);
+      background: transparent !important;
+      transform: translateY(-2px);
     }
     
     /* 圆形进度条样式 */
@@ -868,8 +866,136 @@
     </div>
   </div>
   
-  <!-- 设置页面容器（动态加载） -->
-  <div id="settings-page-container"></div>
+  <!-- 设置页面 -->
+  <div id="settings-page" class="page">
+    <div class="header with-back-btn">
+      <button id="back-btn" class="back-btn" title="Back"><</button>
+      <div class="header-content">
+        <span class="emoji">⚙️</span>
+        <div class="title" data-i18n="settingsTitle">Settings</div>
+      </div>
+    </div>
+    
+    <div class="settings-section">
+      <div class="settings-section-title" data-i18n="settingsTheme">Theme</div>
+      <div class="settings-option">
+        <div class="settings-radio-group">
+          <label class="settings-radio">
+            <input type="radio" name="theme" value="auto" id="theme-auto">
+            <span data-i18n="themeAuto">Auto</span>
+          </label>
+          <label class="settings-radio">
+            <input type="radio" name="theme" value="light" id="theme-light">
+            <span data-i18n="themeLight">Light</span>
+          </label>
+          <label class="settings-radio">
+            <input type="radio" name="theme" value="dark" id="theme-dark">
+            <span data-i18n="themeDark">Dark</span>
+          </label>
+        </div>
+      </div>
+    </div>
+    
+    <div class="settings-section">
+      <div class="settings-section-title" data-i18n="settingsLanguage">Interface Language</div>
+      <div class="settings-option">
+        <div class="settings-radio-group">
+          <label class="settings-radio">
+            <input type="radio" name="language" value="auto" id="lang-auto">
+            <span data-i18n="langAuto">Auto</span>
+          </label>
+          <label class="settings-radio">
+            <input type="radio" name="language" value="zh_CN" id="lang-zh">
+            <span data-i18n="langChinese">中文</span>
+          </label>
+          <label class="settings-radio">
+            <input type="radio" name="language" value="en" id="lang-en">
+            <span data-i18n="langEnglish">English</span>
+          </label>
+        </div>
+      </div>
+    </div>
+    
+    <div class="settings-section">
+      <div class="settings-section-title" data-i18n="settingsVisiblePlatforms">Visible AI Platforms</div>
+      <div class="settings-option">
+        <div class="settings-checkbox-group" id="platform-checkboxes">
+          <!-- 动态生成 -->
+        </div>
+      </div>
+    </div>
+    
+    <div class="settings-section">
+      <div class="settings-section-title" data-i18n="settingsTabGroupTitle">Tab Group Title</div>
+      <div class="settings-option">
+        <input type="text" id="tab-group-title" class="settings-input" placeholder="大模型 / LLM">
+        <div style="font-size: 11px; color: #9ca3af; margin-top: 4px;" data-i18n="settingsTabGroupTitleHint">Leave empty to use default</div>
+      </div>
+    </div>
+    
+    <div class="settings-section">
+      <div class="settings-section-title" data-i18n="settingsTabGroupColor">Tab Group Color</div>
+      <div class="settings-option">
+        <div class="settings-radio-group">
+          <label class="settings-radio">
+            <input type="radio" name="color-mode" value="random" id="color-random">
+            <span data-i18n="colorRandom">Random</span>
+          </label>
+          <label class="settings-radio">
+            <input type="radio" name="color-mode" value="fixed" id="color-fixed">
+            <span data-i18n="colorFixed">Fixed</span>
+          </label>
+        </div>
+      </div>
+      <div class="settings-option" id="color-selector" style="display: none;">
+        <div class="settings-color-group">
+          <label class="settings-color-option">
+            <input type="radio" name="color" value="grey">
+            <span class="settings-color-preview" style="background: #9ca3af;"></span>
+            <span data-i18n="colorGrey">Grey</span>
+          </label>
+          <label class="settings-color-option">
+            <input type="radio" name="color" value="blue">
+            <span class="settings-color-preview" style="background: #3b82f6;"></span>
+            <span data-i18n="colorBlue">Blue</span>
+          </label>
+          <label class="settings-color-option">
+            <input type="radio" name="color" value="red">
+            <span class="settings-color-preview" style="background: #ef4444;"></span>
+            <span data-i18n="colorRed">Red</span>
+          </label>
+          <label class="settings-color-option">
+            <input type="radio" name="color" value="yellow">
+            <span class="settings-color-preview" style="background: #eab308;"></span>
+            <span data-i18n="colorYellow">Yellow</span>
+          </label>
+          <label class="settings-color-option">
+            <input type="radio" name="color" value="green">
+            <span class="settings-color-preview" style="background: #22c55e;"></span>
+            <span data-i18n="colorGreen">Green</span>
+          </label>
+          <label class="settings-color-option">
+            <input type="radio" name="color" value="pink">
+            <span class="settings-color-preview" style="background: #ec4899;"></span>
+            <span data-i18n="colorPink">Pink</span>
+          </label>
+          <label class="settings-color-option">
+            <input type="radio" name="color" value="purple">
+            <span class="settings-color-preview" style="background: #a855f7;"></span>
+            <span data-i18n="colorPurple">Purple</span>
+          </label>
+          <label class="settings-color-option">
+            <input type="radio" name="color" value="cyan">
+            <span class="settings-color-preview" style="background: #06b6d4;"></span>
+            <span data-i18n="colorCyan">Cyan</span>
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script src="models/AIModel.js"></script>
+  <script src="settings.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

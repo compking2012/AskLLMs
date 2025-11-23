@@ -2,6 +2,11 @@
  * Claude 模型类
  */
 class Claude extends AIModel {
+  static NAME = 'Claude';
+  static URL = 'https://claude.ai';
+  static ICON = 'icons/claude.png';
+  static I18N_KEY = null;
+
   constructor() {
     super('Claude', 'claude.ai');
   }
@@ -26,7 +31,7 @@ class Claude extends AIModel {
     console.log(`[MultiAI] ${this.name} input found, setting text...`);
     this.setContentEditable(el, query);
     
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
     const btn = await this.waitForElement(this.getSendButtonSelector());
     if (btn) {
@@ -39,16 +44,6 @@ class Claude extends AIModel {
     return true;
   }
 
-  /**
-   * 静态方法：获取平台信息
-   * @returns {{name: string, url: string}}
-   */
-  static getSiteInfo() {
-    return {
-      name: 'Claude',
-      url: 'https://claude.ai'
-    };
-  }
 
   /**
    * 静态回退方法（当模型类未正确加载时使用）

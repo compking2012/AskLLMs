@@ -2,16 +2,21 @@
  * Gemini 模型类
  */
 class Gemini extends AIModel {
+  static NAME = 'Gemini';
+  static URL = 'https://gemini.google.com';
+  static ICON = 'icons/gemini.png';
+  static I18N_KEY = null;
+
   constructor() {
     super('Gemini', 'gemini.google.com');
   }
 
   getInputSelector() {
-    return 'rich-textarea .ql-editor[contenteditable="true"]';
+    return 'div.ql-editor.textarea[contenteditable="true"]';
   }
 
   getSendButtonSelector() {
-    return 'button.send-button[aria-label="发送"], button[aria-label*="发送"]';
+    return 'button.send-button';
   }
 
   async sendQuery(query) {
@@ -26,7 +31,7 @@ class Gemini extends AIModel {
     console.log(`[MultiAI] ${this.name} input found, setting text...`);
     this.setContentEditable(el, query);
     
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
     const btn = await this.waitForElement(this.getSendButtonSelector());
     if (btn && !btn.disabled) {
@@ -39,16 +44,6 @@ class Gemini extends AIModel {
     return true;
   }
 
-  /**
-   * 静态方法：获取平台信息
-   * @returns {{name: string, url: string}}
-   */
-  static getSiteInfo() {
-    return {
-      name: 'Gemini',
-      url: 'https://gemini.google.com'
-    };
-  }
 
   /**
    * 静态回退方法（当模型类未正确加载时使用）

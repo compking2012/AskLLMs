@@ -2,20 +2,21 @@
  * 腾讯元宝模型类
  */
 class Yuanbao extends AIModel {
+  static NAME = '腾讯元宝';
+  static URL = 'https://yuanbao.tencent.com';
+  static ICON = 'icons/yuanbao.png';
+  static I18N_KEY = 'platformYuanbao';
+
   constructor() {
     super('腾讯元宝', 'yuanbao.tencent.com');
   }
 
   getInputSelector() {
-    return ['textarea[placeholder*="输入"]', 'textarea[placeholder*="请输入"]', 'textarea', 'div[contenteditable="true"]'];
+    return 'div.ql-editor[contenteditable="true"]';
   }
 
   getSendButtonSelector() {
-    return [
-      'button[aria-label*="发送"]',
-      'button[type="submit"]',
-      'button[class*="send"]'
-    ];
+    return 'a#yuanbao-send-btn';
   }
 
   async sendQuery(query) {
@@ -64,16 +65,6 @@ class Yuanbao extends AIModel {
     return true;
   }
 
-  /**
-   * 静态方法：获取平台信息
-   * @returns {{name: string, url: string}}
-   */
-  static getSiteInfo() {
-    return {
-      name: '腾讯元宝',
-      url: 'https://yuanbao.tencent.com'
-    };
-  }
 
   /**
    * 静态回退方法（当模型类未正确加载时使用）

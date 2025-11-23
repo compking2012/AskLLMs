@@ -2,6 +2,11 @@
  * DeepSeek 模型类
  */
 class DeepSeek extends AIModel {
+  static NAME = 'DeepSeek';
+  static URL = 'https://chat.deepseek.com';
+  static ICON = 'icons/deepseek.png';
+  static I18N_KEY = null;
+
   constructor() {
     super('DeepSeek', 'deepseek.com');
   }
@@ -65,16 +70,6 @@ class DeepSeek extends AIModel {
     return true;
   }
 
-  /**
-   * 静态方法：获取平台信息
-   * @returns {{name: string, url: string}}
-   */
-  static getSiteInfo() {
-    return {
-      name: 'DeepSeek',
-      url: 'https://chat.deepseek.com'
-    };
-  }
 
   /**
    * 静态回退方法（当模型类未正确加载时使用）

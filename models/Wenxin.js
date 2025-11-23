@@ -2,18 +2,21 @@
  * 文心一言模型类
  */
 class Wenxin extends AIModel {
+  static NAME = '文心一言';
+  static URL = 'https://yiyan.baidu.com';
+  static ICON = 'icons/wenxin.png';
+  static I18N_KEY = 'platformWenxin';
+
   constructor() {
     super('文心一言', 'yiyan.baidu.com');
   }
 
   getInputSelector() {
-    return ['textarea[placeholder*="输入"]', 'textarea[placeholder*="请输入"]', 'textarea', 'div[contenteditable="true"][role="textbox"]'];
+    return 'div.yc-editor[contenteditable="true"][role="textbox"]';
   }
 
   getSendButtonSelector() {
     return [
-      'button[aria-label*="发送"]',
-      'button[type="submit"]',
       'button[class*="send"]'
     ];
   }
@@ -64,16 +67,6 @@ class Wenxin extends AIModel {
     return true;
   }
 
-  /**
-   * 静态方法：获取平台信息
-   * @returns {{name: string, url: string}}
-   */
-  static getSiteInfo() {
-    return {
-      name: '文心一言',
-      url: 'https://yiyan.baidu.com'
-    };
-  }
 
   /**
    * 静态回退方法（当模型类未正确加载时使用）
