@@ -184,8 +184,8 @@
     "description": "取消设置按钮"
   },
   "platformTongyi": {
-    "message": "通义千问",
-    "description": "平台名称：通义千问"
+    "message": "千问",
+    "description": "平台名称：千问"
   },
   "platformDoubao": {
     "message": "豆包",

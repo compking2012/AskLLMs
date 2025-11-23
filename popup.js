@@ -124,9 +124,10 @@ const progressDetail = document.getElementById('progress-detail');
 
 // 页面元素
 const mainPage = document.getElementById('main-page');
-const settingsPage = document.getElementById('settings-page');
+const settingsPageContainer = document.getElementById('settings-page-container');
 const settingsBtn = document.getElementById('settings-btn');
-const backBtn = document.getElementById('back-btn');
+let settingsPage = null;
+let backBtn = null;
 
 // 平台图标映射
 const PLATFORM_ICONS = {
@@ -134,7 +135,7 @@ const PLATFORM_ICONS = {
   "Claude": "icons/claude.png",
   "Gemini": "icons/gemini.png",
   "Grok": "icons/grok.png",
-  "通义千问": "icons/tongyi.png",
+  "千问": "icons/tongyi.png",
   "豆包": "icons/doubao.png",
   "DeepSeek": "icons/deepseek.png",
   "Kimi": "icons/kimi.png",
@@ -146,7 +147,7 @@ const PLATFORM_ICONS = {
 
 // 平台名称到 i18n 键的映射（只对中文名字）
 const PLATFORM_I18N_KEYS = {
-  "通义千问": "platformTongyi",
+  "千问": "platformTongyi",
   "豆包": "platformDoubao",
   "文心一言": "platformWenxin",
   "智谱清言": "platformChatGLM",
@@ -166,7 +167,7 @@ function getPlatformDisplayName(platform) {
 const DEFAULT_SETTINGS = {
   theme: 'auto',
   language: 'auto',
-  visiblePlatforms: ['ChatGPT', 'Claude', 'Gemini', 'Grok', '通义千问', '豆包', 'DeepSeek', 'Kimi', '文心一言', '智谱清言', 'MiniMax', '腾讯元宝'],
+  visiblePlatforms: ['ChatGPT', 'Claude', 'Gemini', 'Grok', '千问', '豆包', 'DeepSeek', 'Kimi', '文心一言', '智谱清言', 'MiniMax', '腾讯元宝'],
   tabGroupTitle: '',
   colorMode: 'random',
   fixedColor: 'blue'
@@ -248,172 +249,70 @@ function applyVisiblePlatforms(visiblePlatforms) {
   });
 }
 
-// 设置页面事件监听器初始化标志
-let settingsEventListenersInitialized = false;
-
-// 初始化设置页面
+// 设置页面相关函数已移至 settings.js
+// 使用 settings.js 中的函数
 function initSettingsPage() {
-  // 生成平台复选框
-  const platformCheckboxes = document.getElementById('platform-checkboxes');
-  platformCheckboxes.innerHTML = '';
-  
-  const allPlatforms = Array.from(platformBtns).map(btn => btn.dataset.platform);
-  allPlatforms.forEach(platform => {
-    const checkbox = document.createElement('label');
-    checkbox.className = 'settings-checkbox';
-    const displayName = getPlatformDisplayName(platform);
-    checkbox.innerHTML = `
-      <input type="checkbox" value="${platform}" data-platform="${platform}">
-      <span class="icon"><img src="${PLATFORM_ICONS[platform]}" alt="${platform}"></span>
-      <span>${displayName}</span>
-    `;
-    platformCheckboxes.appendChild(checkbox);
-  });
-  
-  // 加载设置并填充表单
-  loadSettingsToForm();
-  
-  // 只初始化一次事件监听器（避免重复添加）
-  if (!settingsEventListenersInitialized) {
-    // 颜色模式切换
-    document.querySelectorAll('input[name="color-mode"]').forEach(radio => {
-      radio.addEventListener('change', async (e) => {
-        const colorSelector = document.getElementById('color-selector');
-        if (e.target.value === 'fixed') {
-          colorSelector.style.display = 'block';
-        } else {
-          colorSelector.style.display = 'none';
-        }
-        // 立即保存
-        await saveSettings();
-      });
-    });
-    
-    // 为主题单选按钮添加立即保存
-    document.querySelectorAll('input[name="theme"]').forEach(radio => {
-      radio.addEventListener('change', async () => {
-        await saveSettings();
-      });
-    });
-    
-    // 为语言单选按钮添加立即保存
-    document.querySelectorAll('input[name="language"]').forEach(radio => {
-      radio.addEventListener('change', async () => {
-        await saveSettings();
-      });
-    });
-    
-    // 为颜色单选按钮添加立即保存
-    document.querySelectorAll('input[name="color"]').forEach(radio => {
-      radio.addEventListener('change', async () => {
-        await saveSettings();
-      });
-    });
-    
-    // 为标签组标题输入框添加立即保存（使用 debounce）
-    const tabGroupTitleInput = document.getElementById('tab-group-title');
-    let titleInputTimeout = null;
-    tabGroupTitleInput.addEventListener('input', () => {
-      clearTimeout(titleInputTimeout);
-      titleInputTimeout = setTimeout(async () => {
-        await saveSettings();
-      }, 500); // 500ms 延迟，避免频繁保存
-    });
-    
-    settingsEventListenersInitialized = true;
+  if (typeof window.initSettingsPageFromSettings === 'function') {
+    window.initSettingsPageFromSettings(platformBtns, PLATFORM_ICONS, getPlatformDisplayName, DEFAULT_SETTINGS, loadAndApplySettings, initI18n);
+  } else {
+    console.warn('settings.js not loaded, using fallback');
   }
 }
 
-// 加载设置到表单
 async function loadSettingsToForm() {
-  const result = await new Promise(resolve => {
-    chrome.storage.local.get(['settings'], resolve);
-  });
-  
-  const settings = result.settings || DEFAULT_SETTINGS;
-  
-  // 主题设置
-  const themeValue = settings.theme || 'auto';
-  document.getElementById(`theme-${themeValue}`).checked = true;
-  
-  // 语言设置
-  document.getElementById(`lang-${settings.language === 'auto' ? 'auto' : settings.language === 'zh_CN' ? 'zh' : 'en'}`).checked = true;
-  
-  // 可见平台设置
-  document.querySelectorAll('#platform-checkboxes input[type="checkbox"]').forEach(checkbox => {
-    const platform = checkbox.dataset.platform;
-    checkbox.checked = settings.visiblePlatforms.includes(platform);
-    const label = checkbox.closest('.settings-checkbox');
-    if (checkbox.checked) {
-      label.classList.add('active');
-    } else {
-      label.classList.remove('active');
-    }
-  });
-  
-  // 标签组标题
-  document.getElementById('tab-group-title').value = settings.tabGroupTitle || '';
-  
-  // 颜色模式
-  document.getElementById(`color-${settings.colorMode}`).checked = true;
-  if (settings.colorMode === 'fixed') {
-    document.getElementById('color-selector').style.display = 'block';
-    document.querySelector(`input[name="color"][value="${settings.fixedColor}"]`).checked = true;
+  if (typeof window.loadSettingsToFormFromSettings === 'function') {
+    await window.loadSettingsToFormFromSettings(DEFAULT_SETTINGS, loadAndApplySettings, initI18n);
+  } else {
+    console.warn('settings.js not loaded, using fallback');
   }
-  
-  // 复选框点击事件（立即保存）
-  document.querySelectorAll('#platform-checkboxes input[type="checkbox"]').forEach(checkbox => {
-    checkbox.addEventListener('change', async (e) => {
-      const label = e.target.closest('.settings-checkbox');
-      if (e.target.checked) {
-        label.classList.add('active');
-      } else {
-        label.classList.remove('active');
-      }
-      // 立即保存
-      await saveSettings();
-    });
-  });
 }
 
-// 保存设置（立即保存，不返回主页面）
 async function saveSettings() {
-  const settings = {
-    theme: document.querySelector('input[name="theme"]:checked').value,
-    language: document.querySelector('input[name="language"]:checked').value,
-    visiblePlatforms: Array.from(document.querySelectorAll('#platform-checkboxes input[type="checkbox"]:checked'))
-      .map(cb => cb.dataset.platform),
-    tabGroupTitle: document.getElementById('tab-group-title').value.trim(),
-    colorMode: document.querySelector('input[name="color-mode"]:checked').value,
-    fixedColor: document.querySelector('input[name="color"]:checked')?.value || 'blue'
-  };
-  
-  await new Promise(resolve => {
-    chrome.storage.local.set({ settings }, resolve);
-  });
-  
-  // 立即应用设置
-  await loadAndApplySettings();
-  
-  // 更新语言缓存并重新初始化 i18n，让语言设置立即生效
-  currentLanguage = null; // 清除缓存，强制重新读取
-  await initI18n();
-  
-  // 如果在设置页面，需要重新生成平台复选框以更新名称
-  if (settingsPage.classList.contains('active')) {
-    initSettingsPage();
+  if (typeof window.saveSettingsFromSettings === 'function') {
+    await window.saveSettingsFromSettings(loadAndApplySettings, initI18n);
+  } else {
+    console.warn('settings.js not loaded, using fallback');
   }
 }
 
 // 页面切换
 function showMainPage() {
   mainPage.classList.add('active');
-  settingsPage.classList.remove('active');
+  if (settingsPage) {
+    settingsPage.classList.remove('active');
+  }
 }
 
-function showSettingsPage() {
+async function showSettingsPage() {
+  // 如果设置页面还未加载，则动态加载
+  if (!settingsPage) {
+    try {
+      const response = await fetch(chrome.runtime.getURL('settings.html'));
+      const html = await response.text();
+      settingsPageContainer.innerHTML = html;
+      settingsPage = document.getElementById('settings-page');
+      backBtn = document.getElementById('back-btn');
+      
+      // 绑定返回按钮事件
+      if (backBtn) {
+        backBtn.addEventListener('click', showMainPage);
+      }
+      
+      // 初始化设置页面
+      initSettingsPage();
+      // 重新初始化i18n（设置页面可能刚显示）
+      initI18n();
+    } catch (error) {
+      console.error('Failed to load settings page:', error);
+      showStatus(i18n('errorLoadSettings') || '加载设置页面失败', 'error');
+      return;
+    }
+  }
+  
   mainPage.classList.remove('active');
   settingsPage.classList.add('active');
+  
+  // 重新初始化设置页面（确保数据是最新的）
   initSettingsPage();
   // 重新初始化i18n（设置页面可能刚显示）
   initI18n();
@@ -421,7 +320,6 @@ function showSettingsPage() {
 
 // 事件监听
 settingsBtn.addEventListener('click', showSettingsPage);
-backBtn.addEventListener('click', showMainPage);
 
 // 初始化 i18n
 initI18n();
@@ -510,14 +408,140 @@ async function initPlatformButtons() {
   });
 }
 
+// 拖拽选择功能
+let isDragSelecting = false;
+let dragStartBtn = null;
+let visitedButtons = new Set();
+let mouseDownTime = 0;
+let hasMoved = false;
+
 // 平台按钮点击事件
 platformBtns.forEach(btn => {
-  btn.addEventListener('click', () => {
+  
+  // 设置按钮不可拖动，防止图标被拖动
+  btn.setAttribute('draggable', 'false');
+  
+  // 阻止默认的拖拽行为
+  btn.addEventListener('dragstart', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    return false;
+  });
+  
+  btn.addEventListener('mousedown', (e) => {
+    mouseDownTime = Date.now();
+    hasMoved = false;
+    isDragSelecting = false;
+    dragStartBtn = btn;
+    visitedButtons.clear();
+    // 不将起始按钮添加到 visitedButtons，这样它也会被取反处理
+    
+    // 添加拖拽选择样式
+    btn.classList.add('drag-selecting');
+    document.body.classList.add('drag-select-mode');
+  });
+  
+  btn.addEventListener('mouseenter', (e) => {
+    if (isDragSelecting && dragStartBtn) {
+      if (!visitedButtons.has(btn)) {
+        visitedButtons.add(btn);
+        // 取反操作：如果当前是选中的就取消选中，如果未选中就选中
+        btn.classList.toggle('active');
+        
+        const selected = getSelectedPlatforms();
+        saveSelectedPlatforms(selected);
+      }
+    }
+  });
+  
+  btn.addEventListener('click', (e) => {
+    // 如果是在拖拽选择模式下，阻止默认的点击切换行为
+    // 主要检查 isDragSelecting，因为一旦进入拖拽选择模式，就不应该触发点击切换
+    if (isDragSelecting) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    
     btn.classList.toggle('active');
     
     const selected = getSelectedPlatforms();
     saveSelectedPlatforms(selected);
   });
+});
+
+// 全局鼠标移动事件处理拖拽选择
+document.addEventListener('mousemove', (e) => {
+  if (dragStartBtn && !hasMoved) {
+    const timeSinceMouseDown = Date.now() - mouseDownTime;
+    // 如果按住超过 200ms 或移动了超过 5px，开始拖拽选择模式
+    const moved = Math.abs(e.movementX) > 5 || Math.abs(e.movementY) > 5;
+    if (timeSinceMouseDown > 200 || moved) {
+      hasMoved = true;
+      isDragSelecting = true;
+      
+      // 拖拽开始时，对起始按钮也进行取反操作
+      if (dragStartBtn && !visitedButtons.has(dragStartBtn)) {
+        visitedButtons.add(dragStartBtn);
+        dragStartBtn.classList.toggle('active');
+        const selected = getSelectedPlatforms();
+        saveSelectedPlatforms(selected);
+      }
+      
+      // 防止文本选择
+      e.preventDefault();
+    }
+  }
+  
+  // 检查鼠标是否在平台按钮上
+  if (isDragSelecting) {
+    const target = e.target.closest('.platform-btn');
+    if (target && dragStartBtn && !visitedButtons.has(target)) {
+      visitedButtons.add(target);
+      // 取反操作：如果当前是选中的就取消选中，如果未选中就选中
+      target.classList.toggle('active');
+      
+      const selected = getSelectedPlatforms();
+      saveSelectedPlatforms(selected);
+    }
+  }
+});
+
+// 结束拖拽选择
+function endDragSelect() {
+  if (dragStartBtn) {
+    isDragSelecting = false;
+    visitedButtons.clear();
+    dragStartBtn = null;
+    hasMoved = false;
+    mouseDownTime = 0;
+    
+    // 移除拖拽选择样式
+    platformBtns.forEach(btn => {
+      btn.classList.remove('drag-selecting');
+    });
+    document.body.classList.remove('drag-select-mode');
+  }
+}
+
+// 全局鼠标事件处理
+document.addEventListener('mouseup', () => {
+  endDragSelect();
+});
+
+// 处理鼠标离开窗口的情况
+document.addEventListener('mouseleave', (e) => {
+  // 如果鼠标离开窗口，结束拖拽选择
+  if (isDragSelecting && (!e.relatedTarget || e.relatedTarget === null)) {
+    endDragSelect();
+  }
+});
+
+// 防止拖拽选择时选中文本
+document.addEventListener('selectstart', (e) => {
+  if (isDragSelecting) {
+    e.preventDefault();
+  }
 });
 
 // 初始化
