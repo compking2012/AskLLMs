@@ -2,6 +2,11 @@
  * ChatGPT 模型类
  */
 class ChatGPT extends AIModel {
+  static NAME = 'ChatGPT';
+  static URL = 'https://chatgpt.com';
+  static ICON = 'icons/chatgpt.png';
+  static I18N_KEY = null;
+
   constructor() {
     super('ChatGPT', 'chatgpt.com');
   }
@@ -28,7 +33,7 @@ class ChatGPT extends AIModel {
     console.log(`[MultiAI] ${this.name} text set:`, query);
     
     // 等待发送按钮出现并激活
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
     const btn = await this.waitForElement(this.getSendButtonSelector());
     if (btn) {
@@ -41,16 +46,6 @@ class ChatGPT extends AIModel {
     return true;
   }
 
-  /**
-   * 静态方法：获取平台信息
-   * @returns {{name: string, url: string}}
-   */
-  static getSiteInfo() {
-    return {
-      name: 'ChatGPT',
-      url: 'https://chatgpt.com'
-    };
-  }
 
   /**
    * 静态回退方法（当模型类未正确加载时使用）

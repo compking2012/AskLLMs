@@ -104,12 +104,14 @@ async function initI18n() {
   });
   
   // 更新平台按钮的 tooltip 和 title（支持 i18n）
-  platformBtns.forEach(btn => {
-    const platform = btn.dataset.platform;
-    const displayName = AIModel.getPlatformDisplayName(platform, i18n);
-    btn.setAttribute('data-tooltip', displayName);
-    btn.setAttribute('title', displayName);
-  });
+  if (platformBtns && platformBtns.length > 0) {
+    platformBtns.forEach(btn => {
+      const platform = btn.dataset.platform;
+      const displayName = getPlatformDisplayName(platform);
+      btn.setAttribute('data-tooltip', displayName);
+      btn.setAttribute('title', displayName);
+    });
+  }
 }
 
 const textarea = document.getElementById('query-input');
@@ -124,14 +126,24 @@ const progressDetail = document.getElementById('progress-detail');
 
 // 页面元素
 const mainPage = document.getElementById('main-page');
-const settingsPageContainer = document.getElementById('settings-page-container');
 const settingsBtn = document.getElementById('settings-btn');
-let settingsPage = null;
-let backBtn = null;
+const settingsPage = document.getElementById('settings-page');
+const backBtn = document.getElementById('back-btn');
 
-// 获取平台显示名称的包装函数（使用 AIModel 的静态方法）
+// 获取平台显示名称的包装函数（优先使用从 background 获取的数据）
 function getPlatformDisplayName(platform) {
-  return AIModel.getPlatformDisplayName(platform, i18n);
+  // 优先使用从 background 获取的数据
+  if (window._platformData && window._platformData.platformI18nKeys) {
+    const i18nKey = window._platformData.platformI18nKeys[platform];
+    if (i18nKey && i18n) {
+      return i18n(i18nKey);
+    }
+  }
+  // 回退：如果 models/index.js 已加载，使用其中的函数
+  if (typeof getPlatformDisplayNameFromModels === 'function') {
+    return getPlatformDisplayNameFromModels(platform, i18n);
+  }
+  return platform; // 最终回退到平台名称
 }
 
 // 应用主题
@@ -178,7 +190,23 @@ async function loadAndApplySettings() {
     chrome.storage.local.get(['settings'], resolve);
   });
   
-  const settings = result.settings || AIModel.DEFAULT_SETTINGS;
+  // 优先使用从 background 获取的数据
+  let defaultSettings = null;
+  if (window._platformData && window._platformData.defaultSettings) {
+    defaultSettings = window._platformData.defaultSettings;
+  } else {
+    // 回退：构建默认设置
+    defaultSettings = { 
+      theme: 'auto', 
+      language: 'auto', 
+      visiblePlatforms: window._platformData?.platformNames || [], 
+      tabGroupTitle: '', 
+      colorMode: 'random', 
+      fixedColor: 'blue' 
+    };
+  }
+  
+  const settings = result.settings || defaultSettings;
   
   // 应用主题设置
   await applyTheme(settings.theme || 'auto');
@@ -212,9 +240,28 @@ function applyVisiblePlatforms(visiblePlatforms) {
 
 // 设置页面相关函数已移至 settings.js
 // 使用 settings.js 中的函数
-function initSettingsPage() {
+async function initSettingsPage() {
   if (typeof window.initSettingsPageFromSettings === 'function') {
-    window.initSettingsPageFromSettings(platformBtns, AIModel.PLATFORM_ICONS, getPlatformDisplayName, AIModel.DEFAULT_SETTINGS, loadAndApplySettings, initI18n);
+    // 优先使用从 background 获取的数据
+    let defaultSettings = null;
+    let platformIcons = {};
+    
+    if (window._platformData) {
+      defaultSettings = window._platformData.defaultSettings;
+      platformIcons = window._platformData.platformIcons || {};
+    } else {
+      // 回退：构建默认设置
+      defaultSettings = { 
+        theme: 'auto', 
+        language: 'auto', 
+        visiblePlatforms: [], 
+        tabGroupTitle: '', 
+        colorMode: 'random', 
+        fixedColor: 'blue' 
+      };
+    }
+    
+    window.initSettingsPageFromSettings(platformBtns, platformIcons, getPlatformDisplayName, defaultSettings, loadAndApplySettings, initI18n);
   } else {
     console.warn('settings.js not loaded, using fallback');
   }
@@ -222,7 +269,22 @@ function initSettingsPage() {
 
 async function loadSettingsToForm() {
   if (typeof window.loadSettingsToFormFromSettings === 'function') {
-    await window.loadSettingsToFormFromSettings(AIModel.DEFAULT_SETTINGS, loadAndApplySettings, initI18n);
+    // 优先使用从 background 获取的数据
+    let defaultSettings = null;
+    if (window._platformData && window._platformData.defaultSettings) {
+      defaultSettings = window._platformData.defaultSettings;
+    } else {
+      // 回退：构建默认设置
+      defaultSettings = { 
+        theme: 'auto', 
+        language: 'auto', 
+        visiblePlatforms: window._platformData?.platformNames || [], 
+        tabGroupTitle: '', 
+        colorMode: 'random', 
+        fixedColor: 'blue' 
+      };
+    }
+    await window.loadSettingsToFormFromSettings(defaultSettings, loadAndApplySettings, initI18n);
   } else {
     console.warn('settings.js not loaded, using fallback');
   }
@@ -245,29 +307,10 @@ function showMainPage() {
 }
 
 async function showSettingsPage() {
-  // 如果设置页面还未加载，则动态加载
   if (!settingsPage) {
-    try {
-      const response = await fetch(chrome.runtime.getURL('settings.html'));
-      const html = await response.text();
-      settingsPageContainer.innerHTML = html;
-      settingsPage = document.getElementById('settings-page');
-      backBtn = document.getElementById('back-btn');
-      
-      // 绑定返回按钮事件
-      if (backBtn) {
-        backBtn.addEventListener('click', showMainPage);
-      }
-      
-      // 初始化设置页面
-      initSettingsPage();
-      // 重新初始化i18n（设置页面可能刚显示）
-      initI18n();
-    } catch (error) {
-      console.error('Failed to load settings page:', error);
+    console.error('Settings page not found');
       showStatus(i18n('errorLoadSettings') || '加载设置页面失败', 'error');
       return;
-    }
   }
   
   mainPage.classList.remove('active');
@@ -282,11 +325,85 @@ async function showSettingsPage() {
 // 事件监听
 settingsBtn.addEventListener('click', showSettingsPage);
 
+// 绑定返回按钮事件
+if (backBtn) {
+  backBtn.addEventListener('click', showMainPage);
+}
+
+// 从 background 获取平台数据
+let platformDataCache = null;
+async function getPlatformDataFromBackground() {
+  if (platformDataCache) {
+    return platformDataCache;
+  }
+  
+  try {
+    const response = await new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage({ action: 'getPlatformData' }, (response) => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve(response);
+        }
+      });
+    });
+    
+    if (response && response.success) {
+      platformDataCache = response;
+      return response;
+    }
+  } catch (e) {
+    console.warn('[Popup] Failed to get platform data from background:', e);
+  }
+  
+  // 回退到使用 AIModel 的静态方法
+  return null;
+}
+
+// 初始化函数
+async function initializeApp() {
+  // 确保 AIModel 已加载
+  if (typeof AIModel === 'undefined') {
+    // 如果 AIModel 还没加载，等待一下
+    await new Promise(resolve => {
+      const checkAIModel = () => {
+        if (typeof AIModel !== 'undefined') {
+          resolve();
+        } else {
+          setTimeout(checkAIModel, 50);
+        }
+      };
+      checkAIModel();
+    });
+  }
+  
+  // 尝试从 background 获取平台数据
+  const platformData = await getPlatformDataFromBackground();
+  if (platformData) {
+    // 更新 AIModel 的默认设置（如果可用）
+    if (platformData.defaultSettings && typeof AIModel !== 'undefined') {
+      // 将数据存储到全局变量中供后续使用
+      window._platformData = platformData;
+    }
+  }
+
 // 初始化 i18n
-initI18n();
+  await initI18n();
 
 // 加载设置
-loadAndApplySettings();
+  await loadAndApplySettings();
+  
+  // 检查并恢复进度
+  await checkAndRestoreProgress();
+}
+
+// 等待 DOM 和脚本加载完成后再初始化
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeApp);
+} else {
+  // DOM 已经加载完成，直接初始化
+  initializeApp();
+}
 
 // 检查是否有进行中的进度并恢复
 async function checkAndRestoreProgress() {
@@ -320,8 +437,7 @@ async function checkAndRestoreProgress() {
   }
 }
 
-// 页面加载时检查并恢复进度
-checkAndRestoreProgress();
+// checkAndRestoreProgress() 现在在 initializeApp() 中调用
 
 // 获取所有平台名称（只返回可见的）
 function getAllPlatforms() {

@@ -2,6 +2,11 @@
  * MiniMax 模型类
  */
 class MiniMax extends AIModel {
+  static NAME = 'MiniMax';
+  static URL = 'https://agent.minimaxi.com';
+  static ICON = 'icons/minimax.png';
+  static I18N_KEY = null;
+
   constructor() {
     super('MiniMax', 'agent.minimaxi.com');
   }
@@ -62,16 +67,6 @@ class MiniMax extends AIModel {
     return true;
   }
 
-  /**
-   * 静态方法：获取平台信息
-   * @returns {{name: string, url: string}}
-   */
-  static getSiteInfo() {
-    return {
-      name: 'MiniMax',
-      url: 'https://agent.minimaxi.com'
-    };
-  }
 
   /**
    * 静态回退方法（当模型类未正确加载时使用）

@@ -2,6 +2,11 @@
  * 文心一言模型类
  */
 class Wenxin extends AIModel {
+  static NAME = '文心一言';
+  static URL = 'https://yiyan.baidu.com';
+  static ICON = 'icons/wenxin.png';
+  static I18N_KEY = 'platformWenxin';
+
   constructor() {
     super('文心一言', 'yiyan.baidu.com');
   }
@@ -62,16 +67,6 @@ class Wenxin extends AIModel {
     return true;
   }
 
-  /**
-   * 静态方法：获取平台信息
-   * @returns {{name: string, url: string}}
-   */
-  static getSiteInfo() {
-    return {
-      name: '文心一言',
-      url: 'https://yiyan.baidu.com'
-    };
-  }
 
   /**
    * 静态回退方法（当模型类未正确加载时使用）

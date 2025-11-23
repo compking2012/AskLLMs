@@ -2,6 +2,11 @@
  * Grok 模型类
  */
 class Grok extends AIModel {
+  static NAME = 'Grok';
+  static URL = 'https://grok.com';
+  static ICON = 'icons/grok.png';
+  static I18N_KEY = null;
+
   constructor() {
     super('Grok', 'grok.com');
   }
@@ -66,16 +71,6 @@ class Grok extends AIModel {
     return true;
   }
 
-  /**
-   * 静态方法：获取平台信息
-   * @returns {{name: string, url: string}}
-   */
-  static getSiteInfo() {
-    return {
-      name: 'Grok',
-      url: 'https://grok.com'
-    };
-  }
 
   /**
    * 静态回退方法（当模型类未正确加载时使用）

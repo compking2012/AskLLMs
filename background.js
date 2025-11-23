@@ -1,110 +1,293 @@
+// 模型数据缓存
+let modelsDataCache = null;
+let modelsLoadingPromise = null;
+
 /**
- * 获取所有 AI 站点信息（从模型类中获取）
- * 注意：此函数需要在 background 上下文中使用，不能直接访问模型类
- * 所以这里保留硬编码作为回退，实际使用时应该通过注入的脚本获取
+ * 加载模型类并收集数据
+ * @returns {Promise<Object>} 包含所有平台数据的对象
  */
-function getAISites() {
-  // 回退：如果模型类未加载，返回硬编码的列表
-  return [
-    { name: "ChatGPT", url: "https://chatgpt.com" },
-    { name: "Claude", url: "https://claude.ai" },
-    { name: "Gemini", url: "https://gemini.google.com" },
-    { name: "Grok", url: "https://grok.com" },
-    { name: "千问", url: "https://www.qianwen.com" },
-    { name: "豆包", url: "https://www.doubao.com" },
-    { name: "DeepSeek", url: "https://chat.deepseek.com" },
-    { name: "Kimi", url: "https://www.kimi.com" },
-    { name: "文心一言", url: "https://yiyan.baidu.com" },
-    { name: "智谱清言", url: "https://chatglm.cn" },
-    { name: "MiniMax", url: "https://agent.minimaxi.com" },
-    { name: "腾讯元宝", url: "https://yuanbao.tencent.com" }
-  ];
+async function loadModelsData() {
+  // 如果已经加载过，直接返回缓存
+  if (modelsDataCache) {
+    return modelsDataCache;
+  }
+
+  // 如果正在加载，等待加载完成
+  if (modelsLoadingPromise) {
+    return await modelsLoadingPromise;
+  }
+
+  // 开始加载
+  modelsLoadingPromise = (async () => {
+    try {
+      // 在 service worker 中使用 importScripts 加载模型文件
+      // 注意：这会在全局作用域中定义类
+      importScripts(
+        'models/AIModel.js',
+        'models/ChatGPT.js',
+        'models/Claude.js',
+        'models/Gemini.js',
+        'models/Grok.js',
+        'models/Qwen.js',
+        'models/Doubao.js',
+        'models/DeepSeek.js',
+        'models/Kimi.js',
+        'models/Wenxin.js',
+        'models/ChatGLM.js',
+        'models/MiniMax.js',
+        'models/Yuanbao.js',
+        'models/index.js'  // 最后加载 index.js，它包含所有收集函数
+      );
+
+      // 使用 models/index.js 中的函数来收集数据
+      const sites = getAllAISites();
+      const icons = getPlatformIcons();
+      const i18nKeys = getPlatformI18nKeys();
+      const platformNames = getAllPlatformNames();
+
+      // 缓存数据
+      modelsDataCache = {
+        sites,
+        icons,
+        i18nKeys,
+        platformNames,
+        defaultSettings: {
+          theme: 'auto',
+          language: 'auto',
+          visiblePlatforms: platformNames,
+          tabGroupTitle: '',
+          colorMode: 'random',
+          fixedColor: 'blue'
+        }
+      };
+
+      return modelsDataCache;
+    } catch (error) {
+      console.error('[Background] Failed to load models:', error);
+      // 返回空数据，调用者应该处理这种情况
+      return {
+        sites: [],
+        icons: {},
+        i18nKeys: {},
+        platformNames: [],
+        defaultSettings: {
+          theme: 'auto',
+          language: 'auto',
+          visiblePlatforms: [],
+          tabGroupTitle: '',
+          colorMode: 'random',
+          fixedColor: 'blue'
+        }
+      };
+    } finally {
+      modelsLoadingPromise = null;
+    }
+  })();
+
+  return await modelsLoadingPromise;
 }
 
-// 为了向后兼容，保留 AI_SITES 常量
-const AI_SITES = getAISites();
+/**
+ * 获取所有 AI 站点信息（从模型类中获取）
+ * @returns {Promise<Array<{name: string, url: string}>>}
+ */
+async function getAISites() {
+  const data = await loadModelsData();
+  return data.sites;
+}
 
-// 平台名称到 i18n 键的映射（只对中文名字）
-const PLATFORM_I18N_KEYS = {
-  "千问": "platformTongyi",
-  "豆包": "platformDoubao",
-  "文心一言": "platformWenxin",
-  "智谱清言": "platformChatGLM",
-  "腾讯元宝": "platformYuanbao"
-};
+// 为了向后兼容，使用异步初始化（但保持同步访问的兼容性）
+let AI_SITES = [];
+loadModelsData().then(data => {
+  AI_SITES = data.sites;
+});
 
-// 获取平台显示名称（支持 i18n）
-function getPlatformDisplayName(platform) {
-  const i18nKey = PLATFORM_I18N_KEYS[platform];
+/**
+ * 获取所有平台名称（从各个站点中收集）
+ * @returns {Promise<Array<string>>} 平台名称数组
+ */
+async function getAllPlatformNames() {
+  const data = await loadModelsData();
+  return data.platformNames;
+}
+
+/**
+ * 获取平台图标映射
+ * @returns {Promise<Object>} 平台名称到图标路径的映射
+ */
+async function getPlatformIcons() {
+  const data = await loadModelsData();
+  return data.icons;
+}
+
+/**
+ * 获取平台 i18n 键映射
+ * @returns {Promise<Object>} 平台名称到 i18n 键的映射
+ */
+async function getPlatformI18nKeys() {
+  const data = await loadModelsData();
+  return data.i18nKeys;
+}
+
+/**
+ * 获取平台显示名称（支持 i18n）
+ * @param {string} platform - 平台名称
+ * @returns {Promise<string>} 显示名称
+ */
+async function getPlatformDisplayName(platform) {
+  await loadModelsData(); // 确保模型已加载
+  const data = modelsDataCache;
+  
+  // 尝试使用 models/index.js 中的函数
+  // 由于函数名冲突，我们通过检查函数参数数量来区分
+  // models/index.js 中的 getPlatformDisplayName 接受2个参数 (platform, i18n)
+  // 当前函数只接受1个参数 (platform)
+  try {
+    // 在 service worker 中，通过 importScripts 加载的函数会在全局作用域
+    // 但由于函数名冲突，我们需要保存原始引用
+    const modelsGetPlatformDisplayName = (() => {
+      // 尝试从全局作用域获取（如果 models/index.js 已加载）
+      // 由于 importScripts 会覆盖同名函数，我们需要在加载前保存引用
+      // 这里我们直接使用数据中的 i18n 键来构建显示名称
+      return null; // 暂时不使用，避免冲突
+    })();
+    
+    if (modelsGetPlatformDisplayName) {
+      const i18nWrapper = (key) => chrome.i18n.getMessage(key) || key;
+      return modelsGetPlatformDisplayName(platform, i18nWrapper);
+    }
+  } catch (e) {
+    // 忽略错误，使用回退方案
+  }
+  
+  // 回退：直接使用 i18n 键和模型类的 getDisplayName 方法
+  // 通过遍历所有模型类来找到对应的类
+  const modelClasses = getAllModelClasses ? getAllModelClasses() : [];
+  for (const ModelClass of modelClasses) {
+    if (ModelClass && ModelClass.NAME === platform) {
+      const i18nWrapper = (key) => chrome.i18n.getMessage(key) || key;
+      return ModelClass.getDisplayName(i18nWrapper);
+    }
+  }
+  
+  // 最终回退：直接使用 i18n 键
+  const i18nKey = data.i18nKeys[platform];
   if (i18nKey) {
     return chrome.i18n.getMessage(i18nKey) || platform;
   }
   return platform; // 英文名字直接返回
 }
+
+/**
+ * 默认设置
+ * @returns {Promise<Object>}
+ */
+async function getDefaultSettings() {
+  const data = await loadModelsData();
+  return data.defaultSettings;
+}
   
   // 注入到目标 AI 页面的脚本（发送 query）
   // 注意：此函数需要先注入模型类代码才能使用
-  function sendQueryToPage(query) {
-    const host = window.location.hostname;
+  // 注意：此函数已不再使用，改为内联执行
+  // function sendQueryToPage(query) {
+  // const host = window.location.hostname;
   
-    // 使用模型类处理
-    (async () => {
-      try {
+    // 返回 Promise，确保异步执行完成
+  // return (async () => {
+  // try {
         // 尝试使用模型类（通过 models/index.js 中的注册表）
-        if (typeof getModelByHostname === 'function') {
-          const model = getModelByHostname(host);
-          if (model) {
-            console.log('[MultiAI] Detected:', host, 'using model:', model.name);
-            await model.sendQuery(query);
-            return;
-          }
-        }
-      } catch (error) {
-        console.error(`[MultiAI] Error using model class:`, error);
-      }
+  // if (typeof getModelByHostname === 'function') {
+  // const model = getModelByHostname(host);
+  // if (model) {
+  // console.log('[MultiAI] Detected:', host, 'using model:', model.name);
+  // const result = await model.sendQuery(query);
+  // console.log('[MultiAI] Query execution result:', result);
+  // return result;
+  // }
+  // }
+  // } catch (error) {
+  // console.error(`[MultiAI] Error using model class:`, error);
+  // throw error; // 重新抛出错误以便上层处理
+  // }
       
       // 回退：尝试使用静态 fallback 方法
-      console.log('[MultiAI] Model class not available, trying fallback for:', host);
-      try {
-        if (typeof getFallbackActions === 'function') {
-          const fallbackActions = getFallbackActions();
-          if (fallbackActions[host]) {
-            await fallbackActions[host](query);
-            return;
-          }
+  // console.log('[MultiAI] Model class not available, trying fallback for:', host);
+  // try {
+  // if (typeof getFallbackActions === 'function') {
+  // const fallbackActions = getFallbackActions();
+  // if (fallbackActions[host]) {
+  // const result = await fallbackActions[host](query);
+  // console.log('[MultiAI] Fallback execution result:', result);
+  // return result;
+  // }
           
           // 模糊匹配回退
-          for (const domain in fallbackActions) {
-            if (host === domain || host.endsWith('.' + domain)) {
-              await fallbackActions[domain](query);
-              return;
-            }
-          }
-        }
-      } catch (fallbackError) {
-        console.error(`[MultiAI] Fallback also failed:`, fallbackError);
-      }
+  // for (const domain in fallbackActions) {
+  // if (host === domain || host.endsWith('.' + domain)) {
+  // const result = await fallbackActions[domain](query);
+  // console.log('[MultiAI] Fallback execution result (fuzzy match):', result);
+  // return result;
+  // }
+  // }
+  // }
+  // } catch (fallbackError) {
+  // console.error(`[MultiAI] Fallback also failed:`, fallbackError);
+  // throw fallbackError; // 重新抛出错误
+  // }
       
-      console.log('[MultiAI] Unknown domain or all methods failed:', host);
-    })();
-  }
-  
+  // console.error('[MultiAI] Unknown domain or all methods failed:', host);
+  // throw new Error(`No model handler found for domain: ${host}`);
+  // })();
+  // }
+  // }
+
   // 注意：旧的 actions 对象代码已移至各模型类的 fallback 方法中
   // 功能现在完全由模型类提供，通过 getModelByHostname() 和 getFallbackActions() 访问
   // injectInputUI 函数已移至 inject-ui.js 文件中
   
   // 等待标签页加载完成
-  function waitForTabLoad(tabId) {
+  // 等待标签页加载完成并检查页面就绪
+  async function waitForTabLoad(tabId) {
+    const maxWaitTime = 30000; // 最大等待时间 30 秒
+    const checkInterval = 200; // 检查间隔 200ms
+    const startTime = Date.now();
+    
     return new Promise((resolve) => {
       const checkTab = async () => {
         try {
           const tab = await chrome.tabs.get(tabId);
+          
+          // 检查是否超时
+          if (Date.now() - startTime > maxWaitTime) {
+            console.warn('[Background] Tab load timeout:', tabId);
+            resolve(false);
+            return;
+          }
+          
+          // 检查标签页状态
           if (tab.status === 'complete') {
-            resolve(true);
+            // 额外检查：尝试注入一个简单的脚本来验证页面是否真的就绪
+            try {
+              await chrome.scripting.executeScript({
+                target: { tabId: tabId },
+                func: () => {
+                  // 检查 document.readyState 和 document.body
+                  return document.readyState === 'complete' && document.body !== null;
+                }
+              });
+              console.log('[Background] Tab', tabId, 'is ready');
+              resolve(true);
+            } catch (e) {
+              // 如果注入失败，可能是页面还在加载或 CSP 限制
+              console.log('[Background] Tab', tabId, 'status complete but script injection failed, waiting...');
+              setTimeout(checkTab, checkInterval);
+            }
           } else {
-            setTimeout(checkTab, 200);
+            setTimeout(checkTab, checkInterval);
           }
         } catch (e) {
+          console.error('[Background] Error checking tab:', e);
           resolve(false);
         }
       };
@@ -144,6 +327,9 @@ function getPlatformDisplayName(platform) {
   
   // 打开或复用 AI 标签页并发送
   async function openAndSend(url, query, progressTracker, siteName) {
+    console.log('[Background] ===== openAndSend START =====');
+    console.log('[Background] Site:', siteName, 'URL:', url, 'Query:', query.substring(0, 50) + '...');
+
     console.log('[Background] Opening:', url, 'for site:', siteName);
     
     // 提取域名用于更灵活的匹配
@@ -197,43 +383,128 @@ function getPlatformDisplayName(platform) {
       await new Promise(r => setTimeout(r, 2000));
     }
   
-    try {
-      // 先注入模型类文件（按依赖顺序）
-      await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        files: [
-          'models/AIModel.js',
-          'models/ChatGPT.js',
-          'models/Claude.js',
-          'models/Gemini.js',
-          'models/Grok.js',
-          'models/Qwen.js',
-          'models/Doubao.js',
-          'models/DeepSeek.js',
-          'models/Kimi.js',
-          'models/Wenxin.js',
-          'models/ChatGLM.js',
-          'models/MiniMax.js',
-          'models/Yuanbao.js',
-          'models/index.js'  // 最后注入注册表
-        ]
-      });
-      console.log('[Background] Model classes injected to tab:', tab.id);
-      
-      // 然后注入发送函数
-      await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: sendQueryToPage,
-        args: [query]
-      });
-      console.log('[Background] Script injected to tab:', tab.id);
-      // 注意：状态已经在tab监听器中更新为completed了
-    } catch (e) {
-      console.error("[Background] 发送失败", url, e);
-      // 即使失败也标记为完成（避免卡住）
-      progressTracker.updateStatus(siteName, 'completed');
-      sendProgressUpdate(progressTracker.getProgress());
+    // 脚本注入重试机制
+    const maxRetries = 3;
+    let lastError = null;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`[Background] Injection attempt ${attempt}/${maxRetries} for tab ${tab.id}`);
+        
+        // 先注入模型类文件（按依赖顺序）
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: [
+            'models/AIModel.js',
+            'models/ChatGPT.js',
+            'models/Claude.js',
+            'models/Gemini.js',
+            'models/Grok.js',
+            'models/Qwen.js',
+            'models/Doubao.js',
+            'models/DeepSeek.js',
+            'models/Kimi.js',
+            'models/Wenxin.js',
+            'models/ChatGLM.js',
+            'models/MiniMax.js',
+            'models/Yuanbao.js',
+            'models/index.js'  // 最后注入注册表
+          ]
+        });
+        console.log('[Background] Model classes injected to tab:', tab.id);
+        
+        // 等待一小段时间确保模型类已加载
+
+        await new Promise(r => setTimeout(r, 500));
+        
+        // 直接执行查询（内联 sendQueryToPage 逻辑）
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: async (query) => {
+            console.log('[MultiAI] ===== Inline execution START =====');
+            console.log('[MultiAI] Query:', query.substring(0, 50) + '...');
+            const host = window.location.hostname;
+            console.log('[MultiAI] Hostname:', host);
+            console.log('[MultiAI] getModelByHostname available:', typeof getModelByHostname === 'function');
+            console.log('[MultiAI] getFallbackActions available:', typeof getFallbackActions === 'function');
+            
+            try {
+              // 尝试使用模型类（通过 models/index.js 中的注册表）
+              if (typeof getModelByHostname === 'function') {
+                const model = getModelByHostname(host);
+                if (model) {
+                  console.log('[MultiAI] Detected:', host, 'using model:', model.name);
+                  const result = await model.sendQuery(query);
+                  console.log('[MultiAI] Query execution result:', result);
+                  return result;
+                }
+              }
+            } catch (error) {
+              console.error(`[MultiAI] Error using model class:`, error);
+              throw error;
+            }
+            
+            // 回退：尝试使用静态 fallback 方法
+            console.log('[MultiAI] Model class not available, trying fallback for:', host);
+            try {
+              if (typeof getFallbackActions === 'function') {
+                const fallbackActions = getFallbackActions();
+                if (fallbackActions[host]) {
+                  const result = await fallbackActions[host](query);
+                  console.log('[MultiAI] Fallback execution result:', result);
+                  return result;
+                }
+                
+                // 模糊匹配回退
+                for (const domain in fallbackActions) {
+                  if (host === domain || host.endsWith('.' + domain)) {
+                    const result = await fallbackActions[domain](query);
+                    console.log('[MultiAI] Fallback execution result (fuzzy match):', result);
+                    return result;
+                  }
+                }
+              }
+            } catch (fallbackError) {
+              console.error(`[MultiAI] Fallback also failed:`, fallbackError);
+              throw fallbackError;
+            }
+            
+            console.error('[MultiAI] Unknown domain or all methods failed:', host);
+            throw new Error(`No model handler found for domain: ${host}`);
+          },
+          args: [query]
+        });
+        
+        // 等待一小段时间确保执行完成
+        await new Promise(r => setTimeout(r, 1000));
+        console.log('[Background] Script injected and executed successfully for tab:', tab.id);
+        // 成功，退出重试循环
+        break;
+        
+      } catch (e) {
+        lastError = e;
+        console.error(`[Background] Injection attempt ${attempt} failed for tab ${tab.id}:`, e);
+        
+        if (attempt < maxRetries) {
+          // 等待后重试，等待时间递增
+          const waitTime = attempt * 1000; // 1s, 2s, 3s
+          console.log(`[Background] Waiting ${waitTime}ms before retry...`);
+          await new Promise(r => setTimeout(r, waitTime));
+          
+          // 重新等待页面就绪
+          console.log('[Background] Re-checking tab status before retry...');
+          await waitForTabLoad(tab.id);
+        } else {
+          // 最后一次尝试也失败
+          console.error("[Background] All injection attempts failed for", url, e);
+          progressTracker.updateStatus(siteName, 'completed');
+          sendProgressUpdate(progressTracker.getProgress());
+          throw e; // 重新抛出错误以便上层处理
+        }
+      }
     }
+    console.log('[Background] ===== openAndSend SUCCESS =====');
+    console.log('[Background] Tab ID:', tab.id, 'for site:', siteName);
     return tab.id;
   }
   
@@ -258,7 +529,7 @@ function getPlatformDisplayName(platform) {
     }
     
     // 根据tab的实际状态更新进度
-    updateTabStatus(tabId, status) {
+    async updateTabStatus(tabId, status) {
       const siteName = this.tabMap[tabId];
       if (!siteName) return;
       
@@ -269,26 +540,26 @@ function getPlatformDisplayName(platform) {
         this.statuses[siteName] = 'completed';
       }
       
-      this.updateCurrentAction();
+      await this.updateCurrentAction();
       sendProgressUpdate(this.getProgress());
     }
     
     // 手动更新状态（用于特殊情况）
-    updateStatus(siteName, status) {
+    async updateStatus(siteName, status) {
       this.statuses[siteName] = status;
-      this.updateCurrentAction();
+      await this.updateCurrentAction();
     }
     
-    updateCurrentAction() {
+    async updateCurrentAction() {
       // 更新当前操作文本
       const loadingSites = this.getSitesByStatus('loading');
       const openingSites = this.getSitesByStatus('opening');
       
       if (loadingSites.length > 0) {
-        const platformName = getPlatformDisplayName(loadingSites[0]);
+        const platformName = await getPlatformDisplayName(loadingSites[0]);
         this.currentAction = chrome.i18n.getMessage('actionLoading', [platformName]);
       } else if (openingSites.length > 0) {
-        const platformName = getPlatformDisplayName(openingSites[0]);
+        const platformName = await getPlatformDisplayName(openingSites[0]);
         this.currentAction = chrome.i18n.getMessage('actionOpening', [platformName]);
       } else {
         this.currentAction = '';
@@ -327,12 +598,16 @@ function getPlatformDisplayName(platform) {
         // 当tab开始加载时
         if (changeInfo.status === 'loading') {
           console.log('[Background] Tab', tabId, 'started loading for', this.tabMap[tabId]);
-          this.updateTabStatus(tabId, 'loading');
+          this.updateTabStatus(tabId, 'loading').catch(err => {
+            console.error('[Background] Error updating tab status:', err);
+          });
         }
         // 当tab加载完成时
         else if (changeInfo.status === 'complete') {
           console.log('[Background] Tab', tabId, 'completed loading for', this.tabMap[tabId]);
-          this.updateTabStatus(tabId, 'complete');
+          this.updateTabStatus(tabId, 'complete').catch(err => {
+            console.error('[Background] Error updating tab status:', err);
+          });
         }
       };
       
@@ -599,123 +874,150 @@ function getPlatformDisplayName(platform) {
   
   // 监听页面发来的发送请求
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    // 处理获取平台数据的请求
+    if (request.action === 'getPlatformData') {
+      (async () => {
+        try {
+          const data = await loadModelsData();
+          sendResponse({
+            success: true,
+            platformNames: data.platformNames,
+            platformIcons: data.icons,
+            platformI18nKeys: data.i18nKeys,
+            defaultSettings: data.defaultSettings
+          });
+        } catch (error) {
+          console.error('[Background] Error getting platform data:', error);
+          sendResponse({ success: false, error: error.message });
+        }
+      })();
+      return true; // 保持消息通道开放以进行异步响应
+    }
+    
     if (request.action === 'sendToAllAIs') {
-      const query = request.query;
-      const selectedPlatforms = request.platforms || AI_SITES.map(s => s.name); // 默认全部
-      
-      console.log('[Background] Received sendToAllAIs request');
-      console.log('[Background] Query:', query);
-      console.log('[Background] Selected platforms:', selectedPlatforms);
-      
-      // 根据选中的平台过滤要打开的站点
-      const sitesToOpen = AI_SITES.filter(site => selectedPlatforms.includes(site.name));
-      console.log('[Background] Will open', sitesToOpen.length, 'tabs');
-      
-      if (sitesToOpen.length === 0) {
-        sendResponse({ success: false, error: 'No platforms selected' });
-        return false;
-      }
-      
-      // 创建进度跟踪器
-      const progressTracker = new ProgressTracker(sitesToOpen.length, sitesToOpen);
-      
-      // 设置tab状态监听器（监听所有tab的加载状态）
-      progressTracker.setupTabListener();
-      
-      const promises = [];
-      
-      for (const site of sitesToOpen) {
-        console.log('[Background] Processing:', site.name, site.url);
-        // 直接传递 progressTracker 和 siteName
-        const promise = openAndSend(site.url, query, progressTracker, site.name).then(id => {
-          console.log('[Background] Completed:', site.name, 'tab id:', id);
-          return id;
-        }).catch(err => {
-          console.error('[Background] Failed:', site.name, err);
-          // 即使失败也标记为完成
-          progressTracker.updateStatus(site.name, 'completed');
-          sendProgressUpdate(progressTracker.getProgress());
-          return null; // 返回 null 而不是 undefined
-        });
-        promises.push(promise);
-      }
-      
-      // 等待所有标签页打开后创建标签组
-      Promise.all(promises).then(async (ids) => {
-        // 过滤掉 null（失败的标签页）
-        const tabIds = ids.filter(id => id !== null);
-        console.log('[Background] All tabs opened, tabIds:', tabIds);
-        console.log('[Background] Creating group with', tabIds.length, 'tabs');
-        
-        if (tabIds.length > 0) {
-          try {
-            await createTabGroup(tabIds);
-          } catch (groupError) {
-            console.error('[Background] Error creating tab group:', groupError);
+      (async () => {
+        try {
+          const query = request.query;
+          const sites = await getAISites();
+          const selectedPlatforms = request.platforms || sites.map(s => s.name); // 默认全部
+          
+          console.log('[Background] Received sendToAllAIs request');
+          console.log('[Background] Query:', query);
+          console.log('[Background] Selected platforms:', selectedPlatforms);
+          
+          // 根据选中的平台过滤要打开的站点
+          const sitesToOpen = sites.filter(site => selectedPlatforms.includes(site.name));
+          console.log('[Background] Will open', sitesToOpen.length, 'tabs');
+          
+          if (sitesToOpen.length === 0) {
+            sendResponse({ success: false, error: 'No platforms selected' });
+            return;
           }
-        } else {
-          console.warn('[Background] No valid tab IDs to group');
-        }
-        
-        // 清理tab监听器
-        progressTracker.cleanup();
-        
-        // 发送完成消息
-        const finalProgress = progressTracker.getProgress();
-        console.log('[Background] Final progress:', finalProgress);
-        
-        // 存储最终进度（分两步，确保 onChanged 能触发）
-        chrome.storage.local.set({ 
-          progressUpdate: finalProgress,
-          progressUpdateTime: Date.now()
-        }).then(() => {
-          // 延迟设置完成标志，确保进度更新先触发
-          setTimeout(() => {
-            chrome.storage.local.set({ 
-              progressComplete: true
-            }).then(() => {
-              console.log('[Background] Progress complete flag set');
-            }).catch((err) => {
-              console.error('[Background] Failed to set progressComplete:', err);
+          
+          // 创建进度跟踪器
+          const progressTracker = new ProgressTracker(sitesToOpen.length, sitesToOpen);
+          
+          // 设置tab状态监听器（监听所有tab的加载状态）
+          progressTracker.setupTabListener();
+          
+          const promises = [];
+          
+          for (const site of sitesToOpen) {
+            console.log('[Background] Processing:', site.name, site.url);
+            // 直接传递 progressTracker 和 siteName
+            const promise = openAndSend(site.url, query, progressTracker, site.name).then(id => {
+              console.log('[Background] Completed:', site.name, 'tab id:', id);
+              return id;
+            }).catch(async (err) => {
+              console.error('[Background] Failed:', site.name, err);
+              // 即使失败也标记为完成
+              await progressTracker.updateStatus(site.name, 'completed');
+              sendProgressUpdate(progressTracker.getProgress());
+              return null; // 返回 null 而不是 undefined
             });
-          }, 100);
-        }).catch((err) => {
-          console.error('[Background] Failed to save final progress:', err);
-        });
-        
-        try {
-          chrome.runtime.sendMessage({
-            action: 'progressComplete',
-            progress: finalProgress
-          }).catch(() => {
-            // 如果 popup 已关闭，忽略错误
+            promises.push(promise);
+          }
+          
+          // 等待所有标签页打开后创建标签组
+          Promise.all(promises).then(async (ids) => {
+            // 过滤掉 null（失败的标签页）
+            const tabIds = ids.filter(id => id !== null);
+            console.log('[Background] All tabs opened, tabIds:', tabIds);
+            console.log('[Background] Creating group with', tabIds.length, 'tabs');
+            
+            if (tabIds.length > 0) {
+              try {
+                await createTabGroup(tabIds);
+              } catch (groupError) {
+                console.error('[Background] Error creating tab group:', groupError);
+              }
+            } else {
+              console.warn('[Background] No valid tab IDs to group');
+            }
+            
+            // 清理tab监听器
+            progressTracker.cleanup();
+            
+            // 发送完成消息
+            const finalProgress = progressTracker.getProgress();
+            console.log('[Background] Final progress:', finalProgress);
+            
+            // 存储最终进度（分两步，确保 onChanged 能触发）
+            chrome.storage.local.set({ 
+              progressUpdate: finalProgress,
+              progressUpdateTime: Date.now()
+            }).then(() => {
+              // 延迟设置完成标志，确保进度更新先触发
+              setTimeout(() => {
+                chrome.storage.local.set({ 
+                  progressComplete: true
+                }).then(() => {
+                  console.log('[Background] Progress complete flag set');
+                }).catch((err) => {
+                  console.error('[Background] Failed to set progressComplete:', err);
+                });
+              }, 100);
+            }).catch((err) => {
+              console.error('[Background] Failed to save final progress:', err);
+            });
+            
+            try {
+              chrome.runtime.sendMessage({
+                action: 'progressComplete',
+                progress: finalProgress
+              }).catch(() => {
+                // 如果 popup 已关闭，忽略错误
+              });
+            } catch (e) {
+              // 忽略错误
+            }
+            
+            sendResponse({ success: true, count: tabIds.length });
+          }).catch(async (err) => {
+            console.error('[Background] Error in Promise.all:', err);
+            
+            // 清理tab监听器
+            progressTracker.cleanup();
+            
+            // 发送错误消息
+            try {
+              chrome.runtime.sendMessage({
+                action: 'progressError',
+                error: err.message
+              }).catch(() => {
+                // 如果 popup 已关闭，忽略错误
+              });
+            } catch (e) {
+              // 忽略错误
+            }
+            
+            sendResponse({ success: false, error: err.message });
           });
-        } catch (e) {
-          // 忽略错误
+        } catch (error) {
+          console.error('[Background] Error in sendToAllAIs:', error);
+          sendResponse({ success: false, error: error.message });
         }
-        
-        sendResponse({ success: true, count: tabIds.length });
-      }).catch(err => {
-        console.error('[Background] Error in Promise.all:', err);
-        
-        // 清理tab监听器
-        progressTracker.cleanup();
-        
-        // 发送错误消息
-        try {
-          chrome.runtime.sendMessage({
-            action: 'progressError',
-            error: err.message
-          }).catch(() => {
-            // 如果 popup 已关闭，忽略错误
-          });
-        } catch (e) {
-          // 忽略错误
-        }
-        
-        sendResponse({ success: false, error: err.message });
-      });
-      
+      })();
       return true; // 保持消息通道开放以进行异步响应
     }
   });

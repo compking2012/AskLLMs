@@ -2,6 +2,11 @@
  * Kimi 模型类
  */
 class Kimi extends AIModel {
+  static NAME = 'Kimi';
+  static URL = 'https://www.kimi.com';
+  static ICON = 'icons/kimi.png';
+  static I18N_KEY = null;
+
   constructor() {
     super('Kimi', 'www.kimi.com');
   }
@@ -67,16 +72,6 @@ class Kimi extends AIModel {
     return true;
   }
 
-  /**
-   * 静态方法：获取平台信息
-   * @returns {{name: string, url: string}}
-   */
-  static getSiteInfo() {
-    return {
-      name: 'Kimi',
-      url: 'https://www.kimi.com'
-    };
-  }
 
   /**
    * 静态回退方法（当模型类未正确加载时使用）

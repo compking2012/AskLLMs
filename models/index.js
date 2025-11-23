@@ -5,6 +5,12 @@
  * 注意：此文件需要在页面上下文中执行，模型类必须已经加载
  */
 
+// 所有模型类的列表（统一管理，避免在基类中硬编码）
+const ALL_MODEL_CLASSES = [
+  ChatGPT, Claude, Gemini, Grok, Qwen, Doubao,
+  DeepSeek, Kimi, Wenxin, ChatGLM, MiniMax, Yuanbao
+];
+
 // 模型注册表（在页面上下文中使用）
 const AIModelRegistry = {
   'chatgpt.com': () => new ChatGPT(),
@@ -44,42 +50,103 @@ function getModelByHostname(hostname) {
 }
 
 /**
+ * 获取所有模型类
+ * @returns {Array<Function>} 所有模型类的数组
+ */
+function getAllModelClasses() {
+  return ALL_MODEL_CLASSES.filter(cls => cls && typeof cls === 'function');
+}
+
+/**
  * 获取所有 AI 站点信息（从模型类中获取）
  * @returns {Array<{name: string, url: string}>}
  */
 function getAllAISites() {
-  const modelClasses = {
-    'chatgpt.com': ChatGPT,
-    'claude.ai': Claude,
-    'gemini.google.com': Gemini,
-    'grok.com': Grok,
-    'www.qianwen.com': Qwen,
-    'www.doubao.com': Doubao,
-    'deepseek.com': DeepSeek,
-    'chat.deepseek.com': DeepSeek,
-    'www.kimi.com': Kimi,
-    'yiyan.baidu.com': Wenxin,
-    'chatglm.cn': ChatGLM,
-    'agent.minimaxi.com': MiniMax,
-    'yuanbao.tencent.com': Yuanbao
-  };
-  
   const sites = [];
   const addedNames = new Set();
   
-  for (const domain in modelClasses) {
-    const ModelClass = modelClasses[domain];
-    if (ModelClass && typeof ModelClass.getSiteInfo === 'function') {
-      const siteInfo = ModelClass.getSiteInfo();
+  for (const ModelClass of ALL_MODEL_CLASSES) {
+    if (ModelClass && ModelClass.NAME && ModelClass.URL) {
       // 避免重复添加（DeepSeek 有两个域名）
-      if (!addedNames.has(siteInfo.name)) {
-        sites.push(siteInfo);
-        addedNames.add(siteInfo.name);
+      if (!addedNames.has(ModelClass.NAME)) {
+        sites.push({
+          name: ModelClass.NAME,
+          url: ModelClass.URL
+        });
+        addedNames.add(ModelClass.NAME);
       }
     }
   }
   
   return sites;
+}
+
+/**
+ * 获取所有平台名称
+ * @returns {Array<string>} 平台名称数组
+ */
+function getAllPlatformNames() {
+  const names = [];
+  const addedNames = new Set();
+  
+  for (const ModelClass of ALL_MODEL_CLASSES) {
+    if (ModelClass && ModelClass.NAME) {
+      if (!addedNames.has(ModelClass.NAME)) {
+        names.push(ModelClass.NAME);
+        addedNames.add(ModelClass.NAME);
+      }
+    }
+  }
+  
+  return names;
+}
+
+/**
+ * 获取平台图标映射
+ * @returns {Object} 平台名称到图标路径的映射
+ */
+function getPlatformIcons() {
+  const icons = {};
+  
+  for (const ModelClass of ALL_MODEL_CLASSES) {
+    if (ModelClass && ModelClass.NAME && ModelClass.ICON) {
+      icons[ModelClass.NAME] = ModelClass.ICON;
+    }
+  }
+  
+  return icons;
+}
+
+/**
+ * 获取平台 i18n 键映射
+ * @returns {Object} 平台名称到 i18n 键的映射
+ */
+function getPlatformI18nKeys() {
+  const keys = {};
+  
+  for (const ModelClass of ALL_MODEL_CLASSES) {
+    if (ModelClass && ModelClass.NAME && ModelClass.I18N_KEY) {
+      keys[ModelClass.NAME] = ModelClass.I18N_KEY;
+    }
+  }
+  
+  return keys;
+}
+
+/**
+ * 获取平台显示名称（支持 i18n）
+ * @param {string} platform - 平台名称
+ * @param {Function} i18n - i18n 函数
+ * @returns {string} 显示名称
+ */
+function getPlatformDisplayName(platform, i18n) {
+  // 找到对应的模型类
+  for (const ModelClass of ALL_MODEL_CLASSES) {
+    if (ModelClass && ModelClass.NAME === platform) {
+      return ModelClass.getDisplayName(i18n);
+    }
+  }
+  return platform; // 如果找不到，直接返回平台名称
 }
 
 /**
@@ -130,3 +197,7 @@ function getFallbackActions() {
   return actions;
 }
 
+// 导出函数供 popup.js 使用（如果 models/index.js 被加载到 popup 上下文）
+if (typeof window !== 'undefined') {
+  window.getPlatformDisplayNameFromModels = getPlatformDisplayName;
+}

@@ -3,6 +3,12 @@
  * 所有 AI 平台模型的基类，提供通用的方法
  */
 class AIModel {
+  // 静态属性：平台信息（子类应覆盖这些属性）
+  static NAME = '';
+  static URL = '';
+  static ICON = '';
+  static I18N_KEY = null; // 如果有 i18n 键，子类应设置此属性
+
   constructor(name, domain) {
     this.name = name;
     this.domain = domain;
@@ -14,31 +20,82 @@ class AIModel {
    * @param {number} timeout - 超时时间（毫秒）
    * @returns {Promise<Element|null>}
    */
-  waitForElement(selector, timeout = 10000) {
+  waitForElement(selector, timeout = 15000) {
     return new Promise((resolve) => {
+      // 首先检查元素是否已经存在
       const element = document.querySelector(selector);
       if (element) {
         resolve(element);
         return;
       }
       
-      const observer = new MutationObserver(() => {
+      // 等待 document.body 存在
+      const waitForBody = () => {
+        if (document.body) {
+          startObserving();
+        } else {
+          // 如果 body 不存在，等待 DOMContentLoaded
+          if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', startObserving, { once: true });
+          } else {
+            // 如果已经加载完成但 body 仍不存在，可能是特殊页面
+            setTimeout(() => {
+              if (document.body) {
+                startObserving();
+              } else {
+                console.warn(`[MultiAI] ${this.name} document.body not available, element may not be found`);
+                resolve(null);
+              }
+            }, 100);
+          }
+        }
+      };
+      
+      const startObserving = () => {
+        // 再次检查元素（可能在等待 body 时已经出现）
         const element = document.querySelector(selector);
         if (element) {
-          observer.disconnect();
           resolve(element);
+          return;
         }
-      });
+        
+        // 如果 body 不存在，无法使用 MutationObserver
+        if (!document.body) {
+          console.warn(`[MultiAI] ${this.name} document.body not available for MutationObserver`);
+          setTimeout(() => resolve(null), timeout);
+          return;
+        }
+        
+        const observer = new MutationObserver(() => {
+          const element = document.querySelector(selector);
+          if (element) {
+            observer.disconnect();
+            resolve(element);
+          }
+        });
+        
+        try {
+          observer.observe(document.body, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeOldValue: false
+          });
+        } catch (e) {
+          console.error(`[MultiAI] ${this.name} MutationObserver error:`, e);
+          observer.disconnect();
+          resolve(null);
+          return;
+        }
+        
+        // 设置超时
+        setTimeout(() => {
+          observer.disconnect();
+          resolve(null);
+        }, timeout);
+      };
       
-      observer.observe(document.body, {
-        childList: true,
-        subtree: true
-      });
-      
-      setTimeout(() => {
-        observer.disconnect();
-        resolve(null);
-      }, timeout);
+      waitForBody();
     });
   }
 
@@ -239,58 +296,27 @@ class AIModel {
   }
 
   /**
-   * 平台图标映射
+   * 获取平台信息（使用静态属性）
+   * @returns {{name: string, url: string}}
    */
-  static PLATFORM_ICONS = {
-    "ChatGPT": "icons/chatgpt.png",
-    "Claude": "icons/claude.png",
-    "Gemini": "icons/gemini.png",
-    "Grok": "icons/grok.png",
-    "千问": "icons/tongyi.png",
-    "豆包": "icons/doubao.png",
-    "DeepSeek": "icons/deepseek.png",
-    "Kimi": "icons/kimi.png",
-    "文心一言": "icons/wenxin.png",
-    "智谱清言": "icons/chatglm.png",
-    "MiniMax": "icons/minimax.png",
-    "腾讯元宝": "icons/yuanbao.png"
-  };
-
-  /**
-   * 平台名称到 i18n 键的映射（只对中文名字）
-   */
-  static PLATFORM_I18N_KEYS = {
-    "千问": "platformTongyi",
-    "豆包": "platformDoubao",
-    "文心一言": "platformWenxin",
-    "智谱清言": "platformChatGLM",
-    "腾讯元宝": "platformYuanbao"
-  };
-
-  /**
-   * 默认设置
-   */
-  static DEFAULT_SETTINGS = {
-    theme: 'auto',
-    language: 'auto',
-    visiblePlatforms: ['ChatGPT', 'Claude', 'Gemini', 'Grok', '千问', '豆包', 'DeepSeek', 'Kimi', '文心一言', '智谱清言', 'MiniMax', '腾讯元宝'],
-    tabGroupTitle: '',
-    colorMode: 'random',
-    fixedColor: 'blue'
-  };
+  static getSiteInfo() {
+    return {
+      name: this.NAME || '',
+      url: this.URL || ''
+    };
+  }
 
   /**
    * 获取平台显示名称（支持 i18n）
-   * @param {string} platform - 平台名称
+   * 注意：此方法只处理当前类的显示名称，不涉及其他子类
    * @param {Function} i18n - i18n 函数
    * @returns {string} 显示名称
    */
-  static getPlatformDisplayName(platform, i18n) {
-    const i18nKey = AIModel.PLATFORM_I18N_KEYS[platform];
-    if (i18nKey && i18n) {
-      return i18n(i18nKey);
+  static getDisplayName(i18n) {
+    if (this.I18N_KEY && i18n) {
+      return i18n(this.I18N_KEY);
     }
-    return platform; // 英文名字直接返回
+    return this.NAME || ''; // 如果没有 i18n 键，直接返回名称
   }
 }
 

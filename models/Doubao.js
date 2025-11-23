@@ -2,6 +2,11 @@
  * 豆包模型类
  */
 class Doubao extends AIModel {
+  static NAME = '豆包';
+  static URL = 'https://www.doubao.com';
+  static ICON = 'icons/doubao.png';
+  static I18N_KEY = 'platformDoubao';
+
   constructor() {
     super('豆包', 'www.doubao.com');
   }
@@ -54,16 +59,6 @@ class Doubao extends AIModel {
     return true;
   }
 
-  /**
-   * 静态方法：获取平台信息
-   * @returns {{name: string, url: string}}
-   */
-  static getSiteInfo() {
-    return {
-      name: '豆包',
-      url: 'https://www.doubao.com'
-    };
-  }
 
   /**
    * 静态回退方法（当模型类未正确加载时使用）

@@ -2,6 +2,11 @@
  * 千问模型类
  */
 class Qwen extends AIModel {
+  static NAME = '千问';
+  static URL = 'https://www.qianwen.com';
+  static ICON = 'icons/tongyi.png';
+  static I18N_KEY = 'platformTongyi';
+
   constructor() {
     super('千问', 'www.qianwen.com');
   }
@@ -48,7 +53,7 @@ class Qwen extends AIModel {
     console.log(`[MultiAI] ${this.name} text set:`, query);
     
     // 等待更长时间让按钮激活
-    await new Promise(resolve => setTimeout(resolve, 800));
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
     // 尝试找发送按钮
     let btn = document.querySelector('div[class*="operateBtn"]');
@@ -73,16 +78,6 @@ class Qwen extends AIModel {
     return true;
   }
 
-  /**
-   * 静态方法：获取平台信息
-   * @returns {{name: string, url: string}}
-   */
-  static getSiteInfo() {
-    return {
-      name: '千问',
-      url: 'https://www.qianwen.com'
-    };
-  }
 
   /**
    * 静态回退方法（当模型类未正确加载时使用）
