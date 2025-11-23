@@ -234,6 +234,26 @@
   "colorCyan": {
     "message": "Cyan",
     "description": "Color name: Cyan"
+  },
+  "actionLoading": {
+    "message": "Loading: $PLATFORM$",
+    "description": "Action text when loading a platform",
+    "placeholders": {
+      "PLATFORM": {
+        "content": "$1",
+        "example": "ChatGPT"
+      }
+    }
+  },
+  "actionOpening": {
+    "message": "Opening: $PLATFORM$",
+    "description": "Action text when opening a platform",
+    "placeholders": {
+      "PLATFORM": {
+        "content": "$1",
+        "example": "ChatGPT"
+      }
+    }
   }
 }
 

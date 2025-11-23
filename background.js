@@ -23,6 +23,24 @@ function getAISites() {
 
 // 为了向后兼容，保留 AI_SITES 常量
 const AI_SITES = getAISites();
+
+// 平台名称到 i18n 键的映射（只对中文名字）
+const PLATFORM_I18N_KEYS = {
+  "千问": "platformTongyi",
+  "豆包": "platformDoubao",
+  "文心一言": "platformWenxin",
+  "智谱清言": "platformChatGLM",
+  "腾讯元宝": "platformYuanbao"
+};
+
+// 获取平台显示名称（支持 i18n）
+function getPlatformDisplayName(platform) {
+  const i18nKey = PLATFORM_I18N_KEYS[platform];
+  if (i18nKey) {
+    return chrome.i18n.getMessage(i18nKey) || platform;
+  }
+  return platform; // 英文名字直接返回
+}
   
   // 注入到目标 AI 页面的脚本（发送 query）
   // 注意：此函数需要先注入模型类代码才能使用
@@ -267,9 +285,11 @@ const AI_SITES = getAISites();
       const openingSites = this.getSitesByStatus('opening');
       
       if (loadingSites.length > 0) {
-        this.currentAction = `Loading: ${loadingSites[0]}`;
+        const platformName = getPlatformDisplayName(loadingSites[0]);
+        this.currentAction = chrome.i18n.getMessage('actionLoading', [platformName]);
       } else if (openingSites.length > 0) {
-        this.currentAction = `Opening: ${openingSites[0]}`;
+        const platformName = getPlatformDisplayName(openingSites[0]);
+        this.currentAction = chrome.i18n.getMessage('actionOpening', [platformName]);
       } else {
         this.currentAction = '';
       }

@@ -106,7 +106,7 @@ async function initI18n() {
   // 更新平台按钮的 tooltip 和 title（支持 i18n）
   platformBtns.forEach(btn => {
     const platform = btn.dataset.platform;
-    const displayName = getPlatformDisplayName(platform);
+    const displayName = AIModel.getPlatformDisplayName(platform, i18n);
     btn.setAttribute('data-tooltip', displayName);
     btn.setAttribute('title', displayName);
   });
@@ -129,49 +129,10 @@ const settingsBtn = document.getElementById('settings-btn');
 let settingsPage = null;
 let backBtn = null;
 
-// 平台图标映射
-const PLATFORM_ICONS = {
-  "ChatGPT": "icons/chatgpt.png",
-  "Claude": "icons/claude.png",
-  "Gemini": "icons/gemini.png",
-  "Grok": "icons/grok.png",
-  "千问": "icons/tongyi.png",
-  "豆包": "icons/doubao.png",
-  "DeepSeek": "icons/deepseek.png",
-  "Kimi": "icons/kimi.png",
-  "文心一言": "icons/wenxin.png",
-  "智谱清言": "icons/chatglm.png",
-  "MiniMax": "icons/minimax.png",
-  "腾讯元宝": "icons/yuanbao.png"
-};
-
-// 平台名称到 i18n 键的映射（只对中文名字）
-const PLATFORM_I18N_KEYS = {
-  "千问": "platformTongyi",
-  "豆包": "platformDoubao",
-  "文心一言": "platformWenxin",
-  "智谱清言": "platformChatGLM",
-  "腾讯元宝": "platformYuanbao"
-};
-
-// 获取平台显示名称（支持 i18n）
+// 获取平台显示名称的包装函数（使用 AIModel 的静态方法）
 function getPlatformDisplayName(platform) {
-  const i18nKey = PLATFORM_I18N_KEYS[platform];
-  if (i18nKey) {
-    return i18n(i18nKey);
-  }
-  return platform; // 英文名字直接返回
+  return AIModel.getPlatformDisplayName(platform, i18n);
 }
-
-// 默认设置
-const DEFAULT_SETTINGS = {
-  theme: 'auto',
-  language: 'auto',
-  visiblePlatforms: ['ChatGPT', 'Claude', 'Gemini', 'Grok', '千问', '豆包', 'DeepSeek', 'Kimi', '文心一言', '智谱清言', 'MiniMax', '腾讯元宝'],
-  tabGroupTitle: '',
-  colorMode: 'random',
-  fixedColor: 'blue'
-};
 
 // 应用主题
 async function applyTheme(themeSetting) {
@@ -217,7 +178,7 @@ async function loadAndApplySettings() {
     chrome.storage.local.get(['settings'], resolve);
   });
   
-  const settings = result.settings || DEFAULT_SETTINGS;
+  const settings = result.settings || AIModel.DEFAULT_SETTINGS;
   
   // 应用主题设置
   await applyTheme(settings.theme || 'auto');
@@ -253,7 +214,7 @@ function applyVisiblePlatforms(visiblePlatforms) {
 // 使用 settings.js 中的函数
 function initSettingsPage() {
   if (typeof window.initSettingsPageFromSettings === 'function') {
-    window.initSettingsPageFromSettings(platformBtns, PLATFORM_ICONS, getPlatformDisplayName, DEFAULT_SETTINGS, loadAndApplySettings, initI18n);
+    window.initSettingsPageFromSettings(platformBtns, AIModel.PLATFORM_ICONS, getPlatformDisplayName, AIModel.DEFAULT_SETTINGS, loadAndApplySettings, initI18n);
   } else {
     console.warn('settings.js not loaded, using fallback');
   }
@@ -261,7 +222,7 @@ function initSettingsPage() {
 
 async function loadSettingsToForm() {
   if (typeof window.loadSettingsToFormFromSettings === 'function') {
-    await window.loadSettingsToFormFromSettings(DEFAULT_SETTINGS, loadAndApplySettings, initI18n);
+    await window.loadSettingsToFormFromSettings(AIModel.DEFAULT_SETTINGS, loadAndApplySettings, initI18n);
   } else {
     console.warn('settings.js not loaded, using fallback');
   }

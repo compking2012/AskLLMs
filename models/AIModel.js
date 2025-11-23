@@ -237,5 +237,60 @@ class AIModel {
   static createInstance(ModelClass) {
     return new ModelClass();
   }
+
+  /**
+   * 平台图标映射
+   */
+  static PLATFORM_ICONS = {
+    "ChatGPT": "icons/chatgpt.png",
+    "Claude": "icons/claude.png",
+    "Gemini": "icons/gemini.png",
+    "Grok": "icons/grok.png",
+    "千问": "icons/tongyi.png",
+    "豆包": "icons/doubao.png",
+    "DeepSeek": "icons/deepseek.png",
+    "Kimi": "icons/kimi.png",
+    "文心一言": "icons/wenxin.png",
+    "智谱清言": "icons/chatglm.png",
+    "MiniMax": "icons/minimax.png",
+    "腾讯元宝": "icons/yuanbao.png"
+  };
+
+  /**
+   * 平台名称到 i18n 键的映射（只对中文名字）
+   */
+  static PLATFORM_I18N_KEYS = {
+    "千问": "platformTongyi",
+    "豆包": "platformDoubao",
+    "文心一言": "platformWenxin",
+    "智谱清言": "platformChatGLM",
+    "腾讯元宝": "platformYuanbao"
+  };
+
+  /**
+   * 默认设置
+   */
+  static DEFAULT_SETTINGS = {
+    theme: 'auto',
+    language: 'auto',
+    visiblePlatforms: ['ChatGPT', 'Claude', 'Gemini', 'Grok', '千问', '豆包', 'DeepSeek', 'Kimi', '文心一言', '智谱清言', 'MiniMax', '腾讯元宝'],
+    tabGroupTitle: '',
+    colorMode: 'random',
+    fixedColor: 'blue'
+  };
+
+  /**
+   * 获取平台显示名称（支持 i18n）
+   * @param {string} platform - 平台名称
+   * @param {Function} i18n - i18n 函数
+   * @returns {string} 显示名称
+   */
+  static getPlatformDisplayName(platform, i18n) {
+    const i18nKey = AIModel.PLATFORM_I18N_KEYS[platform];
+    if (i18nKey && i18n) {
+      return i18n(i18nKey);
+    }
+    return platform; // 英文名字直接返回
+  }
 }
 
