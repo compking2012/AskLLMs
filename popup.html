@@ -552,15 +552,13 @@
     }
     
     .platform-btn.drag-selecting {
-      background: #e0e7ff !important;
-      transform: scale(1.1);
-      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-      z-index: 10;
+      background: transparent !important;
+      transform: translateY(-2px);
     }
     
     body.drag-select-mode .platform-btn:hover {
-      background: #e0e7ff !important;
-      transform: translateY(-2px) scale(1.05);
+      background: transparent !important;
+      transform: translateY(-2px);
     }
     
     /* 圆形进度条样式 */
@@ -871,6 +869,7 @@
   <!-- 设置页面容器（动态加载） -->
   <div id="settings-page-container"></div>
   <script src="models/AIModel.js"></script>
+  <script src="settings.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>
