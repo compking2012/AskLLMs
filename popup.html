@@ -406,8 +406,86 @@
       display: flex;
       gap: 12px;
       align-items: center;
-      margin-bottom: 20px;
+      margin-bottom: 12px;
       position: relative;
+    }
+    
+    .new-chat-toggle-wrapper {
+      display: flex;
+      justify-content: flex-start;
+      margin-bottom: 20px;
+    }
+    
+    .new-chat-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      background: #f3f4f6;
+      border: 1px solid #d1d5db;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      color: #6b7280;
+      transition: all 0.2s;
+      user-select: none;
+      outline: none;
+    }
+    
+    .new-chat-toggle-icon {
+      font-size: 14px;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .new-chat-toggle:hover {
+      background: #e5e7eb;
+      border-color: #9ca3af;
+    }
+    
+    .new-chat-toggle:active {
+      transform: scale(0.98);
+    }
+    
+    .new-chat-toggle.active {
+      background: #eef2ff;
+      border-color: #c7d2fe;
+      color: #6366f1;
+      box-shadow: none;
+    }
+    
+    .new-chat-toggle.active:hover {
+      background: #e0e7ff;
+      border-color: #a5b4fc;
+    }
+    
+    .new-chat-toggle.active:active {
+      transform: scale(0.98);
+    }
+    
+    body.dark-theme .new-chat-toggle {
+      background: #374151;
+      border-color: #4b5563;
+      color: #d1d5db;
+    }
+    
+    body.dark-theme .new-chat-toggle:hover {
+      background: #4b5563;
+      border-color: #6b7280;
+    }
+    
+    body.dark-theme .new-chat-toggle.active {
+      background: #312e81;
+      border-color: #4f46e5;
+      color: #a5b4fc;
+    }
+    
+    body.dark-theme .new-chat-toggle.active:hover {
+      background: #3730a3;
+      border-color: #6366f1;
     }
     
     .history-dropdown-wrapper {
@@ -1031,6 +1109,13 @@
       </div>
     </div>
     <button id="send-btn" data-i18n="sendButton">Send</button>
+  </div>
+  
+  <div class="new-chat-toggle-wrapper">
+    <button id="new-chat-toggle" class="new-chat-toggle" title="新对话" data-i18n-title="newChatToggle">
+      <span class="new-chat-toggle-icon">➕</span>
+      <span data-i18n="newChatLabel">新对话</span>
+    </button>
   </div>
   
   <div class="platforms-section">

@@ -262,11 +262,21 @@ class AIModel {
   }
 
   /**
+   * 开启新对话（可选方法，由子类实现）
+   * @returns {Promise<boolean>} 返回true表示成功，false表示失败或不需要
+   */
+  async startNewChat() {
+    // 默认实现：返回true表示不需要开启新对话或功能未实现
+    return true;
+  }
+
+  /**
    * 发送查询（抽象方法，由子类实现）
    * @param {string} query - 查询文本
+   * @param {boolean} startNewChat - 是否开启新对话
    * @returns {Promise<boolean>}
    */
-  async sendQuery(query) {
+  async sendQuery(query, startNewChat = false) {
     throw new Error('sendQuery must be implemented by subclass');
   }
 

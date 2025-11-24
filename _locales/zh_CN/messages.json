@@ -282,6 +282,14 @@
   "historyDelete": {
     "message": "删除",
     "description": "删除按钮提示"
+  },
+  "newChatToggle": {
+    "message": "新对话",
+    "description": "新对话切换按钮"
+  },
+  "newChatLabel": {
+    "message": "新对话",
+    "description": "新对话标签文本"
   }
 }
 

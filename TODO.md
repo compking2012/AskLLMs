@@ -7,6 +7,19 @@
 【done】7）可保存每次输入的内容，进行历史消息的管理
 【done】8）选择AI那块平台，可以支持按住鼠标滑动进行快速选中/未选中，不需要一个一个点
 9）每次发送时是新建一个对话，还是保留在上一个对话的上下文之中
+        -- 【done】ChatGPT
+        -- 【done】Claude
+        -- 【done】Gemini
+        -- 【done】Grok
+        -- 【done】千问
+        -- 【done】豆包
+        -- 【done】DeepSeek
+        -- 【done】Kimi
+        -- 【done】文心一言
+        -- 智谱清言：在工具栏选“推理”
+        -- MiniMax：不支持
+        -- 腾讯元宝：在工具栏选“深度思考”
+
 10）增加打开/关闭“深度思考”的功能（如果模型支持的话）
         -- ChatGPT：在“+”中打开或关闭“思考”
         -- Claude：在Search and Tools中打开Use style，选Normal和Thinking Claude

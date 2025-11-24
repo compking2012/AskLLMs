@@ -125,6 +125,7 @@ const progressCount = document.getElementById('progress-count');
 const progressDetail = document.getElementById('progress-detail');
 const historyBtn = document.getElementById('history-btn');
 const historyDropdown = document.getElementById('history-dropdown');
+let newChatToggle = null; // 延迟初始化
 
 // 页面元素
 const mainPage = document.getElementById('main-page');
@@ -400,6 +401,9 @@ async function initializeApp() {
   
   // 初始化历史记录下拉框
   await updateHistoryDropdown();
+  
+  // 初始化新对话 toggle
+  initNewChatToggle();
   
   // 检查并恢复进度
   await checkAndRestoreProgress();
@@ -1259,8 +1263,77 @@ document.addEventListener('click', (e) => {
   }
 });
 
+// 新对话 toggle 状态管理
+let startNewChatEnabled = false;
+
+// 加载新对话 toggle 状态
+async function loadNewChatToggleState() {
+  try {
+    const result = await new Promise(resolve => {
+      chrome.storage.local.get(['startNewChatEnabled'], resolve);
+    });
+    startNewChatEnabled = result.startNewChatEnabled || false;
+    updateNewChatToggleUI();
+  } catch (error) {
+    console.error('Failed to load new chat toggle state:', error);
+  }
+}
+
+// 保存新对话 toggle 状态
+async function saveNewChatToggleState(enabled) {
+  startNewChatEnabled = enabled;
+  try {
+    await new Promise(resolve => {
+      chrome.storage.local.set({ startNewChatEnabled: enabled }, resolve);
+    });
+  } catch (error) {
+    console.error('Failed to save new chat toggle state:', error);
+  }
+}
+
+// 更新新对话 toggle UI
+function updateNewChatToggleUI() {
+  if (newChatToggle) {
+    if (startNewChatEnabled) {
+      newChatToggle.classList.add('active');
+    } else {
+      newChatToggle.classList.remove('active');
+    }
+  }
+}
+
+// 初始化新对话 toggle
+function initNewChatToggle() {
+  newChatToggle = document.getElementById('new-chat-toggle');
+  if (newChatToggle) {
+    console.log('[Popup] Initializing new chat toggle button');
+    newChatToggle.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      startNewChatEnabled = !startNewChatEnabled;
+      console.log('[Popup] Toggle clicked, new state:', startNewChatEnabled);
+      await saveNewChatToggleState(startNewChatEnabled);
+      updateNewChatToggleUI();
+      
+      // 验证保存是否成功
+      const verify = await new Promise(resolve => {
+        chrome.storage.local.get(['startNewChatEnabled'], (result) => {
+          resolve(result.startNewChatEnabled);
+        });
+      });
+      console.log('[Popup] Verified saved state:', verify);
+    });
+    
+    // 加载初始状态
+    loadNewChatToggleState();
+  } else {
+    console.warn('[Popup] new-chat-toggle button not found');
+  }
+}
+
+
 // 发送函数
-function sendQuery() {
+async function sendQuery() {
   const query = textarea.value.trim();
   
   if (!query) {
@@ -1273,6 +1346,30 @@ function sendQuery() {
   if (selectedPlatforms.length === 0) {
     showStatus(i18n('errorNoPlatform'), 'error');
     return;
+  }
+  
+  // 确保读取最新的 toggle 状态（以防异步加载未完成）
+  await loadNewChatToggleState();
+  
+  // 再次确认状态（从存储中直接读取，确保是最新的）
+  const currentState = await new Promise(resolve => {
+    chrome.storage.local.get(['startNewChatEnabled'], (result) => {
+      resolve(result.startNewChatEnabled || false);
+    });
+  });
+  
+  // 同时检查 DOM 状态（双重验证）
+  const toggleButton = document.getElementById('new-chat-toggle');
+  const domState = toggleButton?.classList.contains('active') || false;
+  
+  startNewChatEnabled = currentState;
+  
+  console.log('[Popup] State check - Storage:', currentState, 'DOM:', domState, 'Variable:', startNewChatEnabled);
+  
+  // 如果 DOM 状态和存储状态不一致，以 DOM 状态为准（用户可能刚点击了但还没保存）
+  if (domState !== currentState) {
+    console.log('[Popup] State mismatch detected, using DOM state:', domState);
+    startNewChatEnabled = domState;
   }
   
   // 保存历史记录
@@ -1301,11 +1398,15 @@ function sendQuery() {
   }).catch(() => {});
   startProgressListening();
   
-  // 发送消息到 background，包含选中的平台
+  // 发送消息到 background，包含选中的平台和新对话状态
+  console.log('[Popup] Sending query with startNewChat:', startNewChatEnabled);
+  console.log('[Popup] Current state from storage:', currentState);
+  console.log('[Popup] Toggle button active state:', newChatToggle?.classList.contains('active'));
   chrome.runtime.sendMessage({ 
     action: 'sendToAllAIs', 
     query,
-    platforms: selectedPlatforms
+    platforms: selectedPlatforms,
+    startNewChat: startNewChatEnabled
   }, (response) => {
     if (chrome.runtime.lastError) {
       stopProgressListening();

@@ -282,6 +282,14 @@
   "historyDelete": {
     "message": "Delete",
     "description": "Delete button tooltip"
+  },
+  "newChatToggle": {
+    "message": "New Chat",
+    "description": "New chat toggle button"
+  },
+  "newChatLabel": {
+    "message": "New Chat",
+    "description": "New chat label text"
   }
 }
 
