@@ -123,6 +123,8 @@ const progressBar = document.getElementById('progress-bar');
 const progressText = document.getElementById('progress-text');
 const progressCount = document.getElementById('progress-count');
 const progressDetail = document.getElementById('progress-detail');
+const historyBtn = document.getElementById('history-btn');
+const historyDropdown = document.getElementById('history-dropdown');
 
 // 页面元素
 const mainPage = document.getElementById('main-page');
@@ -392,6 +394,12 @@ async function initializeApp() {
 
 // 加载设置
   await loadAndApplySettings();
+  
+  // 清理历史记录中的无效数据
+  await cleanQueryHistory();
+  
+  // 初始化历史记录下拉框
+  await updateHistoryDropdown();
   
   // 检查并恢复进度
   await checkAndRestoreProgress();
@@ -877,6 +885,380 @@ function stopProgressListening() {
 //   }
 // });
 
+// 历史记录管理
+const MAX_HISTORY_COUNT = 50; // 最多保存50条历史记录
+
+// 格式化日期时间
+function formatDateTime(timestamp) {
+  const date = new Date(timestamp);
+  const now = new Date();
+  const diff = now - date;
+  const isZh = getCurrentLanguageSync() === 'zh_CN';
+  
+  // 今天
+  if (diff < 24 * 60 * 60 * 1000 && date.getDate() === now.getDate()) {
+    return date.toLocaleTimeString(isZh ? 'zh-CN' : 'en-US', { hour: '2-digit', minute: '2-digit' });
+  }
+  
+  // 昨天
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (date.getDate() === yesterday.getDate() && date.getMonth() === yesterday.getMonth()) {
+    const yesterdayText = isZh ? '昨天' : 'Yesterday';
+    return yesterdayText + ' ' + date.toLocaleTimeString(isZh ? 'zh-CN' : 'en-US', { hour: '2-digit', minute: '2-digit' });
+  }
+  
+  // 一周内
+  if (diff < 7 * 24 * 60 * 60 * 1000) {
+    if (isZh) {
+      const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+      return weekdays[date.getDay()] + ' ' + date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    } else {
+      const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      return weekdays[date.getDay()] + ' ' + date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    }
+  }
+  
+  // 更早的日期
+  return date.toLocaleDateString(isZh ? 'zh-CN' : 'en-US', { month: '2-digit', day: '2-digit' }) + ' ' + 
+         date.toLocaleTimeString(isZh ? 'zh-CN' : 'en-US', { hour: '2-digit', minute: '2-digit' });
+}
+
+// 清理历史记录中的无效数据（兼容旧格式）
+async function cleanQueryHistory() {
+  try {
+    const result = await new Promise(resolve => {
+      chrome.storage.local.get(['queryHistory'], resolve);
+    });
+    
+    const history = result.queryHistory || [];
+    if (history.length === 0) return;
+    
+    // 检查是否是旧格式（字符串数组）
+    if (history.length > 0 && typeof history[0] === 'string') {
+      // 转换为新格式
+      const newHistory = history
+        .filter(item => item && typeof item === 'string' && item.trim() !== '' && item !== '[object Object]')
+        .map((query, index) => ({
+          query: query.trim(),
+          timestamp: Date.now() - (history.length - index) * 60000, // 假设每条间隔1分钟
+          pinned: false
+        }));
+      
+      await new Promise(resolve => {
+        chrome.storage.local.set({ queryHistory: newHistory }, resolve);
+      });
+    } else {
+      // 新格式，清理无效项
+      const cleanedHistory = history
+        .filter(item => item && typeof item === 'object' && item.query && typeof item.query === 'string' && item.query.trim() !== '')
+        .map(item => ({
+          query: item.query.trim(),
+          timestamp: item.timestamp || Date.now(),
+          pinned: item.pinned || false
+        }));
+      
+      if (cleanedHistory.length !== history.length) {
+        await new Promise(resolve => {
+          chrome.storage.local.set({ queryHistory: cleanedHistory }, resolve);
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Failed to clean query history:', error);
+  }
+}
+
+// 保存历史记录
+async function saveQueryHistory(query) {
+  // 确保 query 是字符串
+  const queryText = typeof query === 'string' ? query.trim() : String(query).trim();
+  
+  if (!queryText || queryText === '') return;
+  
+  try {
+    const result = await new Promise(resolve => {
+      chrome.storage.local.get(['queryHistory'], resolve);
+    });
+    
+    let history = result.queryHistory || [];
+    
+    // 兼容旧格式
+    if (history.length > 0 && typeof history[0] === 'string') {
+      await cleanQueryHistory();
+      const result2 = await new Promise(resolve => {
+        chrome.storage.local.get(['queryHistory'], resolve);
+      });
+      history = result2.queryHistory || [];
+    }
+    
+    // 移除重复项（如果存在）
+    history = history.filter(item => item.query !== queryText);
+    
+    // 添加到开头
+    history.unshift({
+      query: queryText,
+      timestamp: Date.now(),
+      pinned: false
+    });
+    
+    // 限制数量（保留置顶项）
+    const pinnedCount = history.filter(item => item.pinned).length;
+    const nonPinned = history.filter(item => !item.pinned);
+    const maxNonPinned = Math.max(0, MAX_HISTORY_COUNT - pinnedCount);
+    
+    if (nonPinned.length > maxNonPinned) {
+      const pinned = history.filter(item => item.pinned);
+      history = [...pinned, ...nonPinned.slice(0, maxNonPinned)];
+    }
+    
+    // 保存
+    await new Promise(resolve => {
+      chrome.storage.local.set({ queryHistory: history }, resolve);
+    });
+    
+    // 更新下拉框显示
+    updateHistoryDropdown();
+  } catch (error) {
+    console.error('Failed to save query history:', error);
+  }
+}
+
+// 加载历史记录
+async function loadQueryHistory() {
+  try {
+    const result = await new Promise(resolve => {
+      chrome.storage.local.get(['queryHistory'], resolve);
+    });
+    const history = result.queryHistory || [];
+    
+    // 兼容旧格式
+    if (history.length > 0 && typeof history[0] === 'string') {
+      await cleanQueryHistory();
+      const result2 = await new Promise(resolve => {
+        chrome.storage.local.get(['queryHistory'], resolve);
+      });
+      return result2.queryHistory || [];
+    }
+    
+    // 清理无效项
+    return history.filter(item => 
+      item && 
+      typeof item === 'object' && 
+      item.query && 
+      typeof item.query === 'string' && 
+      item.query.trim() !== ''
+    );
+  } catch (error) {
+    console.error('Failed to load query history:', error);
+    return [];
+  }
+}
+
+// 删除历史记录
+async function deleteHistoryItem(queryText) {
+  try {
+    const history = await loadQueryHistory();
+    const filteredHistory = history.filter(item => item.query !== queryText);
+    
+    await new Promise(resolve => {
+      chrome.storage.local.set({ queryHistory: filteredHistory }, resolve);
+    });
+    
+    updateHistoryDropdown();
+  } catch (error) {
+    console.error('Failed to delete history item:', error);
+  }
+}
+
+// 切换置顶状态
+async function togglePinHistoryItem(queryText) {
+  try {
+    const history = await loadQueryHistory();
+    const item = history.find(item => item.query === queryText);
+    if (!item) return;
+    
+    item.pinned = !item.pinned;
+    
+    // 重新排序：置顶项在前
+    const pinned = history.filter(item => item.pinned);
+    const nonPinned = history.filter(item => !item.pinned);
+    const sortedHistory = [...pinned, ...nonPinned];
+    
+    await new Promise(resolve => {
+      chrome.storage.local.set({ queryHistory: sortedHistory }, resolve);
+    });
+    
+    updateHistoryDropdown();
+  } catch (error) {
+    console.error('Failed to toggle pin history item:', error);
+  }
+}
+
+// 移动历史记录到新位置
+async function moveHistoryItemToPosition(queryText, newIndex) {
+  try {
+    const history = await loadQueryHistory();
+    const oldIndex = history.findIndex(item => item.query === queryText);
+    if (oldIndex === -1 || oldIndex === newIndex) return;
+    
+    // 移除旧位置的项
+    const [movedItem] = history.splice(oldIndex, 1);
+    // 插入到新位置
+    history.splice(newIndex, 0, movedItem);
+    
+    await new Promise(resolve => {
+      chrome.storage.local.set({ queryHistory: history }, resolve);
+    });
+    
+    updateHistoryDropdown();
+  } catch (error) {
+    console.error('Failed to move history item:', error);
+  }
+}
+
+// 更新历史记录下拉框显示
+async function updateHistoryDropdown() {
+  const history = await loadQueryHistory();
+  const emptyDiv = historyDropdown.querySelector('.history-empty');
+  
+  // 清除现有项目（除了空提示）
+  const existingItems = historyDropdown.querySelectorAll('.history-item');
+  existingItems.forEach(item => item.remove());
+  
+  if (history.length === 0) {
+    if (emptyDiv) {
+      emptyDiv.style.display = 'block';
+    }
+  } else {
+    if (emptyDiv) {
+      emptyDiv.style.display = 'none';
+    }
+    
+    // 添加历史记录项
+    history.forEach((item, index) => {
+      const queryText = item.query;
+      
+      // 跳过无效的查询
+      if (!queryText || queryText.trim() === '') {
+        return;
+      }
+      
+      const historyItem = document.createElement('div');
+      historyItem.className = 'history-item' + (item.pinned ? ' pinned' : '');
+      historyItem.dataset.query = queryText;
+      
+      // 拖拽手柄 - 已禁用
+      // const dragHandle = document.createElement('div');
+      // dragHandle.className = 'history-item-drag-handle';
+      // dragHandle.textContent = '⋮⋮';
+      // dragHandle.draggable = false;
+      
+      // 让整个历史记录项可拖拽 - 已禁用
+      historyItem.draggable = false;
+      
+      // 内容区域
+      const contentDiv = document.createElement('div');
+      contentDiv.className = 'history-item-content';
+      
+      const textDiv = document.createElement('div');
+      textDiv.className = 'history-item-text';
+      textDiv.textContent = queryText;
+      
+      contentDiv.appendChild(textDiv);
+      
+      // 元数据区域
+      const metaDiv = document.createElement('div');
+      metaDiv.className = 'history-item-meta';
+      
+      const timeDiv = document.createElement('div');
+      timeDiv.className = 'history-item-time';
+      timeDiv.textContent = formatDateTime(item.timestamp);
+      
+      const actionsDiv = document.createElement('div');
+      actionsDiv.className = 'history-item-actions';
+      
+      // 置顶按钮 - 已禁用
+      // const pinBtn = document.createElement('button');
+      // pinBtn.className = 'history-action-btn';
+      // pinBtn.textContent = item.pinned ? '📌' : '📍';
+      // pinBtn.title = item.pinned ? i18n('historyUnpin') : i18n('historyPin');
+      // pinBtn.addEventListener('click', (e) => {
+      //   e.stopPropagation();
+      //   togglePinHistoryItem(queryText);
+      // });
+      
+      // 删除按钮
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'history-action-btn delete';
+      deleteBtn.textContent = '🗑️';
+      deleteBtn.title = i18n('historyDelete');
+      deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteHistoryItem(queryText);
+      });
+      
+      // actionsDiv.appendChild(pinBtn); // 置顶按钮已禁用
+      actionsDiv.appendChild(deleteBtn);
+      
+      // 拖拽功能 - 已禁用
+      // 所有拖拽相关的事件监听器都已注释掉
+      
+      metaDiv.appendChild(timeDiv);
+      metaDiv.appendChild(actionsDiv);
+      
+      // historyItem.appendChild(dragHandle); // 拖拽手柄已禁用
+      historyItem.appendChild(contentDiv);
+      historyItem.appendChild(metaDiv);
+      
+      // 点击整个历史记录项填充输入框（排除操作按钮）
+      const handleItemClick = (e) => {
+        // 如果点击的是操作按钮，不处理
+        if (e.target.closest('.history-item-actions')) {
+          return;
+        }
+        textarea.value = queryText;
+        textarea.focus();
+        // 自动调整高度
+        textarea.style.height = 'auto';
+        textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
+        // 关闭下拉框
+        historyDropdown.classList.remove('show');
+      };
+      
+      historyItem.addEventListener('click', handleItemClick);
+      contentDiv.addEventListener('click', handleItemClick);
+      
+      historyDropdown.appendChild(historyItem);
+    });
+  }
+}
+
+// 切换历史记录下拉框
+function toggleHistoryDropdown() {
+  historyDropdown.classList.toggle('show');
+  if (historyDropdown.classList.contains('show')) {
+    updateHistoryDropdown();
+  }
+}
+
+// 点击历史记录按钮
+if (historyBtn) {
+  historyBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleHistoryDropdown();
+  });
+}
+
+// 点击外部关闭下拉框
+document.addEventListener('click', (e) => {
+  if (historyDropdown && historyBtn && 
+      !historyDropdown.contains(e.target) && 
+      !historyBtn.contains(e.target)) {
+    historyDropdown.classList.remove('show');
+  }
+});
+
 // 发送函数
 function sendQuery() {
   const query = textarea.value.trim();
@@ -892,6 +1274,9 @@ function sendQuery() {
     showStatus(i18n('errorNoPlatform'), 'error');
     return;
   }
+  
+  // 保存历史记录
+  saveQueryHistory(query);
   
   // 禁用输入框和按钮
   textarea.disabled = true;

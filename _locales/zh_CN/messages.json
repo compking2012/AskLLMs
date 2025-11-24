@@ -254,6 +254,34 @@
         "example": "ChatGPT"
       }
     }
+  },
+  "historyTitle": {
+    "message": "历史记录",
+    "description": "历史记录按钮标题"
+  },
+  "historyEmpty": {
+    "message": "暂无历史记录",
+    "description": "历史记录为空时的提示"
+  },
+  "historyPin": {
+    "message": "置顶",
+    "description": "置顶按钮提示"
+  },
+  "historyUnpin": {
+    "message": "取消置顶",
+    "description": "取消置顶按钮提示"
+  },
+  "historyMoveUp": {
+    "message": "上移",
+    "description": "上移按钮提示"
+  },
+  "historyMoveDown": {
+    "message": "下移",
+    "description": "下移按钮提示"
+  },
+  "historyDelete": {
+    "message": "删除",
+    "description": "删除按钮提示"
   }
 }
 

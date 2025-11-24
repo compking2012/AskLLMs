@@ -254,6 +254,34 @@
         "example": "ChatGPT"
       }
     }
+  },
+  "historyTitle": {
+    "message": "History",
+    "description": "History button title"
+  },
+  "historyEmpty": {
+    "message": "No history",
+    "description": "Message when history is empty"
+  },
+  "historyPin": {
+    "message": "Pin",
+    "description": "Pin button tooltip"
+  },
+  "historyUnpin": {
+    "message": "Unpin",
+    "description": "Unpin button tooltip"
+  },
+  "historyMoveUp": {
+    "message": "Move up",
+    "description": "Move up button tooltip"
+  },
+  "historyMoveDown": {
+    "message": "Move down",
+    "description": "Move down button tooltip"
+  },
+  "historyDelete": {
+    "message": "Delete",
+    "description": "Delete button tooltip"
   }
 }
 
