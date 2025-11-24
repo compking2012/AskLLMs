@@ -1171,26 +1171,13 @@ async function updateHistoryDropdown() {
       
       contentDiv.appendChild(textDiv);
       
-      // 元数据区域
+      // 元数据区域 - 时间和删除按钮在同一行
       const metaDiv = document.createElement('div');
       metaDiv.className = 'history-item-meta';
       
       const timeDiv = document.createElement('div');
       timeDiv.className = 'history-item-time';
       timeDiv.textContent = formatDateTime(item.timestamp);
-      
-      const actionsDiv = document.createElement('div');
-      actionsDiv.className = 'history-item-actions';
-      
-      // 置顶按钮 - 已禁用
-      // const pinBtn = document.createElement('button');
-      // pinBtn.className = 'history-action-btn';
-      // pinBtn.textContent = item.pinned ? '📌' : '📍';
-      // pinBtn.title = item.pinned ? i18n('historyUnpin') : i18n('historyPin');
-      // pinBtn.addEventListener('click', (e) => {
-      //   e.stopPropagation();
-      //   togglePinHistoryItem(queryText);
-      // });
       
       // 删除按钮
       const deleteBtn = document.createElement('button');
@@ -1202,14 +1189,8 @@ async function updateHistoryDropdown() {
         deleteHistoryItem(queryText);
       });
       
-      // actionsDiv.appendChild(pinBtn); // 置顶按钮已禁用
-      actionsDiv.appendChild(deleteBtn);
-      
-      // 拖拽功能 - 已禁用
-      // 所有拖拽相关的事件监听器都已注释掉
-      
       metaDiv.appendChild(timeDiv);
-      metaDiv.appendChild(actionsDiv);
+      metaDiv.appendChild(deleteBtn);
       
       // historyItem.appendChild(dragHandle); // 拖拽手柄已禁用
       historyItem.appendChild(contentDiv);
