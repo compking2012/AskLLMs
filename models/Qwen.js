@@ -62,7 +62,85 @@ class Qwen extends AIModel {
    * @returns {string}
    */
   getDeepThinkButtonSelector() {
-    return ''; // TODO: 实现选择器
+    return 'div[data-log-name="tool_bar"][data-log-params*="deepThink"]';
+  }
+
+  /**
+   * 判断是否可进行深度思考
+   * @returns {boolean} 千问支持深度思考
+   */
+  canDeepThink() {
+    return true;
+  }
+
+  /**
+   * 启用深度思考（千问特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async enableDeepThink() {
+    try {
+      console.log(`[MultiAI] ${this.name} - enabling deep think...`);
+      
+      // 先尝试通过选择器查找
+      let btn = await this.waitForElement(this.getDeepThinkButtonSelector(), 5000);
+      
+      if (!btn) {
+        console.log(`[MultiAI] ${this.name} deep think button not found, skipping...`);
+        return true;
+      }
+      
+      // 检查是否已经激活（通过类名或其他属性判断）
+      // 千问的深度思考按钮点击即可切换，所以直接点击
+      btn.click();
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      
+      console.log(`[MultiAI] ${this.name} deep think enabled ✓`);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to enable deep think:`, error);
+      return true; // 即使失败也继续执行
+    }
+  }
+
+  /**
+   * 禁用深度思考（千问特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async disableDeepThink() {
+    try {
+      console.log(`[MultiAI] ${this.name} - disabling deep think...`);
+      
+      // 先尝试通过选择器查找深度思考按钮
+      let deepThinkBtn = await this.waitForElement(this.getDeepThinkButtonSelector(), 5000);
+           
+      if (!deepThinkBtn) {
+        console.log(`[MultiAI] ${this.name} deep think button not found, skipping...`);
+        return true;
+      }
+      
+      // 检查是否已激活（通过 selected- 类名判断）
+      const isActive = deepThinkBtn.classList.toString().includes('selected-');
+      
+      if (isActive) {
+        // 如果已激活，查找内部的关闭按钮并点击
+        let closeBtn = deepThinkBtn.querySelector('div.flex.items-center.justify-center.overflow-hidden');
+           
+        if (closeBtn) {
+          closeBtn.click();
+          await new Promise(resolve => setTimeout(resolve, 500));
+          console.log(`[MultiAI] ${this.name} deep think disabled ✓`);
+        } else {
+          console.log(`[MultiAI] ${this.name} close button not found, skipping...`);
+        }
+      } else {
+        console.log(`[MultiAI] ${this.name} deep think is not active, skipping...`);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to disable deep think:`, error);
+      return true; // 即使失败也继续执行
+    }
   }
 
   /**
@@ -83,14 +161,22 @@ class Qwen extends AIModel {
       await this.startNewChat();
     }
     
-    // 如果启用了深度思考，先启用深度思考
+    // 如果启用了深度思考，先启用深度思考，否则禁用
+    if (this.canDeepThink()) {
     if (deepThink) {
       await this.enableDeepThink();
+      } else {
+        await this.disableDeepThink();
+      }
     }
     
-    // 如果启用了网络搜索，先启用网络搜索
+    // 如果启用了网络搜索，先启用网络搜索，否则禁用
+    if (this.canWebSearch()) {
     if (webSearch) {
       await this.enableWebSearch();
+      } else {
+        await this.disableWebSearch();
+      }
     }
     
     console.log(`[MultiAI] ${this.name} - waiting for input...`);

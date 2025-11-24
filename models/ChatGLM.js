@@ -97,7 +97,117 @@ class ChatGLM extends AIModel {
    * @returns {string}
    */
   getDeepThinkButtonSelector() {
-    return ''; // TODO: 实现选择器
+    return 'div.mode-button'; // 需要通过文本内容进一步筛选
+  }
+
+  /**
+   * 判断是否可进行深度思考
+   * @returns {boolean} 智谱清言支持深度思考
+   */
+  canDeepThink() {
+    return true;
+  }
+
+  /**
+   * 启用深度思考（ChatGLM 特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async enableDeepThink() {
+    try {
+      console.log(`[MultiAI] ${this.name} - enabling deep think...`);
+      
+      // 等待模式按钮出现
+      const maxWaitTime = 5000;
+      const startTime = Date.now();
+      let btn = null;
+      
+      while (!btn && (Date.now() - startTime) < maxWaitTime) {
+        // 查找所有模式按钮
+        const modeButtons = document.querySelectorAll('div.mode-button');
+        
+        for (const button of modeButtons) {
+          // 查找包含"推理"文本的span
+          const spans = button.querySelectorAll('span');
+          for (const span of spans) {
+            if (span.textContent.trim() === '推理') {
+              btn = button;
+              break;
+            }
+          }
+          if (btn) break;
+        }
+        
+        if (!btn) {
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
+      }
+      
+      if (!btn) {
+        console.log(`[MultiAI] ${this.name} deep think button not found, skipping...`);
+        return true;
+      }
+      
+      // ChatGLM 的深度思考按钮点击即可切换
+      btn.click();
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      console.log(`[MultiAI] ${this.name} deep think enabled ✓`);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to enable deep think:`, error);
+      return true; // 即使失败也继续执行
+    }
+  }
+
+  /**
+   * 禁用深度思考（ChatGLM 特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async disableDeepThink() {
+    try {
+      console.log(`[MultiAI] ${this.name} - disabling deep think...`);
+      
+      // 等待模式按钮出现
+      const maxWaitTime = 5000;
+      const startTime = Date.now();
+      let btn = null;
+      
+      while (!btn && (Date.now() - startTime) < maxWaitTime) {
+        // 查找所有模式按钮
+        const modeButtons = document.querySelectorAll('div.mode-button');
+        
+        for (const button of modeButtons) {
+          // 查找包含"推理"文本的span
+          const spans = button.querySelectorAll('span');
+          for (const span of spans) {
+            if (span.textContent.trim() === '推理') {
+              btn = button;
+              break;
+            }
+          }
+          if (btn) break;
+        }
+        
+        if (!btn) {
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
+      }
+      
+      if (!btn) {
+        console.log(`[MultiAI] ${this.name} deep think button not found, skipping...`);
+        return true;
+      }
+      
+      // ChatGLM 的深度思考按钮点击即可切换
+      btn.click();
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      console.log(`[MultiAI] ${this.name} deep think disabled ✓`);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to disable deep think:`, error);
+      return true; // 即使失败也继续执行
+    }
   }
 
   /**
@@ -118,14 +228,22 @@ class ChatGLM extends AIModel {
       await this.startNewChat();
     }
     
-    // 如果启用了深度思考，先启用深度思考
+    // 如果启用了深度思考，先启用深度思考，否则禁用
+    if (this.canDeepThink()) {
     if (deepThink) {
       await this.enableDeepThink();
+      } else {
+        await this.disableDeepThink();
+      }
     }
     
-    // 如果启用了网络搜索，先启用网络搜索
+    // 如果启用了网络搜索，先启用网络搜索，否则禁用
+    if (this.canWebSearch()) {
     if (webSearch) {
       await this.enableWebSearch();
+      } else {
+        await this.disableWebSearch();
+      }
     }
     
     console.log(`[MultiAI] ${this.name} - waiting for input...`);

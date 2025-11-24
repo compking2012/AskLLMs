@@ -64,7 +64,87 @@ class Yuanbao extends AIModel {
    * @returns {string}
    */
   getDeepThinkButtonSelector() {
-    return ''; // TODO: 实现选择器
+    return 'div[dt-button-id="deep_think"]';
+  }
+
+  /**
+   * 判断是否可进行深度思考
+   * @returns {boolean} 腾讯元宝支持深度思考
+   */
+  canDeepThink() {
+    return true;
+  }
+
+  /**
+   * 启用深度思考（元宝特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async enableDeepThink() {
+    try {
+      console.log(`[MultiAI] ${this.name} - enabling deep think...`);
+      
+      // 先尝试通过选择器查找
+      let btn = await this.waitForElement(this.getDeepThinkButtonSelector(), 5000);
+           
+      if (!btn) {
+        console.log(`[MultiAI] ${this.name} deep think button not found, skipping...`);
+        return true;
+      }
+      
+      // 检查 dt-model-id 属性，判断是否已启用深度思考
+      const modelId = btn.getAttribute('dt-model-id');
+      const isActive = modelId === 'deep_seek_v3' || modelId === 'hunyuan_t1';
+      
+      if (!isActive) {
+        // 如果未启用，点击按钮启用
+        btn.click();
+        await new Promise(resolve => setTimeout(resolve, 500));
+        console.log(`[MultiAI] ${this.name} deep think enabled ✓`);
+      } else {
+        console.log(`[MultiAI] ${this.name} deep think already enabled ✓`);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to enable deep think:`, error);
+      return true; // 即使失败也继续执行
+    }
+  }
+
+  /**
+   * 禁用深度思考（元宝特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async disableDeepThink() {
+    try {
+      console.log(`[MultiAI] ${this.name} - disabling deep think...`);
+      
+      // 先尝试通过选择器查找
+      let btn = await this.waitForElement(this.getDeepThinkButtonSelector(), 5000);
+            
+      if (!btn) {
+        console.log(`[MultiAI] ${this.name} deep think button not found, skipping...`);
+        return true;
+      }
+      
+      // 检查 dt-model-id 属性，判断是否已启用深度思考
+      const modelId = btn.getAttribute('dt-model-id');
+      const isActive = modelId === 'deep_seek' || modelId === 'hunyuan_gpt_175B_0404';
+      
+      if (!isActive) {
+        // 如果已启用，点击按钮禁用
+        btn.click();
+        await new Promise(resolve => setTimeout(resolve, 500));
+        console.log(`[MultiAI] ${this.name} deep think disabled ✓`);
+      } else {
+        console.log(`[MultiAI] ${this.name} deep think already disabled ✓`);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to disable deep think:`, error);
+      return true; // 即使失败也继续执行
+    }
   }
 
   /**
@@ -85,14 +165,22 @@ class Yuanbao extends AIModel {
       await this.startNewChat();
     }
     
-    // 如果启用了深度思考，先启用深度思考
-    if (deepThink) {
-      await this.enableDeepThink();
+    // 如果启用了深度思考，先启用深度思考，否则禁用
+    if (this.canDeepThink()) {
+      if (deepThink) {
+        await this.enableDeepThink();
+      } else {
+        await this.disableDeepThink();
+      }
     }
     
-    // 如果启用了网络搜索，先启用网络搜索
-    if (webSearch) {
-      await this.enableWebSearch();
+    // 如果启用了网络搜索，先启用网络搜索，否则禁用
+    if (this.canWebSearch()) {
+      if (webSearch) {
+        await this.enableWebSearch();
+      } else {
+        await this.disableWebSearch();
+      }
     }
     
     console.log(`[MultiAI] ${this.name} - waiting for input...`);

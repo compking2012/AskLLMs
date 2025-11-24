@@ -67,6 +67,23 @@ class ChatGPT extends AIModel {
   }
 
   /**
+   * 判断是否可进行深度思考
+   * @returns {boolean} ChatGPT 不支持深度思考
+   */
+  canDeepThink() {
+    return false;
+  }
+
+  /**
+   * 禁用深度思考（ChatGPT 不支持深度思考）
+   * @returns {Promise<boolean>}
+   */
+  async disableDeepThink() {
+    // ChatGPT 不支持深度思考，直接返回 true 表示跳过
+    return true;
+  }
+
+  /**
    * 获取网络搜索按钮选择器
    * @returns {string}
    */
@@ -225,14 +242,22 @@ class ChatGPT extends AIModel {
       await this.startNewChat();
     }
     
-    // 如果启用了深度思考，先启用深度思考
+    // 如果启用了深度思考，先启用深度思考，否则禁用
+    if (this.canDeepThink()) {
     if (deepThink) {
       await this.enableDeepThink();
+      } else {
+        await this.disableDeepThink();
+      }
     }
     
-    // 如果启用了网络搜索，先启用网络搜索
+    // 如果启用了网络搜索，先启用网络搜索，否则禁用
+    if (this.canWebSearch()) {
     if (webSearch) {
       await this.enableWebSearch();
+      } else {
+        await this.disableWebSearch();
+      }
     }
     
     console.log(`[MultiAI] ${this.name} - waiting for input...`);

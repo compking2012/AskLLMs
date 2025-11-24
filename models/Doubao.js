@@ -62,7 +62,167 @@ class Doubao extends AIModel {
    * @returns {string}
    */
   getDeepThinkButtonSelector() {
-    return ''; // TODO: 实现选择器
+    return 'div[data-testid="use-deep-thinking-switch-btn"]';
+  }
+
+  /**
+   * 判断是否可进行深度思考
+   * @returns {boolean} 豆包支持深度思考
+   */
+  canDeepThink() {
+    return true;
+  }
+
+  /**
+   * 启用深度思考（豆包特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async enableDeepThink() {
+    try {
+      console.log(`[MultiAI] ${this.name} - enabling deep think...`);
+      
+      const div = await this.waitForElement(this.getDeepThinkButtonSelector(), 5000);
+      if (!div) {
+        console.log(`[MultiAI] ${this.name} deep think div not found, skipping...`);
+        return true;
+      }
+      
+      // 查找内部的 button 元素来检查状态
+      const btn = div.querySelector('button');
+      if (!btn) {
+        console.log(`[MultiAI] ${this.name} button not found inside div, skipping...`);
+        return true;
+      }
+      
+      // 检查按钮是否已经激活（通过 data-checked 属性）
+      let isActive = btn.getAttribute('data-checked') === 'true';
+      
+      if (!isActive) {
+        // 尝试多种方式点击
+        // 方法1: 滚动到元素位置
+        div.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // 方法2: 在 button 上触发完整的鼠标事件
+        const mouseEvents = ['mousedown', 'mouseup', 'click'];
+        for (const eventType of mouseEvents) {
+          const event = new MouseEvent(eventType, {
+            view: window,
+            bubbles: true,
+            cancelable: true,
+            buttons: 1
+          });
+          btn.dispatchEvent(event);
+        }
+        
+        // 方法3: 也在 div 上点击
+        div.click();
+        
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // 重新检查状态
+        const newBtn = div.querySelector('button');
+        if (newBtn) {
+          isActive = newBtn.getAttribute('data-checked') === 'true';
+          
+          // 如果还是没有激活，尝试再次点击
+          if (!isActive) {
+            console.log(`[MultiAI] ${this.name} deep think not activated, retrying...`);
+            btn.click();
+            div.click();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // 最后检查状态
+            const finalBtn = div.querySelector('button');
+            if (finalBtn) {
+              isActive = finalBtn.getAttribute('data-checked') === 'true';
+            }
+          }
+        }
+      }
+      
+      console.log(`[MultiAI] ${this.name} deep think enabled ✓`, isActive);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to enable deep think:`, error);
+      return true; // 即使失败也继续执行
+    }
+  }
+
+  /**
+   * 禁用深度思考（豆包特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async disableDeepThink() {
+    try {
+      console.log(`[MultiAI] ${this.name} - disabling deep think...`);
+      
+      const div = await this.waitForElement(this.getDeepThinkButtonSelector(), 5000);
+      if (!div) {
+        console.log(`[MultiAI] ${this.name} deep think div not found, skipping...`);
+        return true;
+      }
+      
+      // 查找内部的 button 元素来检查状态
+      const btn = div.querySelector('button');
+      if (!btn) {
+        console.log(`[MultiAI] ${this.name} button not found inside div, skipping...`);
+        return true;
+      }
+      
+      // 检查按钮是否已经激活（通过 data-checked 属性）
+      let isActive = btn.getAttribute('data-checked') === 'true';
+      
+      if (isActive) {
+        // 尝试多种方式点击
+        // 方法1: 滚动到元素位置
+        div.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // 方法2: 在 button 上触发完整的鼠标事件
+        const mouseEvents = ['mousedown', 'mouseup', 'click'];
+        for (const eventType of mouseEvents) {
+          const event = new MouseEvent(eventType, {
+            view: window,
+            bubbles: true,
+            cancelable: true,
+            buttons: 1
+          });
+          btn.dispatchEvent(event);
+        }
+        
+        // 方法3: 也在 div 上点击
+        div.click();
+        
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // 重新检查状态
+        const newBtn = div.querySelector('button');
+        if (newBtn) {
+          isActive = newBtn.getAttribute('data-checked') === 'true';
+          
+          // 如果还是激活状态，尝试再次点击
+          if (isActive) {
+            console.log(`[MultiAI] ${this.name} deep think not deactivated, retrying...`);
+            btn.click();
+            div.click();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // 最后检查状态
+            const finalBtn = div.querySelector('button');
+            if (finalBtn) {
+              isActive = finalBtn.getAttribute('data-checked') === 'true';
+            }
+          }
+        }
+      }
+      
+      console.log(`[MultiAI] ${this.name} deep think disabled ✓`, !isActive);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to disable deep think:`, error);
+      return true; // 即使失败也继续执行
+    }
   }
 
   /**
@@ -83,14 +243,22 @@ class Doubao extends AIModel {
       await this.startNewChat();
     }
     
-    // 如果启用了深度思考，先启用深度思考
+    // 如果启用了深度思考，先启用深度思考，否则禁用
+    if (this.canDeepThink()) {
     if (deepThink) {
       await this.enableDeepThink();
+      } else {
+        await this.disableDeepThink();
+      }
     }
     
-    // 如果启用了网络搜索，先启用网络搜索
+    // 如果启用了网络搜索，先启用网络搜索，否则禁用
+    if (this.canWebSearch()) {
     if (webSearch) {
       await this.enableWebSearch();
+      } else {
+        await this.disableWebSearch();
+      }
     }
     
     console.log(`[MultiAI] ${this.name} - waiting for input...`);

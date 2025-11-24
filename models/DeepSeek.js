@@ -98,7 +98,113 @@ class DeepSeek extends AIModel {
    * @returns {string}
    */
   getDeepThinkButtonSelector() {
-    return ''; // TODO: 实现选择器
+    return 'button.ds-toggle-button:first-of-type';
+  }
+
+  /**
+   * 判断是否可进行深度思考
+   * @returns {boolean} DeepSeek 支持深度思考
+   */
+  canDeepThink() {
+    return true;
+  }
+
+  /**
+   * 启用深度思考（DeepSeek 特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async enableDeepThink() {
+    try {
+      console.log(`[MultiAI] ${this.name} - enabling deep think...`);
+      
+      // 先尝试通过选择器查找
+      let btn = await this.waitForElement(this.getDeepThinkButtonSelector(), 5000);
+      
+      if (!btn) {
+        console.log(`[MultiAI] ${this.name} deep think button not found, skipping...`);
+        return true;
+      }
+      
+      // 检查按钮是否已经激活（通过 aria-pressed 或 class 判断）
+      let isActive = btn.classList.contains('ds-toggle-button--selected')
+      
+      if (!isActive) {       
+        // 尝试多种方式点击
+        // 方法1: 滚动到元素位置
+        btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // 方法2: 触发完整的鼠标事件序列
+        const mouseEvents = ['mousedown', 'mouseup', 'click'];
+        for (const eventType of mouseEvents) {
+          const event = new MouseEvent(eventType, {
+            view: window,
+            bubbles: true,
+            cancelable: true,
+            buttons: 1
+          });
+          btn.dispatchEvent(event);
+        }
+        
+        // 方法3: 直接点击
+        btn.click();
+      }
+      
+      console.log(`[MultiAI] ${this.name} deep think enabled ✓`, isActive);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to enable deep think:`, error);
+      return true; // 即使失败也继续执行
+    }
+  }
+
+  /**
+   * 禁用深度思考（DeepSeek 特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async disableDeepThink() {
+    try {
+      console.log(`[MultiAI] ${this.name} - disabling deep think...`);
+      
+      // 先尝试通过选择器查找
+      let btn = await this.waitForElement(this.getDeepThinkButtonSelector(), 5000);
+      
+      if (!btn) {
+        console.log(`[MultiAI] ${this.name} deep think button not found, skipping...`);
+        return true;
+      }
+      
+      // 检查按钮是否已经激活（通过 aria-pressed 或 class 判断）
+      let isActive = btn.classList.contains('ds-toggle-button--selected');
+      
+      if (isActive) {
+        // 尝试多种方式点击
+        // 方法1: 滚动到元素位置
+        btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // 方法2: 触发完整的鼠标事件序列
+        const mouseEvents = ['mousedown', 'mouseup', 'click'];
+        for (const eventType of mouseEvents) {
+          const event = new MouseEvent(eventType, {
+            view: window,
+            bubbles: true,
+            cancelable: true,
+            buttons: 1
+          });
+          btn.dispatchEvent(event);
+        }
+        
+        // 方法3: 直接点击
+        btn.click();
+      }
+      
+      console.log(`[MultiAI] ${this.name} deep think disabled ✓`, !isActive);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to disable deep think:`, error);
+      return true; // 即使失败也继续执行
+    }
   }
 
   /**
@@ -119,14 +225,22 @@ class DeepSeek extends AIModel {
       await this.startNewChat();
     }
     
-    // 如果启用了深度思考，先启用深度思考
+    // 如果启用了深度思考，先启用深度思考，否则禁用
+    if (this.canDeepThink()) {
     if (deepThink) {
       await this.enableDeepThink();
+      } else {
+        await this.disableDeepThink();
+      }
     }
     
-    // 如果启用了网络搜索，先启用网络搜索
+    // 如果启用了网络搜索，先启用网络搜索，否则禁用
+    if (this.canWebSearch()) {
     if (webSearch) {
       await this.enableWebSearch();
+      } else {
+        await this.disableWebSearch();
+      }
     }
     
     console.log(`[MultiAI] ${this.name} - waiting for input...`);

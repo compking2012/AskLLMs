@@ -287,6 +287,14 @@ class AIModel {
   }
 
   /**
+   * 判断是否可进行深度思考
+   * @returns {boolean} 返回true表示支持深度思考，false表示不支持
+   */
+  canDeepThink() {
+    return true; // 默认返回true，子类可以重写此方法
+  }
+
+  /**
    * 启用深度思考（可选方法，由子类实现）
    * @returns {Promise<boolean>} 返回true表示成功，false表示失败或不需要
    */
@@ -322,11 +330,54 @@ class AIModel {
   }
 
   /**
+   * 禁用深度思考（可选方法，由子类实现）
+   * @returns {Promise<boolean>} 返回true表示成功，false表示失败或不需要
+   */
+  async disableDeepThink() {
+    try {
+      const selector = this.getDeepThinkButtonSelector();
+      if (!selector) {
+        return true; // 如果未实现，返回true表示跳过
+      }
+      
+      const btn = await this.waitForElement(selector, 5000);
+      if (!btn) {
+        console.log(`[MultiAI] ${this.name} deep think button not found, skipping...`);
+        return true;
+      }
+      
+      // 检查按钮是否已经激活
+      const isActive = btn.checked || btn.classList.contains('active') || 
+                       btn.getAttribute('aria-pressed') === 'true' ||
+                       btn.getAttribute('data-active') === 'true';
+      
+      if (isActive) {
+        btn.click();
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      
+      console.log(`[MultiAI] ${this.name} deep think disabled ✓`);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to disable deep think:`, error);
+      return true; // 即使失败也继续执行
+    }
+  }
+
+  /**
    * 获取网络搜索按钮选择器
    * @returns {string}
    */
   getWebSearchButtonSelector() {
     return ''; // 默认返回空字符串，表示未实现
+  }
+
+  /**
+   * 判断是否可进行网络搜索
+   * @returns {boolean} 返回true表示支持网络搜索，false表示不支持
+   */
+  canWebSearch() {
+    return true; // 默认返回true，子类可以重写此方法
   }
 
   /**
@@ -360,6 +411,41 @@ class AIModel {
       return true;
     } catch (error) {
       console.error(`[MultiAI] ${this.name} failed to enable web search:`, error);
+      return true; // 即使失败也继续执行
+    }
+  }
+
+  /**
+   * 禁用网络搜索（可选方法，由子类实现）
+   * @returns {Promise<boolean>} 返回true表示成功，false表示失败或不需要
+   */
+  async disableWebSearch() {
+    try {
+      const selector = this.getWebSearchButtonSelector();
+      if (!selector) {
+        return true; // 如果未实现，返回true表示跳过
+      }
+      
+      const btn = await this.waitForElement(selector, 5000);
+      if (!btn) {
+        console.log(`[MultiAI] ${this.name} web search button not found, skipping...`);
+        return true;
+      }
+      
+      // 检查按钮是否已经激活
+      const isActive = btn.checked || btn.classList.contains('active') || 
+                       btn.getAttribute('aria-pressed') === 'true' ||
+                       btn.getAttribute('data-active') === 'true';
+      
+      if (isActive) {
+        btn.click();
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      
+      console.log(`[MultiAI] ${this.name} web search disabled ✓`);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to disable web search:`, error);
       return true; // 即使失败也继续执行
     }
   }
