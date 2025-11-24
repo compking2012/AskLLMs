@@ -290,6 +290,22 @@
   "newChatLabel": {
     "message": "新对话",
     "description": "新对话标签文本"
+  },
+  "deepThinkToggle": {
+    "message": "深度思考",
+    "description": "深度思考切换按钮"
+  },
+  "deepThinkLabel": {
+    "message": "深度思考",
+    "description": "深度思考标签文本"
+  },
+  "webSearchToggle": {
+    "message": "网络搜索",
+    "description": "网络搜索切换按钮"
+  },
+  "webSearchLabel": {
+    "message": "网络搜索",
+    "description": "网络搜索标签文本"
   }
 }
 

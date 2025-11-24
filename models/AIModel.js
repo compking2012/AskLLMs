@@ -262,6 +262,14 @@ class AIModel {
   }
 
   /**
+   * 获取新聊天按钮选择器
+   * @returns {string}
+   */
+  getNewChatButtonSelector() {
+    return ''; // 默认返回空字符串，表示未实现
+  }
+
+  /**
    * 开启新对话（可选方法，由子类实现）
    * @returns {Promise<boolean>} 返回true表示成功，false表示失败或不需要
    */
@@ -271,12 +279,100 @@ class AIModel {
   }
 
   /**
+   * 获取深度思考按钮选择器
+   * @returns {string}
+   */
+  getDeepThinkButtonSelector() {
+    return ''; // 默认返回空字符串，表示未实现
+  }
+
+  /**
+   * 启用深度思考（可选方法，由子类实现）
+   * @returns {Promise<boolean>} 返回true表示成功，false表示失败或不需要
+   */
+  async enableDeepThink() {
+    try {
+      const selector = this.getDeepThinkButtonSelector();
+      if (!selector) {
+        return true; // 如果未实现，返回true表示跳过
+      }
+      
+      const btn = await this.waitForElement(selector, 5000);
+      if (!btn) {
+        console.log(`[MultiAI] ${this.name} deep think button not found, skipping...`);
+        return true;
+      }
+      
+      // 检查按钮是否已经激活
+      const isActive = btn.checked || btn.classList.contains('active') || 
+                       btn.getAttribute('aria-pressed') === 'true' ||
+                       btn.getAttribute('data-active') === 'true';
+      
+      if (!isActive) {
+        btn.click();
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      
+      console.log(`[MultiAI] ${this.name} deep think enabled ✓`);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to enable deep think:`, error);
+      return true; // 即使失败也继续执行
+    }
+  }
+
+  /**
+   * 获取网络搜索按钮选择器
+   * @returns {string}
+   */
+  getWebSearchButtonSelector() {
+    return ''; // 默认返回空字符串，表示未实现
+  }
+
+  /**
+   * 启用网络搜索（可选方法，由子类实现）
+   * @returns {Promise<boolean>} 返回true表示成功，false表示失败或不需要
+   */
+  async enableWebSearch() {
+    try {
+      const selector = this.getWebSearchButtonSelector();
+      if (!selector) {
+        return true; // 如果未实现，返回true表示跳过
+      }
+      
+      const btn = await this.waitForElement(selector, 5000);
+      if (!btn) {
+        console.log(`[MultiAI] ${this.name} web search button not found, skipping...`);
+        return true;
+      }
+      
+      // 检查按钮是否已经激活
+      const isActive = btn.checked || btn.classList.contains('active') || 
+                       btn.getAttribute('aria-pressed') === 'true' ||
+                       btn.getAttribute('data-active') === 'true';
+      
+      if (!isActive) {
+        btn.click();
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      
+      console.log(`[MultiAI] ${this.name} web search enabled ✓`);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to enable web search:`, error);
+      return true; // 即使失败也继续执行
+    }
+  }
+
+  /**
    * 发送查询（抽象方法，由子类实现）
    * @param {string} query - 查询文本
    * @param {boolean} startNewChat - 是否开启新对话
+   * @param {boolean} deepThink - 是否启用深度思考
+   * @param {boolean} webSearch - 是否启用网络搜索
    * @returns {Promise<boolean>}
    */
-  async sendQuery(query, startNewChat = false) {
+  async sendQuery(query, startNewChat = false, deepThink = false, webSearch = false) {
     throw new Error('sendQuery must be implemented by subclass');
   }
 

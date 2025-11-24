@@ -57,12 +57,40 @@ class Qwen extends AIModel {
     }
   }
 
-  async sendQuery(query, startNewChat = false) {
+  /**
+   * 获取深度思考按钮选择器
+   * @returns {string}
+   */
+  getDeepThinkButtonSelector() {
+    return ''; // TODO: 实现选择器
+  }
+
+  /**
+   * 获取网络搜索按钮选择器
+   * @returns {string}
+   */
+  getWebSearchButtonSelector() {
+    return ''; // TODO: 实现选择器
+  }
+
+  async sendQuery(query, startNewChat = false, deepThink = false, webSearch = false) {
     console.log(`[MultiAI] ${this.name} - startNewChat:`, startNewChat);
+    console.log(`[MultiAI] ${this.name} - deepThink:`, deepThink);
+    console.log(`[MultiAI] ${this.name} - webSearch:`, webSearch);
     
     // 如果启用了新对话，先开启新对话
     if (startNewChat) {
       await this.startNewChat();
+    }
+    
+    // 如果启用了深度思考，先启用深度思考
+    if (deepThink) {
+      await this.enableDeepThink();
+    }
+    
+    // 如果启用了网络搜索，先启用网络搜索
+    if (webSearch) {
+      await this.enableWebSearch();
     }
     
     console.log(`[MultiAI] ${this.name} - waiting for input...`);

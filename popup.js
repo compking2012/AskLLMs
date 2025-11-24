@@ -1246,6 +1246,8 @@ document.addEventListener('click', (e) => {
 
 // 新对话 toggle 状态管理
 let startNewChatEnabled = false;
+let deepThinkEnabled = false;
+let webSearchEnabled = false;
 
 // 加载新对话 toggle 状态
 async function loadNewChatToggleState() {
@@ -1257,6 +1259,32 @@ async function loadNewChatToggleState() {
     updateNewChatToggleUI();
   } catch (error) {
     console.error('Failed to load new chat toggle state:', error);
+  }
+}
+
+// 加载深度思考 toggle 状态
+async function loadDeepThinkToggleState() {
+  try {
+    const result = await new Promise(resolve => {
+      chrome.storage.local.get(['deepThinkEnabled'], resolve);
+    });
+    deepThinkEnabled = result.deepThinkEnabled || false;
+    updateDeepThinkToggleUI();
+  } catch (error) {
+    console.error('Failed to load deep think toggle state:', error);
+  }
+}
+
+// 加载网络搜索 toggle 状态
+async function loadWebSearchToggleState() {
+  try {
+    const result = await new Promise(resolve => {
+      chrome.storage.local.get(['webSearchEnabled'], resolve);
+    });
+    webSearchEnabled = result.webSearchEnabled || false;
+    updateWebSearchToggleUI();
+  } catch (error) {
+    console.error('Failed to load web search toggle state:', error);
   }
 }
 
@@ -1279,6 +1307,54 @@ function updateNewChatToggleUI() {
       newChatToggle.classList.add('active');
     } else {
       newChatToggle.classList.remove('active');
+    }
+  }
+}
+
+// 保存深度思考 toggle 状态
+async function saveDeepThinkToggleState(enabled) {
+  deepThinkEnabled = enabled;
+  try {
+    await new Promise(resolve => {
+      chrome.storage.local.set({ deepThinkEnabled: enabled }, resolve);
+    });
+  } catch (error) {
+    console.error('Failed to save deep think toggle state:', error);
+  }
+}
+
+// 更新深度思考 toggle UI
+function updateDeepThinkToggleUI() {
+  const deepThinkToggle = document.getElementById('deep-think-toggle');
+  if (deepThinkToggle) {
+    if (deepThinkEnabled) {
+      deepThinkToggle.classList.add('active');
+    } else {
+      deepThinkToggle.classList.remove('active');
+    }
+  }
+}
+
+// 保存网络搜索 toggle 状态
+async function saveWebSearchToggleState(enabled) {
+  webSearchEnabled = enabled;
+  try {
+    await new Promise(resolve => {
+      chrome.storage.local.set({ webSearchEnabled: enabled }, resolve);
+    });
+  } catch (error) {
+    console.error('Failed to save web search toggle state:', error);
+  }
+}
+
+// 更新网络搜索 toggle UI
+function updateWebSearchToggleUI() {
+  const webSearchToggle = document.getElementById('web-search-toggle');
+  if (webSearchToggle) {
+    if (webSearchEnabled) {
+      webSearchToggle.classList.add('active');
+    } else {
+      webSearchToggle.classList.remove('active');
     }
   }
 }
@@ -1310,6 +1386,50 @@ function initNewChatToggle() {
   } else {
     console.warn('[Popup] new-chat-toggle button not found');
   }
+  
+  // 初始化深度思考 toggle
+  const deepThinkToggle = document.getElementById('deep-think-toggle');
+  if (deepThinkToggle) {
+    deepThinkToggle.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      deepThinkEnabled = !deepThinkEnabled;
+      console.log('[Popup] Deep think toggle clicked, new state:', deepThinkEnabled);
+      await saveDeepThinkToggleState(deepThinkEnabled);
+      updateDeepThinkToggleUI();
+      
+      // 验证保存是否成功
+      const verify = await new Promise(resolve => {
+        chrome.storage.local.get(['deepThinkEnabled'], (result) => {
+          resolve(result.deepThinkEnabled);
+        });
+      });
+      console.log('[Popup] Verified deep think saved state:', verify);
+    });
+    loadDeepThinkToggleState();
+  }
+  
+  // 初始化网络搜索 toggle
+  const webSearchToggle = document.getElementById('web-search-toggle');
+  if (webSearchToggle) {
+    webSearchToggle.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      webSearchEnabled = !webSearchEnabled;
+      console.log('[Popup] Web search toggle clicked, new state:', webSearchEnabled);
+      await saveWebSearchToggleState(webSearchEnabled);
+      updateWebSearchToggleUI();
+      
+      // 验证保存是否成功
+      const verify = await new Promise(resolve => {
+        chrome.storage.local.get(['webSearchEnabled'], (result) => {
+          resolve(result.webSearchEnabled);
+        });
+      });
+      console.log('[Popup] Verified web search saved state:', verify);
+    });
+    loadWebSearchToggleState();
+  }
 }
 
 
@@ -1329,28 +1449,48 @@ async function sendQuery() {
     return;
   }
   
-  // 确保读取最新的 toggle 状态（以防异步加载未完成）
-  await loadNewChatToggleState();
+  // 优先检查 DOM 状态（最准确，反映用户当前的选择）
+  const newChatToggleBtn = document.getElementById('new-chat-toggle');
+  const deepThinkToggleBtn = document.getElementById('deep-think-toggle');
+  const webSearchToggleBtn = document.getElementById('web-search-toggle');
   
-  // 再次确认状态（从存储中直接读取，确保是最新的）
+  const domState = {
+    startNewChat: newChatToggleBtn?.classList.contains('active') || false,
+    deepThink: deepThinkToggleBtn?.classList.contains('active') || false,
+    webSearch: webSearchToggleBtn?.classList.contains('active') || false
+  };
+  
+  // 同时从存储中读取状态（作为备份）
   const currentState = await new Promise(resolve => {
-    chrome.storage.local.get(['startNewChatEnabled'], (result) => {
-      resolve(result.startNewChatEnabled || false);
+    chrome.storage.local.get(['startNewChatEnabled', 'deepThinkEnabled', 'webSearchEnabled'], (result) => {
+      resolve({
+        startNewChat: result.startNewChatEnabled || false,
+        deepThink: result.deepThinkEnabled || false,
+        webSearch: result.webSearchEnabled || false
+      });
     });
   });
   
-  // 同时检查 DOM 状态（双重验证）
-  const toggleButton = document.getElementById('new-chat-toggle');
-  const domState = toggleButton?.classList.contains('active') || false;
+  // 优先使用 DOM 状态（用户可能刚点击了但还没保存到存储）
+  startNewChatEnabled = domState.startNewChat;
+  deepThinkEnabled = domState.deepThink;
+  webSearchEnabled = domState.webSearch;
   
-  startNewChatEnabled = currentState;
+  console.log('[Popup] State check - DOM:', domState, 'Storage:', currentState);
+  console.log('[Popup] Using DOM state - startNewChat:', startNewChatEnabled, 'deepThink:', deepThinkEnabled, 'webSearch:', webSearchEnabled);
   
-  console.log('[Popup] State check - Storage:', currentState, 'DOM:', domState, 'Variable:', startNewChatEnabled);
-  
-  // 如果 DOM 状态和存储状态不一致，以 DOM 状态为准（用户可能刚点击了但还没保存）
-  if (domState !== currentState) {
-    console.log('[Popup] State mismatch detected, using DOM state:', domState);
-    startNewChatEnabled = domState;
+  // 如果 DOM 状态和存储状态不一致，同步存储状态（确保一致性）
+  if (domState.startNewChat !== currentState.startNewChat) {
+    console.log('[Popup] Syncing startNewChat state to storage:', domState.startNewChat);
+    await saveNewChatToggleState(domState.startNewChat);
+  }
+  if (domState.deepThink !== currentState.deepThink) {
+    console.log('[Popup] Syncing deepThink state to storage:', domState.deepThink);
+    await saveDeepThinkToggleState(domState.deepThink);
+  }
+  if (domState.webSearch !== currentState.webSearch) {
+    console.log('[Popup] Syncing webSearch state to storage:', domState.webSearch);
+    await saveWebSearchToggleState(domState.webSearch);
   }
   
   // 保存历史记录
@@ -1380,14 +1520,14 @@ async function sendQuery() {
   startProgressListening();
   
   // 发送消息到 background，包含选中的平台和新对话状态
-  console.log('[Popup] Sending query with startNewChat:', startNewChatEnabled);
-  console.log('[Popup] Current state from storage:', currentState);
-  console.log('[Popup] Toggle button active state:', newChatToggle?.classList.contains('active'));
+  console.log('[Popup] Sending query with startNewChat:', startNewChatEnabled, 'deepThink:', deepThinkEnabled, 'webSearch:', webSearchEnabled);
   chrome.runtime.sendMessage({ 
     action: 'sendToAllAIs', 
     query,
     platforms: selectedPlatforms,
-    startNewChat: startNewChatEnabled
+    startNewChat: startNewChatEnabled,
+    deepThink: deepThinkEnabled,
+    webSearch: webSearchEnabled
   }, (response) => {
     if (chrome.runtime.lastError) {
       stopProgressListening();

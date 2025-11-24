@@ -290,6 +290,22 @@
   "newChatLabel": {
     "message": "New Chat",
     "description": "New chat label text"
+  },
+  "deepThinkToggle": {
+    "message": "Deep Think",
+    "description": "Deep think toggle button"
+  },
+  "deepThinkLabel": {
+    "message": "Deep Think",
+    "description": "Deep think label text"
+  },
+  "webSearchToggle": {
+    "message": "Web Search",
+    "description": "Web search toggle button"
+  },
+  "webSearchLabel": {
+    "message": "Web Search",
+    "description": "Web search label text"
   }
 }
 

@@ -326,10 +326,10 @@ async function getDefaultSettings() {
   }
   
   // 打开或复用 AI 标签页并发送
-  async function openAndSend(url, query, progressTracker, siteName, startNewChat = false) {
+  async function openAndSend(url, query, progressTracker, siteName, startNewChat = false, deepThink = false, webSearch = false) {
     console.log('[Background] ===== openAndSend START =====');
     console.log('[Background] Site:', siteName, 'URL:', url, 'Query:', query.substring(0, 50) + '...');
-    console.log('[Background] openAndSend - startNewChat:', startNewChat);
+    console.log('[Background] openAndSend - startNewChat:', startNewChat, 'deepThink:', deepThink, 'webSearch:', webSearch);
 
     console.log('[Background] Opening:', url, 'for site:', siteName);
     
@@ -421,10 +421,10 @@ async function getDefaultSettings() {
         // 直接执行查询（内联 sendQueryToPage 逻辑）
         await chrome.scripting.executeScript({
           target: { tabId: tab.id },
-          func: async (query, startNewChat) => {
+          func: async (query, startNewChat, deepThink, webSearch) => {
             console.log('[MultiAI] ===== Inline execution START =====');
             console.log('[MultiAI] Query:', query.substring(0, 50) + '...');
-            console.log('[MultiAI] StartNewChat:', startNewChat);
+            console.log('[MultiAI] StartNewChat:', startNewChat, 'DeepThink:', deepThink, 'WebSearch:', webSearch);
             const host = window.location.hostname;
             console.log('[MultiAI] Hostname:', host);
             console.log('[MultiAI] getModelByHostname available:', typeof getModelByHostname === 'function');
@@ -436,7 +436,7 @@ async function getDefaultSettings() {
                 const model = getModelByHostname(host);
                 if (model) {
                   console.log('[MultiAI] Detected:', host, 'using model:', model.name);
-                  const result = await model.sendQuery(query, startNewChat);
+                  const result = await model.sendQuery(query, startNewChat, deepThink, webSearch);
                   console.log('[MultiAI] Query execution result:', result);
                   return result;
                 }
@@ -474,7 +474,7 @@ async function getDefaultSettings() {
             console.error('[MultiAI] Unknown domain or all methods failed:', host);
             throw new Error(`No model handler found for domain: ${host}`);
           },
-          args: [query, startNewChat]
+          args: [query, startNewChat, deepThink, webSearch]
         });
         
         // 等待一小段时间确保执行完成
@@ -925,12 +925,14 @@ async function getDefaultSettings() {
           const promises = [];
           
           const startNewChat = request.startNewChat || false;
-          console.log('[Background] StartNewChat:', startNewChat);
+          const deepThink = request.deepThink || false;
+          const webSearch = request.webSearch || false;
+          console.log('[Background] StartNewChat:', startNewChat, 'DeepThink:', deepThink, 'WebSearch:', webSearch);
           
           for (const site of sitesToOpen) {
             console.log('[Background] Processing:', site.name, site.url);
-            // 直接传递 progressTracker、siteName 和 startNewChat
-            const promise = openAndSend(site.url, query, progressTracker, site.name, startNewChat).then(id => {
+            // 直接传递 progressTracker、siteName 和所有选项
+            const promise = openAndSend(site.url, query, progressTracker, site.name, startNewChat, deepThink, webSearch).then(id => {
               console.log('[Background] Completed:', site.name, 'tab id:', id);
               return id;
             }).catch(async (err) => {
