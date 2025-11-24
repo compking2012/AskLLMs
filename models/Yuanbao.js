@@ -26,7 +26,7 @@ class Yuanbao extends AIModel {
   getNewChatButtonSelector() {
     // 使用 dt-button-id 属性，这是数据追踪属性，通常比较稳定
     // 如果不够精确，startNewChat 方法中可以通过文本内容进一步筛选
-    return 'div[dt-button-id="collect"]';
+    return 'div[data-desc="new-chat"]';
   }
 
   /**
