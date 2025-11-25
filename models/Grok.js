@@ -67,24 +67,135 @@ class Grok extends AIModel {
    * @returns {string}
    */
   getDeepThinkButtonSelector() {
-    return ''; // TODO: 实现选择器
+    // Grok 的模型选择按钮
+    return 'div.z-20 button#model-select-trigger';
   }
 
   /**
    * 判断是否可进行深度思考
-   * @returns {boolean} Grok 不支持深度思考
+   * @returns {boolean}
    */
   canDeepThink() {
-    return false;
+    return true;
   }
 
   /**
-   * 禁用深度思考（Grok 不支持深度思考）
+   * 启用深度思考
+   * @returns {Promise<boolean>}
+   */
+  async enableDeepThink() {
+    try {
+      console.log(`[MultiAI] ${this.name} - enabling deep think...`);
+      
+      // 步骤1: 点击模型选择按钮打开菜单
+      const modelSelectBtn = await this.waitForElement(this.getDeepThinkButtonSelector(), 5000);
+      if (!modelSelectBtn) {
+        console.log(`[MultiAI] ${this.name} model select button not found, skipping deep think...`);
+        return true;
+      }
+      console.log(`[MultiAI] ${this.name} model select button found, clicking...`);
+
+      const div = modelSelectBtn.parentNode;
+      
+      div.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      // 方法2: 在 button 上触发完整的鼠标事件
+      const mouseEvents = ['mousedown', 'mouseup', 'click'];
+      for (const eventType of mouseEvents) {
+        const event = new MouseEvent(eventType, {
+          view: window,
+          bubbles: true,
+          cancelable: true,
+          buttons: 1
+        });
+        modelSelectBtn.dispatchEvent(event);
+      }
+      
+      // 方法3: 也在 div 上点击
+      modelSelectBtn.click();
+    // 等待菜单出现
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // 步骤2: 找到菜单中的第3个menuitem（专家模式）
+      const firstMenuItem = await this.waitForElement('div[role="menuitem"]', 3000);
+      if (!firstMenuItem) {
+        console.log(`[MultiAI] ${this.name} menu items not found, skipping...`);
+        return true;
+      }
+      
+      // 查找所有菜单项
+      const allMenuItems = document.querySelectorAll('div[role="menuitem"]');
+      if (allMenuItems.length < 3) {
+        console.log(`[MultiAI] ${this.name} not enough menu items found (found ${allMenuItems.length}), skipping...`);
+        return true;
+      }
+      
+      // 第3个菜单项是"专家模式"（enableDeepThink）
+      const expertModeItem = allMenuItems[2];
+      console.log(`[MultiAI] ${this.name} expert mode menu item found, clicking...`);
+      expertModeItem.click();
+      
+      // 等待菜单关闭
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      console.log(`[MultiAI] ${this.name} deep think enabled ✓`);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to enable deep think:`, error);
+      return true; // 即使失败也继续执行
+    }
+  }
+
+  /**
+   * 禁用深度思考
    * @returns {Promise<boolean>}
    */
   async disableDeepThink() {
-    // Grok 不支持深度思考，直接返回 true 表示跳过
-    return true;
+    try {
+      console.log(`[MultiAI] ${this.name} - disabling deep think...`);
+      
+      // 步骤1: 点击模型选择按钮打开菜单
+      const modelSelectBtn = await this.waitForElement(this.getDeepThinkButtonSelector(), 5000);
+      if (!modelSelectBtn) {
+        console.log(`[MultiAI] ${this.name} model select button not found, may already be disabled`);
+        return true;
+      }
+      
+      console.log(`[MultiAI] ${this.name} model select button found, clicking...`);
+      modelSelectBtn.click();
+      
+      // 等待菜单出现
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // 步骤2: 找到菜单中的第2个menuitem（快速模式）
+      const firstMenuItem = await this.waitForElement('div[role="menuitem"]', 3000);
+      if (!firstMenuItem) {
+        console.log(`[MultiAI] ${this.name} menu items not found, may already be disabled`);
+        return true;
+      }
+      
+      // 查找所有菜单项
+      const allMenuItems = document.querySelectorAll('div[role="menuitem"]');
+      if (allMenuItems.length < 2) {
+        console.log(`[MultiAI] ${this.name} not enough menu items found (found ${allMenuItems.length}), may already be disabled`);
+        return true;
+      }
+      
+      // 第2个菜单项是"快速模式"（disableDeepThink）
+      const fastModeItem = allMenuItems[1];
+      console.log(`[MultiAI] ${this.name} fast mode menu item found, clicking...`);
+      fastModeItem.click();
+      
+      // 等待菜单关闭
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      console.log(`[MultiAI] ${this.name} deep think disabled ✓`);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to disable deep think:`, error);
+      return true; // 即使失败也继续执行
+    }
   }
 
   /**

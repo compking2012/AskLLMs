@@ -65,24 +65,118 @@ class Wenxin extends AIModel {
    * @returns {string}
    */
   getDeepThinkButtonSelector() {
-    return ''; // TODO: 实现选择器
+    // 深度思考按钮，包含"思考·自动"文本
+    return 'div.item__y5RP9d4z, div[class*="item"]';
   }
 
   /**
    * 判断是否可进行深度思考
-   * @returns {boolean} 文心一言不支持深度思考
+   * @returns {boolean}
    */
   canDeepThink() {
-    return false;
+    return true;
   }
 
   /**
-   * 禁用深度思考（文心一言不支持深度思考）
+   * 启用深度思考
+   * @returns {Promise<boolean>}
+   */
+  async enableDeepThink() {
+    try {
+      console.log(`[MultiAI] ${this.name} - enabling deep think...`);
+      
+      // 步骤1: 找到并点击深度思考按钮
+      const deepThinkButton = await this.waitForElement('div.ant-popover-open', 5000);
+      if (!deepThinkButton) {
+        console.log(`[MultiAI] ${this.name} deep think button not found, skipping...`);
+        return true;
+      }
+      
+      console.log(`[MultiAI] ${this.name} deep think button found, clicking...`);
+      deepThinkButton.click();
+      
+      // 等待菜单出现
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // 步骤2: 找到菜单中的第二个dtModeItem（开启）
+      const menuItems = await this.waitForElement('div.dtModeItem__R58Gzmsu', 3000);
+      if (!menuItems) {
+        console.log(`[MultiAI] ${this.name} menu items not found, skipping...`);
+        return true;
+      }
+      
+      // 查找所有菜单项
+      const allMenuItems = document.querySelectorAll('div.dtModeItem__R58Gzmsu');
+      if (allMenuItems.length < 2) {
+        console.log(`[MultiAI] ${this.name} not enough menu items found (found ${allMenuItems.length}), skipping...`);
+        return true;
+      }
+      
+      // 第二个菜单项是"开启"
+      const enableButton = allMenuItems[1];
+      console.log(`[MultiAI] ${this.name} enable deep think menu item found, clicking...`);
+      enableButton.click();
+      
+      // 等待菜单关闭
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      console.log(`[MultiAI] ${this.name} deep think enabled ✓`);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to enable deep think:`, error);
+      return true; // 即使失败也继续执行
+    }
+  }
+
+  /**
+   * 禁用深度思考
    * @returns {Promise<boolean>}
    */
   async disableDeepThink() {
-    // 文心一言不支持深度思考，直接返回 true 表示跳过
-    return true;
+    try {
+      console.log(`[MultiAI] ${this.name} - disabling deep think...`);
+      
+      // 步骤1: 找到并点击深度思考按钮
+      const deepThinkButton = await this.waitForElement('.ant-popover-open', 5000);
+      if (!deepThinkButton) {
+        console.log(`[MultiAI] ${this.name} deep think button not found, may already be disabled`);
+        return true;
+      }
+      
+      console.log(`[MultiAI] ${this.name} deep think button found, clicking...`);
+      deepThinkButton.click();
+      
+      // 等待菜单出现
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // 步骤2: 找到菜单中的第三个dtModeItem（关闭）
+      const menuItems = await this.waitForElement('div.dtModeItem__R58Gzmsu', 3000);
+      if (!menuItems) {
+        console.log(`[MultiAI] ${this.name} menu items not found, may already be disabled`);
+        return true;
+      }
+      
+      // 查找所有菜单项
+      const allMenuItems = document.querySelectorAll('div.dtModeItem__R58Gzmsu');
+      if (allMenuItems.length < 3) {
+        console.log(`[MultiAI] ${this.name} not enough menu items found (found ${allMenuItems.length}), may already be disabled`);
+        return true;
+      }
+      
+      // 第三个菜单项是"关闭"
+      const disableButton = allMenuItems[2];
+      console.log(`[MultiAI] ${this.name} disable deep think menu item found, clicking...`);
+      disableButton.click();
+      
+      // 等待菜单关闭
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      console.log(`[MultiAI] ${this.name} deep think disabled ✓`);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to disable deep think:`, error);
+      return true; // 即使失败也继续执行
+    }
   }
 
   /**
