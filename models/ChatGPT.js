@@ -63,7 +63,12 @@ class ChatGPT extends AIModel {
    */
   getDeepThinkButtonSelector() {
     // ChatGPT 的深度思考需要先点击加号按钮，然后在菜单中找到"思考"选项
-    return 'button#composer-plus-btn';
+    // 改为定位到包含按钮的 div
+    return 'div[class*="grid-area:leading"]';
+  }
+
+  getRemoveDeepThinkButtonSelector() {
+    return 'button.__composer-pill.group';
   }
 
   /**
@@ -71,16 +76,36 @@ class ChatGPT extends AIModel {
    * @returns {boolean} ChatGPT 不支持深度思考
    */
   canDeepThink() {
-    return false;
+    return true;
   }
 
   /**
-   * 禁用深度思考（ChatGPT 不支持深度思考）
+   * 禁用深度思考
    * @returns {Promise<boolean>}
    */
   async disableDeepThink() {
-    // ChatGPT 不支持深度思考，直接返回 true 表示跳过
-    return true;
+    try {
+      console.log(`[MultiAI] ${this.name} - disabling deep think...`);
+      
+      // 找到深度思考按钮（pill button）
+      const deepThinkButton = await this.waitForElement(this.getRemoveDeepThinkButtonSelector(), 3000);
+      if (!deepThinkButton) {
+        console.log(`[MultiAI] ${this.name} deep think button not found, may already be disabled`);
+        return true; // 如果找不到按钮，可能已经禁用了
+      }
+      
+      console.log(`[MultiAI] ${this.name} deep think button found, clicking...`);
+      deepThinkButton.click();
+      
+      // 等待按钮消失或状态更新
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      console.log(`[MultiAI] ${this.name} deep think disabled ✓`);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to disable deep think:`, error);
+      return true; // 即使失败也继续执行
+    }
   }
 
   /**
@@ -100,25 +125,30 @@ class ChatGPT extends AIModel {
     try {
       console.log(`[MultiAI] ${this.name} - enabling deep think...`);
       
-      // 步骤1: 找到并点击加号按钮
-      const plusBtn = await this.waitForElement(this.getDeepThinkButtonSelector(), 5000);
-      if (!plusBtn) {
-        console.log(`[MultiAI] ${this.name} plus button not found, skipping deep think...`);
+      // 步骤1: 找到包含按钮的 div
+      const containerDiv = await this.waitForElement(this.getDeepThinkButtonSelector(), 5000);
+      if (!containerDiv) {
+        console.log(`[MultiAI] ${this.name} container div not found, skipping deep think...`);
         return true;
       }
       
-      console.log(`[MultiAI] ${this.name} plus button found, clicking...`);
+      // 找到内部的 span
+      const span = containerDiv.querySelector('span.flex[data-state="closed"]');
+      if (!span) {
+        console.log(`[MultiAI] ${this.name} span not found, skipping deep think...`);
+        return true;
+      }
       
-      // 尝试多种方式点击（参考 Doubao 的方式）
-      // 方法1: 滚动到元素位置
-      plusBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // 找到内部的 button
+      const button = span.querySelector('button[data-testid="composer-plus-btn"]');
+      
+      console.log(`[MultiAI] ${this.name} div and span found, clicking...`);
+      
+      // 滚动到 div 位置
+      span.scrollIntoView({ behavior: 'smooth', block: 'center' });
       await new Promise(resolve => setTimeout(resolve, 300));
       
-      // 查找父元素
-      const spanParent = plusBtn.closest('span.flex');
-      const divParent = plusBtn.closest('div[style*="grid-area:leading"]');
-      
-      // 方法2: 在 button 上触发完整的鼠标事件序列
+      // 尝试多种点击方式：先点击 div
       const mouseEvents = ['mousedown', 'mouseup', 'click'];
       for (const eventType of mouseEvents) {
         const event = new MouseEvent(eventType, {
@@ -127,25 +157,36 @@ class ChatGPT extends AIModel {
           cancelable: true,
           buttons: 1
         });
-        plusBtn.dispatchEvent(event);
+        span.dispatchEvent(event);
       }
+      span.click();
       
-      // 方法3: 在父元素上点击
-      if (spanParent) {
-        spanParent.click();
-      }
-      if (divParent) {
-        divParent.click();
-      }
-      
-      // 方法4: 直接点击 button
-      plusBtn.click();
-      
-      // 等待按钮状态更新
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // 等待一下，检查菜单是否出现
+      await new Promise(resolve => setTimeout(resolve, 5000));
       
       // 步骤2: 等待菜单出现，然后找到第二个 menuitemradio（思考模式）
-      await new Promise(resolve => setTimeout(resolve, 500));
+      let menu = document.querySelector('[role="menu"]');
+      if (!menu) {
+        console.log(`[MultiAI] ${this.name} menu not found after clicking div, trying span...`);
+        // 如果菜单没出现，尝试点击 span
+        span.click();
+        await new Promise(resolve => setTimeout(resolve, 500));
+        menu = document.querySelector('[role="menu"]');
+      }
+      
+      if (!menu && button) {
+        console.log(`[MultiAI] ${this.name} menu not found after clicking span, trying button...`);
+        // 如果菜单还没出现，尝试点击 button
+        button.click();
+        await new Promise(resolve => setTimeout(resolve, 500));
+        menu = document.querySelector('[role="menu"]');
+      }
+      
+      if (menu) {
+        console.log(`[MultiAI] ${this.name} menu found`);
+      } else {
+        console.log(`[MultiAI] ${this.name} menu still not found after all attempts`);
+      }
       
       // 直接选择第二个 menuitemradio（根据DOM结构，"思考"是第二个）
       const thinkItem = await this.waitForElement('[role="menuitemradio"]:nth-of-type(2)', 3000);

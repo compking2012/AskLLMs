@@ -61,25 +61,174 @@ class Claude extends AIModel {
    * 获取深度思考按钮选择器
    * @returns {string}
    */
-  getDeepThinkButtonSelector() {
-    return ''; // TODO: 实现选择器
+  getToolKitTriggerButtonSelector() {
+    // Claude 的工具菜单按钮
+    return 'button#input-tools-menu-trigger';
+  }
+
+  /**
+   * 获取样式按钮选择器（第5个button.group）
+   * @returns {string}
+   */
+  getStyleButtonSelector() {
+    // 返回选择器，用于查找第5个button.group
+    return 'div.absolute.block button.group';
   }
 
   /**
    * 判断是否可进行深度思考
-   * @returns {boolean} Claude 不支持深度思考
+   * @returns {boolean}
    */
   canDeepThink() {
-    return false;
+    return true;
   }
 
   /**
-   * 禁用深度思考（Claude 不支持深度思考）
+   * 启用深度思考
+   * @returns {Promise<boolean>}
+   */
+  async enableDeepThink() {
+    try {
+      console.log(`[MultiAI] ${this.name} - enabling deep think...`);
+      
+      // 步骤1: 点击工具菜单按钮打开菜单
+      const toolsMenuBtn = await this.waitForElement(this.getToolKitTriggerButtonSelector(), 5000);
+      if (!toolsMenuBtn) {
+        console.log(`[MultiAI] ${this.name} tools menu button not found, skipping deep think...`);
+        return true;
+      }
+      
+      console.log(`[MultiAI] ${this.name} tools menu button found, clicking...`);
+      toolsMenuBtn.click();
+      
+      // 等待菜单出现
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // 步骤2: 找到菜单中的第5个按钮（Style按钮）
+      // button.group分别在不同的div下，先等待至少一个出现，然后查找所有并选择第5个
+      const firstButton = await this.waitForElement(this.getStyleButtonSelector(), 3000);
+      if (!firstButton) {
+        console.log(`[MultiAI] ${this.name} menu buttons not found, skipping...`);
+        return true;
+      }
+      
+      // 查找所有button.group（跨所有div）
+      const allButtons = document.querySelectorAll(this.getStyleButtonSelector());
+      if (allButtons.length < 5) {
+        console.log(`[MultiAI] ${this.name} not enough buttons found (found ${allButtons.length}), skipping...`);
+        return true;
+      }
+      
+      // 选择第5个按钮（索引为4）
+      const styleButton = allButtons[4];
+      console.log(`[MultiAI] ${this.name} style button found, clicking...`);
+      styleButton.click();
+      
+      // 等待Style菜单出现
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // 步骤3: 获取所有button.group，点击第一个来启用深度思考
+      const firstStyleButton = await this.waitForElement(this.getStyleButtonSelector(), 3000);
+      if (!firstStyleButton) {
+        console.log(`[MultiAI] ${this.name} style menu buttons not found, skipping...`);
+        return true;
+      }
+      
+      // 查找所有button.group
+      const allStyleButtons = document.querySelectorAll(this.getStyleButtonSelector());
+      if (allStyleButtons.length < 1) {
+        console.log(`[MultiAI] ${this.name} style menu buttons not found, skipping...`);
+        return true;
+      }
+      
+      // 第一个按钮是启用深度思考
+      const enableDeepThinkButton = allStyleButtons[1];
+      console.log(`[MultiAI] ${this.name} enable deep think button found, clicking...`);
+      enableDeepThinkButton.click();
+      
+      // 等待操作完成
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      console.log(`[MultiAI] ${this.name} deep think enabled ✓`);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to enable deep think:`, error);
+      return true; // 即使失败也继续执行
+    }
+  }
+
+  /**
+   * 禁用深度思考
    * @returns {Promise<boolean>}
    */
   async disableDeepThink() {
-    // Claude 不支持深度思考，直接返回 true 表示跳过
-    return true;
+    try {
+      console.log(`[MultiAI] ${this.name} - disabling deep think...`);
+      
+      // 步骤1: 点击工具菜单按钮打开菜单
+      const toolsMenuBtn = await this.waitForElement(this.getToolKitTriggerButtonSelector(), 5000);
+      if (!toolsMenuBtn) {
+        console.log(`[MultiAI] ${this.name} tools menu button not found, skipping deep think...`);
+        return true;
+      }
+      
+      console.log(`[MultiAI] ${this.name} tools menu button found, clicking...`);
+      toolsMenuBtn.click();
+      
+      // 等待菜单出现
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // 步骤2: 找到菜单中的第5个按钮（Style按钮）
+      // button.group分别在不同的div下，先等待至少一个出现，然后查找所有并选择第5个
+      const firstButton = await this.waitForElement(this.getStyleButtonSelector(), 3000);
+      if (!firstButton) {
+        console.log(`[MultiAI] ${this.name} menu buttons not found, skipping...`);
+        return true;
+      }
+      
+      // 查找所有button.group（跨所有div）
+      const allButtons = document.querySelectorAll(this.getStyleButtonSelector());
+      if (allButtons.length < 5) {
+        console.log(`[MultiAI] ${this.name} not enough buttons found (found ${allButtons.length}), skipping...`);
+        return true;
+      }
+      
+      // 选择第5个按钮（索引为4）
+      const styleButton = allButtons[4];
+      console.log(`[MultiAI] ${this.name} style button found, clicking...`);
+      styleButton.click();
+      
+      // 等待Style菜单出现
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // 步骤3: 获取所有button.group，点击第7个来禁用深度思考
+      const firstStyleButton = await this.waitForElement(this.getStyleButtonSelector(), 3000);
+      if (!firstStyleButton) {
+        console.log(`[MultiAI] ${this.name} style menu buttons not found, skipping...`);
+        return true;
+      }
+      
+      // 查找所有button.group
+      const allStyleButtons = document.querySelectorAll(this.getStyleButtonSelector());
+      if (allStyleButtons.length < 7) {
+        console.log(`[MultiAI] ${this.name} style menu buttons not found, skipping...`);
+        return true;
+      }
+      
+      // 第7个按钮是禁用深度思考
+      const disableDeepThinkButton = allStyleButtons[6];
+      console.log(`[MultiAI] ${this.name} disable deep think button found, clicking...`);
+      disableDeepThinkButton.click();
+      
+      // 等待操作完成
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      console.log(`[MultiAI] ${this.name} deep think disabled ✓`);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to disable deep think:`, error);
+      return true; // 即使失败也继续执行
+    }
   }
 
   /**

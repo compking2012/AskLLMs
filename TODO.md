@@ -20,8 +20,8 @@
         -- 【done】MiniMax
         -- 【done】腾讯元宝
 10）增加打开/关闭“深度思考”的功能（如果模型支持的话）
-        -- ChatGPT：在“+”中打开或关闭“思考”
-        -- Claude：在Search and Tools中打开Use style，选Normal和Thinking Claude
+        -- 【partially done】ChatGPT：在“+”中打开或关闭“思考”
+        -- 【done】Claude：在Search and Tools中打开Use style，选Normal和Thinking Claude
         -- 【done】Gemini：在工具栏选“快速”或“思考”
         -- Grok：在输入框中选“快速模式”或“专家模式”
         -- 【done】千问：在工具栏选“深度思考”
