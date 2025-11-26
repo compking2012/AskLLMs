@@ -109,6 +109,14 @@ class ChatGLM extends AIModel {
   }
 
   /**
+   * 判断是否可进行网络搜索
+   * @returns {boolean} 智谱清言支持网络搜索
+   */
+  canWebSearch() {
+    return true;
+  }
+
+  /**
    * 启用深度思考（ChatGLM 特殊实现）
    * @returns {Promise<boolean>}
    */
@@ -215,7 +223,63 @@ class ChatGLM extends AIModel {
    * @returns {string}
    */
   getWebSearchButtonSelector() {
-    return ''; // TODO: 实现选择器
+    return 'div.session-button-container div.mode-button:nth-of-type(2)';
+  }
+
+  /**
+   * 启用网络搜索（ChatGLM 特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async enableWebSearch() {
+    try {
+      console.log(`[MultiAI] ${this.name} - enabling web search...`);
+      
+      // 使用函数形式的 selector 获取第二个模式按钮
+      const btn = await this.waitForElement(this.getWebSearchButtonSelector(), 5000);
+      
+      if (!btn) {
+        console.log(`[MultiAI] ${this.name} web search button not found, skipping...`);
+        return true;
+      }
+      
+      // ChatGLM 的网络搜索按钮点击即可切换
+      btn.click();
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      console.log(`[MultiAI] ${this.name} web search enabled ✓`);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to enable web search:`, error);
+      return true; // 即使失败也继续执行
+    }
+  }
+
+  /**
+   * 禁用网络搜索（ChatGLM 特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async disableWebSearch() {
+    try {
+      console.log(`[MultiAI] ${this.name} - disabling web search...`);
+      
+      // 使用函数形式的 selector 获取第二个模式按钮
+      const btn = await this.waitForElement(this.getWebSearchButtonSelector(), 5000);
+      
+      if (!btn) {
+        console.log(`[MultiAI] ${this.name} web search button not found, skipping...`);
+        return true;
+      }
+      
+      // ChatGLM 的网络搜索按钮点击即可切换
+      btn.click();
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      console.log(`[MultiAI] ${this.name} web search disabled ✓`);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to disable web search:`, error);
+      return true; // 即使失败也继续执行
+    }
   }
 
   async sendQuery(query, startNewChat = false, deepThink = false, webSearch = false) {

@@ -74,6 +74,14 @@ class Doubao extends AIModel {
   }
 
   /**
+   * 判断是否可进行网络搜索
+   * @returns {boolean} 豆包支持网络搜索
+   */
+  canWebSearch() {
+    return true;
+  }
+
+  /**
    * 启用深度思考（豆包特殊实现）
    * @returns {Promise<boolean>}
    */
@@ -231,6 +239,158 @@ class Doubao extends AIModel {
    */
   getWebSearchButtonSelector() {
     return ''; // TODO: 实现选择器
+  }
+
+  /**
+   * 启用网络搜索（豆包特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async enableWebSearch() {
+    try {
+      console.log(`[MultiAI] ${this.name} - enabling web search...`);
+      
+      const div = await this.waitForElement(this.getDeepThinkButtonSelector(), 5000);
+      if (!div) {
+        console.log(`[MultiAI] ${this.name} web search div not found, skipping...`);
+        return true;
+      }
+      
+      // 查找内部的 button 元素来检查状态
+      const btn = div.querySelector('button');
+      if (!btn) {
+        console.log(`[MultiAI] ${this.name} button not found inside div, skipping...`);
+        return true;
+      }
+      
+      // 检查按钮是否已经激活（通过 data-checked 属性）
+      let isActive = btn.getAttribute('data-checked') === 'true';
+      
+      if (!isActive) {
+        // 尝试多种方式点击
+        // 方法1: 滚动到元素位置
+        div.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // 方法2: 在 button 上触发完整的鼠标事件
+        const mouseEvents = ['mousedown', 'mouseup', 'click'];
+        for (const eventType of mouseEvents) {
+          const event = new MouseEvent(eventType, {
+            view: window,
+            bubbles: true,
+            cancelable: true,
+            buttons: 1
+          });
+          btn.dispatchEvent(event);
+        }
+        
+        // 方法3: 也在 div 上点击
+        div.click();
+        
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // 重新检查状态
+        const newBtn = div.querySelector('button');
+        if (newBtn) {
+          isActive = newBtn.getAttribute('data-checked') === 'true';
+          
+          // 如果还是没有激活，尝试再次点击
+          if (!isActive) {
+            console.log(`[MultiAI] ${this.name} web search not activated, retrying...`);
+            btn.click();
+            div.click();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // 最后检查状态
+            const finalBtn = div.querySelector('button');
+            if (finalBtn) {
+              isActive = finalBtn.getAttribute('data-checked') === 'true';
+            }
+          }
+        }
+      }
+      
+      console.log(`[MultiAI] ${this.name} web search enabled ✓`, isActive);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to enable web search:`, error);
+      return true; // 即使失败也继续执行
+    }
+  }
+
+  /**
+   * 禁用网络搜索（豆包特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async disableWebSearch() {
+    try {
+      console.log(`[MultiAI] ${this.name} - disabling web search...`);
+      
+      const div = await this.waitForElement(this.getDeepThinkButtonSelector(), 5000);
+      if (!div) {
+        console.log(`[MultiAI] ${this.name} web search div not found, skipping...`);
+        return true;
+      }
+      
+      // 查找内部的 button 元素来检查状态
+      const btn = div.querySelector('button');
+      if (!btn) {
+        console.log(`[MultiAI] ${this.name} button not found inside div, skipping...`);
+        return true;
+      }
+      
+      // 检查按钮是否已经激活（通过 data-checked 属性）
+      let isActive = btn.getAttribute('data-checked') === 'true';
+      
+      if (isActive) {
+        // 尝试多种方式点击
+        // 方法1: 滚动到元素位置
+        div.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // 方法2: 在 button 上触发完整的鼠标事件
+        const mouseEvents = ['mousedown', 'mouseup', 'click'];
+        for (const eventType of mouseEvents) {
+          const event = new MouseEvent(eventType, {
+            view: window,
+            bubbles: true,
+            cancelable: true,
+            buttons: 1
+          });
+          btn.dispatchEvent(event);
+        }
+        
+        // 方法3: 也在 div 上点击
+        div.click();
+        
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // 重新检查状态
+        const newBtn = div.querySelector('button');
+        if (newBtn) {
+          isActive = newBtn.getAttribute('data-checked') === 'true';
+          
+          // 如果还是激活状态，尝试再次点击
+          if (isActive) {
+            console.log(`[MultiAI] ${this.name} web search not deactivated, retrying...`);
+            btn.click();
+            div.click();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // 最后检查状态
+            const finalBtn = div.querySelector('button');
+            if (finalBtn) {
+              isActive = finalBtn.getAttribute('data-checked') === 'true';
+            }
+          }
+        }
+      }
+      
+      console.log(`[MultiAI] ${this.name} web search disabled ✓`, !isActive);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to disable web search:`, error);
+      return true; // 即使失败也继续执行
+    }
   }
 
   async sendQuery(query, startNewChat = false, deepThink = false, webSearch = false) {

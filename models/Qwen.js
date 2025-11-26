@@ -74,6 +74,14 @@ class Qwen extends AIModel {
   }
 
   /**
+   * 判断是否可进行网络搜索
+   * @returns {boolean} 千问支持网络搜索
+   */
+  canWebSearch() {
+    return true;
+  }
+
+  /**
    * 启用深度思考（千问特殊实现）
    * @returns {Promise<boolean>}
    */
@@ -149,6 +157,76 @@ class Qwen extends AIModel {
    */
   getWebSearchButtonSelector() {
     return ''; // TODO: 实现选择器
+  }
+
+  /**
+   * 启用网络搜索（千问特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async enableWebSearch() {
+    try {
+      console.log(`[MultiAI] ${this.name} - enabling web search...`);
+      
+      // 先尝试通过选择器查找
+      let btn = await this.waitForElement(this.getDeepThinkButtonSelector(), 5000);
+      
+      if (!btn) {
+        console.log(`[MultiAI] ${this.name} web search button not found, skipping...`);
+        return true;
+      }
+      
+      // 检查是否已经激活（通过类名或其他属性判断）
+      // 千问的网络搜索按钮点击即可切换，所以直接点击
+      btn.click();
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      
+      console.log(`[MultiAI] ${this.name} web search enabled ✓`);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to enable web search:`, error);
+      return true; // 即使失败也继续执行
+    }
+  }
+
+  /**
+   * 禁用网络搜索（千问特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async disableWebSearch() {
+    try {
+      console.log(`[MultiAI] ${this.name} - disabling web search...`);
+      
+      // 先尝试通过选择器查找网络搜索按钮
+      let webSearchBtn = await this.waitForElement(this.getDeepThinkButtonSelector(), 5000);
+           
+      if (!webSearchBtn) {
+        console.log(`[MultiAI] ${this.name} web search button not found, skipping...`);
+        return true;
+      }
+      
+      // 检查是否已激活（通过 selected- 类名判断）
+      const isActive = webSearchBtn.classList.toString().includes('selected-');
+      
+      if (isActive) {
+        // 如果已激活，查找内部的关闭按钮并点击
+        let closeBtn = webSearchBtn.querySelector('div.flex.items-center.justify-center.overflow-hidden');
+           
+        if (closeBtn) {
+          closeBtn.click();
+          await new Promise(resolve => setTimeout(resolve, 500));
+          console.log(`[MultiAI] ${this.name} web search disabled ✓`);
+        } else {
+          console.log(`[MultiAI] ${this.name} close button not found, skipping...`);
+        }
+      } else {
+        console.log(`[MultiAI] ${this.name} web search is not active, skipping...`);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to disable web search:`, error);
+      return true; // 即使失败也继续执行
+    }
   }
 
   async sendQuery(query, startNewChat = false, deepThink = false, webSearch = false) {

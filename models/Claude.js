@@ -84,6 +84,14 @@ class Claude extends AIModel {
   }
 
   /**
+   * 判断是否可进行网络搜索
+   * @returns {boolean}
+   */
+  canWebSearch() {
+    return true;
+  }
+
+  /**
    * 启用深度思考
    * @returns {Promise<boolean>}
    */
@@ -212,7 +220,7 @@ class Claude extends AIModel {
       const allStyleButtons = document.querySelectorAll(this.getStyleButtonSelector());
       if (allStyleButtons.length < 7) {
         console.log(`[MultiAI] ${this.name} style menu buttons not found, skipping...`);
-        return true;
+    return true;
       }
       
       // 第7个按钮是禁用深度思考
@@ -237,6 +245,154 @@ class Claude extends AIModel {
    */
   getWebSearchButtonSelector() {
     return ''; // TODO: 实现选择器
+  }
+
+  /**
+   * 启用网络搜索
+   * @returns {Promise<boolean>}
+   */
+  async enableWebSearch() {
+    try {
+      console.log(`[MultiAI] ${this.name} - enabling web search...`);
+      
+      // 步骤1: 点击工具菜单按钮打开菜单
+      const toolsMenuBtn = await this.waitForElement(this.getToolKitTriggerButtonSelector(), 5000);
+      if (!toolsMenuBtn) {
+        console.log(`[MultiAI] ${this.name} tools menu button not found, skipping web search...`);
+        return true;
+      }
+      
+      console.log(`[MultiAI] ${this.name} tools menu button found, clicking...`);
+      toolsMenuBtn.click();
+      
+      // 等待菜单出现
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // 步骤2: 找到菜单中的第5个按钮（Style按钮）
+      // button.group分别在不同的div下，先等待至少一个出现，然后查找所有并选择第5个
+      const firstButton = await this.waitForElement(this.getStyleButtonSelector(), 3000);
+      if (!firstButton) {
+        console.log(`[MultiAI] ${this.name} menu buttons not found, skipping...`);
+        return true;
+      }
+      
+      // 查找所有button.group（跨所有div）
+      const allButtons = document.querySelectorAll(this.getStyleButtonSelector());
+      if (allButtons.length < 5) {
+        console.log(`[MultiAI] ${this.name} not enough buttons found (found ${allButtons.length}), skipping...`);
+        return true;
+      }
+      
+      // 选择第5个按钮（索引为4）
+      const styleButton = allButtons[4];
+      console.log(`[MultiAI] ${this.name} style button found, clicking...`);
+      styleButton.click();
+      
+      // 等待Style菜单出现
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // 步骤3: 获取所有button.group，点击第一个来启用网络搜索
+      const firstStyleButton = await this.waitForElement(this.getStyleButtonSelector(), 3000);
+      if (!firstStyleButton) {
+        console.log(`[MultiAI] ${this.name} style menu buttons not found, skipping...`);
+        return true;
+      }
+      
+      // 查找所有button.group
+      const allStyleButtons = document.querySelectorAll(this.getStyleButtonSelector());
+      if (allStyleButtons.length < 1) {
+        console.log(`[MultiAI] ${this.name} style menu buttons not found, skipping...`);
+        return true;
+      }
+      
+      // 第一个按钮是启用网络搜索
+      const enableWebSearchButton = allStyleButtons[1];
+      console.log(`[MultiAI] ${this.name} enable web search button found, clicking...`);
+      enableWebSearchButton.click();
+      
+      // 等待操作完成
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      console.log(`[MultiAI] ${this.name} web search enabled ✓`);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to enable web search:`, error);
+      return true; // 即使失败也继续执行
+    }
+  }
+
+  /**
+   * 禁用网络搜索
+   * @returns {Promise<boolean>}
+   */
+  async disableWebSearch() {
+    try {
+      console.log(`[MultiAI] ${this.name} - disabling web search...`);
+      
+      // 步骤1: 点击工具菜单按钮打开菜单
+      const toolsMenuBtn = await this.waitForElement(this.getToolKitTriggerButtonSelector(), 5000);
+      if (!toolsMenuBtn) {
+        console.log(`[MultiAI] ${this.name} tools menu button not found, skipping web search...`);
+        return true;
+      }
+      
+      console.log(`[MultiAI] ${this.name} tools menu button found, clicking...`);
+      toolsMenuBtn.click();
+      
+      // 等待菜单出现
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // 步骤2: 找到菜单中的第5个按钮（Style按钮）
+      // button.group分别在不同的div下，先等待至少一个出现，然后查找所有并选择第5个
+      const firstButton = await this.waitForElement(this.getStyleButtonSelector(), 3000);
+      if (!firstButton) {
+        console.log(`[MultiAI] ${this.name} menu buttons not found, skipping...`);
+        return true;
+      }
+      
+      // 查找所有button.group（跨所有div）
+      const allButtons = document.querySelectorAll(this.getStyleButtonSelector());
+      if (allButtons.length < 5) {
+        console.log(`[MultiAI] ${this.name} not enough buttons found (found ${allButtons.length}), skipping...`);
+        return true;
+      }
+      
+      // 选择第5个按钮（索引为4）
+      const styleButton = allButtons[4];
+      console.log(`[MultiAI] ${this.name} style button found, clicking...`);
+      styleButton.click();
+      
+      // 等待Style菜单出现
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // 步骤3: 获取所有button.group，点击第7个来禁用网络搜索
+      const firstStyleButton = await this.waitForElement(this.getStyleButtonSelector(), 3000);
+      if (!firstStyleButton) {
+        console.log(`[MultiAI] ${this.name} style menu buttons not found, skipping...`);
+        return true;
+      }
+      
+      // 查找所有button.group
+      const allStyleButtons = document.querySelectorAll(this.getStyleButtonSelector());
+      if (allStyleButtons.length < 7) {
+        console.log(`[MultiAI] ${this.name} style menu buttons not found, skipping...`);
+    return true;
+      }
+      
+      // 第7个按钮是禁用网络搜索
+      const disableWebSearchButton = allStyleButtons[6];
+      console.log(`[MultiAI] ${this.name} disable web search button found, clicking...`);
+      disableWebSearchButton.click();
+      
+      // 等待操作完成
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      console.log(`[MultiAI] ${this.name} web search disabled ✓`);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to disable web search:`, error);
+      return true; // 即使失败也继续执行
+    }
   }
 
   async sendQuery(query, startNewChat = false, deepThink = false, webSearch = false) {

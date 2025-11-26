@@ -76,6 +76,14 @@ class Yuanbao extends AIModel {
   }
 
   /**
+   * 判断是否可进行网络搜索
+   * @returns {boolean} 腾讯元宝支持网络搜索
+   */
+  canWebSearch() {
+    return true;
+  }
+
+  /**
    * 启用深度思考（元宝特殊实现）
    * @returns {Promise<boolean>}
    */
@@ -153,6 +161,78 @@ class Yuanbao extends AIModel {
    */
   getWebSearchButtonSelector() {
     return ''; // TODO: 实现选择器
+  }
+
+  /**
+   * 启用网络搜索（元宝特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async enableWebSearch() {
+    try {
+      console.log(`[MultiAI] ${this.name} - enabling web search...`);
+      
+      // 先尝试通过选择器查找
+      let btn = await this.waitForElement(this.getDeepThinkButtonSelector(), 5000);
+           
+      if (!btn) {
+        console.log(`[MultiAI] ${this.name} web search button not found, skipping...`);
+        return true;
+      }
+      
+      // 检查 dt-model-id 属性，判断是否已启用网络搜索
+      const modelId = btn.getAttribute('dt-model-id');
+      const isActive = modelId === 'deep_seek_v3' || modelId === 'hunyuan_t1';
+      
+      if (!isActive) {
+        // 如果未启用，点击按钮启用
+        btn.click();
+        await new Promise(resolve => setTimeout(resolve, 500));
+        console.log(`[MultiAI] ${this.name} web search enabled ✓`);
+      } else {
+        console.log(`[MultiAI] ${this.name} web search already enabled ✓`);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to enable web search:`, error);
+      return true; // 即使失败也继续执行
+    }
+  }
+
+  /**
+   * 禁用网络搜索（元宝特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async disableWebSearch() {
+    try {
+      console.log(`[MultiAI] ${this.name} - disabling web search...`);
+      
+      // 先尝试通过选择器查找
+      let btn = await this.waitForElement(this.getDeepThinkButtonSelector(), 5000);
+            
+      if (!btn) {
+        console.log(`[MultiAI] ${this.name} web search button not found, skipping...`);
+        return true;
+      }
+      
+      // 检查 dt-model-id 属性，判断是否已启用网络搜索
+      const modelId = btn.getAttribute('dt-model-id');
+      const isActive = modelId === 'deep_seek' || modelId === 'hunyuan_gpt_175B_0404';
+      
+      if (!isActive) {
+        // 如果已启用，点击按钮禁用
+        btn.click();
+        await new Promise(resolve => setTimeout(resolve, 500));
+        console.log(`[MultiAI] ${this.name} web search disabled ✓`);
+      } else {
+        console.log(`[MultiAI] ${this.name} web search already disabled ✓`);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to disable web search:`, error);
+      return true; // 即使失败也继续执行
+    }
   }
 
   async sendQuery(query, startNewChat = false, deepThink = false, webSearch = false) {

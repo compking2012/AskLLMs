@@ -71,16 +71,27 @@ class Kimi extends AIModel {
     return 'div.toolkit-popover div.toolkit-container div.toolkit-item:nth-of-type(2) div.search-switch label.switch';
   }
 
+  getWebSearchSwitchSelector() {
+    return 'div.toolkit-popover div.toolkit-container div.toolkit-item:nth-of-type(1) div.search-switch label.switch';
+  }
+
   getRemoveDeepThinkButtonSelector() {
     return 'div.thinking-open';
   }
-
 
   /**
    * 判断是否可进行深度思考
    * @returns {boolean} Kimi 支持深度思考
    */
   canDeepThink() {
+    return true;
+  }
+
+  /**
+   * 判断是否可进行网络搜索
+   * @returns {boolean} Kimi 支持网络搜索
+   */
+  canWebSearch() {
     return true;
   }
 
@@ -182,6 +193,98 @@ class Kimi extends AIModel {
    */
   getWebSearchButtonSelector() {
     return ''; // TODO: 实现选择器
+  }
+
+  /**
+   * 启用网络搜索（Kimi 特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async enableWebSearch() {
+    try {
+      console.log(`[MultiAI] ${this.name} - enabling web search...`);
+      
+      // 步骤1: 点击触发按钮打开菜单
+      const triggerBtn = await this.waitForElement(this.getToolkitTriggerButtonSelector(), 5000);
+      if (!triggerBtn) {
+        console.log(`[MultiAI] ${this.name} toolkit trigger button not found, skipping...`);
+        return true;
+      }
+      
+      // 点击触发按钮
+      triggerBtn.click();
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // 步骤2: 等待菜单出现，找到第二个 div.toolkit-item div.search-switch
+      const switchDiv = await this.waitForElement(this.getWebSearchSwitchSelector(), 3000);
+      if (!switchDiv) {
+        console.log(`[MultiAI] ${this.name} second toolkit-item switch not found, skipping...`);
+        return true;
+      }
+      
+      // 步骤3: 检查开关状态
+      const checkbox = switchDiv.querySelector('input[type="checkbox"]');
+      const isActive = checkbox && checkbox.checked === true;
+      
+      if (!isActive) {
+        // 如果未激活，点击开关
+        switchDiv.click();
+        await new Promise(resolve => setTimeout(resolve, 500));
+        console.log(`[MultiAI] ${this.name} web search enabled ✓`);
+      } else {
+        console.log(`[MultiAI] ${this.name} web search already enabled ✓`);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to enable web search:`, error);
+      return true; // 即使失败也继续执行
+    }
+  }
+
+  /**
+   * 禁用网络搜索（Kimi 特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async disableWebSearch() {
+    try {
+      console.log(`[MultiAI] ${this.name} - disabling web search...`);
+      
+      // 步骤1: 点击触发按钮打开菜单
+      const triggerBtn = await this.waitForElement(this.getWebSearchButtonSelector(), 5000);
+      if (!triggerBtn) {
+        console.log(`[MultiAI] ${this.name} toolkit trigger button not found, skipping...`);
+        return true;
+      }
+      
+      // 点击触发按钮
+      triggerBtn.click();
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // 步骤2: 等待菜单出现，找到第二个 div.toolkit-item div.search-switch
+      const switchDiv = await this.waitForElement('div.toolkit-item:nth-of-type(1) div.search-switch', 3000);
+      if (!switchDiv) {
+        console.log(`[MultiAI] ${this.name} second toolkit-item switch not found, skipping...`);
+        return true;
+      }
+      
+      // 步骤3: 检查开关状态
+      const checkbox = switchDiv.querySelector('input[type="checkbox"]');
+      const isActive = checkbox && checkbox.checked === true;
+      
+      if (isActive) {
+        // 如果已激活，点击开关禁用
+        switchDiv.click();
+        await new Promise(resolve => setTimeout(resolve, 500));
+        console.log(`[MultiAI] ${this.name} web search disabled ✓`);
+      } else {
+        console.log(`[MultiAI] ${this.name} web search already disabled ✓`);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to disable web search:`, error);
+      return true; // 即使失败也继续执行
+    }
   }
 
   async sendQuery(query, startNewChat = false, deepThink = false, webSearch = false) {

@@ -110,6 +110,14 @@ class DeepSeek extends AIModel {
   }
 
   /**
+   * 判断是否可进行网络搜索
+   * @returns {boolean} DeepSeek 支持网络搜索
+   */
+  canWebSearch() {
+    return true;
+  }
+
+  /**
    * 启用深度思考（DeepSeek 特殊实现）
    * @returns {Promise<boolean>}
    */
@@ -212,7 +220,105 @@ class DeepSeek extends AIModel {
    * @returns {string}
    */
   getWebSearchButtonSelector() {
-    return ''; // TODO: 实现选择器
+    return 'button.ds-toggle-button:nth-of-type(2)';
+  }
+
+  /**
+   * 启用网络搜索（DeepSeek 特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async enableWebSearch() {
+    try {
+      console.log(`[MultiAI] ${this.name} - enabling web search...`);
+      
+      // 先尝试通过选择器查找
+      let btn = await this.waitForElement(this.getWebSearchButtonSelector(), 5000);
+      
+      if (!btn) {
+        console.log(`[MultiAI] ${this.name} web search button not found, skipping...`);
+        return true;
+      }
+      
+      // 检查按钮是否已经激活（通过 aria-pressed 或 class 判断）
+      let isActive = btn.classList.contains('ds-toggle-button--selected')
+      
+      if (!isActive) {       
+        // 尝试多种方式点击
+        // 方法1: 滚动到元素位置
+        btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // 方法2: 触发完整的鼠标事件序列
+        const mouseEvents = ['mousedown', 'mouseup', 'click'];
+        for (const eventType of mouseEvents) {
+          const event = new MouseEvent(eventType, {
+            view: window,
+            bubbles: true,
+            cancelable: true,
+            buttons: 1
+          });
+          btn.dispatchEvent(event);
+        }
+        
+        // 方法3: 直接点击
+        btn.click();
+      }
+      
+      console.log(`[MultiAI] ${this.name} web search enabled ✓`, isActive);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to enable web search:`, error);
+      return true; // 即使失败也继续执行
+    }
+  }
+
+  /**
+   * 禁用网络搜索（DeepSeek 特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async disableWebSearch() {
+    try {
+      console.log(`[MultiAI] ${this.name} - disabling web search...`);
+      
+      // 先尝试通过选择器查找
+      let btn = await this.waitForElement(this.getWebSearchButtonSelector(), 5000);
+      
+      if (!btn) {
+        console.log(`[MultiAI] ${this.name} web search button not found, skipping...`);
+        return true;
+      }
+      
+      // 检查按钮是否已经激活（通过 aria-pressed 或 class 判断）
+      let isActive = btn.classList.contains('ds-toggle-button--selected');
+      
+      if (isActive) {
+        // 尝试多种方式点击
+        // 方法1: 滚动到元素位置
+        btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // 方法2: 触发完整的鼠标事件序列
+        const mouseEvents = ['mousedown', 'mouseup', 'click'];
+        for (const eventType of mouseEvents) {
+          const event = new MouseEvent(eventType, {
+            view: window,
+            bubbles: true,
+            cancelable: true,
+            buttons: 1
+          });
+          btn.dispatchEvent(event);
+        }
+        
+        // 方法3: 直接点击
+        btn.click();
+      }
+      
+      console.log(`[MultiAI] ${this.name} web search disabled ✓`, !isActive);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to disable web search:`, error);
+      return true; // 即使失败也继续执行
+    }
   }
 
   async sendQuery(query, startNewChat = false, deepThink = false, webSearch = false) {

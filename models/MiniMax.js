@@ -76,6 +76,14 @@ class MiniMax extends AIModel {
   }
 
   /**
+   * 判断是否可进行网络搜索
+   * @returns {boolean} MiniMax 支持网络搜索
+   */
+  canWebSearch() {
+    return true;
+  }
+
+  /**
    * 禁用深度思考（MiniMax 不支持深度思考）
    * @returns {Promise<boolean>}
    */
@@ -90,6 +98,24 @@ class MiniMax extends AIModel {
    */
   getWebSearchButtonSelector() {
     return ''; // TODO: 实现选择器
+  }
+
+  /**
+   * 启用网络搜索（MiniMax 特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async enableWebSearch() {
+    // MiniMax 的网络搜索实现，暂时和深度思考一致
+    return true;
+  }
+
+  /**
+   * 禁用网络搜索（MiniMax 特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async disableWebSearch() {
+    // MiniMax 的网络搜索实现，暂时和深度思考一致
+    return true;
   }
 
   async sendQuery(query, startNewChat = false, deepThink = false, webSearch = false) {

@@ -74,6 +74,14 @@ class Gemini extends AIModel {
   }
 
   /**
+   * 判断是否可进行网络搜索
+   * @returns {boolean} Gemini 支持网络搜索
+   */
+  canWebSearch() {
+    return true;
+  }
+
+  /**
    * 启用深度思考（Gemini 特殊实现）
    * @returns {Promise<boolean>}
    */
@@ -171,6 +179,98 @@ class Gemini extends AIModel {
    */
   getWebSearchButtonSelector() {
     return ''; // TODO: 实现选择器
+  }
+
+  /**
+   * 启用网络搜索（Gemini 特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async enableWebSearch() {
+    try {
+      console.log(`[MultiAI] ${this.name} - enabling web search...`);
+      
+      // 步骤1: 点击触发按钮打开菜单
+      const triggerBtn = await this.waitForElement(this.getDeepThinkButtonSelector(), 5000);
+      if (!triggerBtn) {
+        console.log(`[MultiAI] ${this.name} mode menu button not found, skipping...`);
+        return true;
+      }
+      
+      // 点击触发按钮
+      triggerBtn.click();
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // 步骤2: 等待菜单出现，找到第二个 button[role="menuitemradio"]（思考模式）
+      const menuItem = await this.waitForElement('div.mat-mdc-menu-content button[role="menuitemradio"]:nth-of-type(2)', 3000);
+      if (!menuItem) {
+        console.log(`[MultiAI] ${this.name} web search menu item not found, skipping...`);
+        return true;
+      }
+      
+      // 检查是否已经选中
+      const isSelected = menuItem.getAttribute('aria-checked') === 'true' || 
+                        menuItem.classList.contains('is-selected');
+      
+      if (!isSelected) {
+        // 如果未选中，点击选择思考模式
+        menuItem.click();
+        await new Promise(resolve => setTimeout(resolve, 500));
+        console.log(`[MultiAI] ${this.name} web search enabled ✓`);
+      } else {
+        console.log(`[MultiAI] ${this.name} web search already enabled ✓`);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to enable web search:`, error);
+      return true; // 即使失败也继续执行
+    }
+  }
+
+  /**
+   * 禁用网络搜索（Gemini 特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async disableWebSearch() {
+    try {
+      console.log(`[MultiAI] ${this.name} - disabling web search...`);
+      
+      // 步骤1: 点击触发按钮打开菜单
+      const triggerBtn = await this.waitForElement(this.getDeepThinkButtonSelector(), 5000);
+      if (!triggerBtn) {
+        console.log(`[MultiAI] ${this.name} mode menu button not found, skipping...`);
+        return true;
+      }
+      
+      // 点击触发按钮
+      triggerBtn.click();
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // 步骤2: 等待菜单出现，找到第一个 button[role="menuitemradio"]（快速模式）
+      const menuItem = await this.waitForElement('div.mat-mdc-menu-content button[role="menuitemradio"]:nth-of-type(1)', 3000);
+      if (!menuItem) {
+        console.log(`[MultiAI] ${this.name} quick mode menu item not found, skipping...`);
+        return true;
+      }
+      
+      // 检查是否已经选中
+      const isSelected = menuItem.getAttribute('aria-checked') === 'true' || 
+                        menuItem.classList.contains('is-selected');
+      
+      if (!isSelected) {
+        // 如果未选中，点击选择快速模式
+        menuItem.click();
+        await new Promise(resolve => setTimeout(resolve, 500));
+        console.log(`[MultiAI] ${this.name} web search disabled ✓`);
+      } else {
+        console.log(`[MultiAI] ${this.name} web search already disabled ✓`);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to disable web search:`, error);
+      return true; // 即使失败也继续执行
+    }
   }
 
   async sendQuery(query, startNewChat = false, deepThink = false, webSearch = false) {

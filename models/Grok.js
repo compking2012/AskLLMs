@@ -80,6 +80,14 @@ class Grok extends AIModel {
   }
 
   /**
+   * 判断是否可进行网络搜索
+   * @returns {boolean}
+   */
+  canWebSearch() {
+    return true;
+  }
+
+  /**
    * 启用深度思考
    * @returns {Promise<boolean>}
    */
@@ -204,6 +212,125 @@ class Grok extends AIModel {
    */
   getWebSearchButtonSelector() {
     return ''; // TODO: 实现选择器
+  }
+
+  /**
+   * 启用网络搜索
+   * @returns {Promise<boolean>}
+   */
+  async enableWebSearch() {
+    try {
+      console.log(`[MultiAI] ${this.name} - enabling web search...`);
+      
+      // 步骤1: 点击模型选择按钮打开菜单
+      const modelSelectBtn = await this.waitForElement(this.getDeepThinkButtonSelector(), 5000);
+      if (!modelSelectBtn) {
+        console.log(`[MultiAI] ${this.name} model select button not found, skipping web search...`);
+        return true;
+      }
+      console.log(`[MultiAI] ${this.name} model select button found, clicking...`);
+
+      const div = modelSelectBtn.parentNode;
+      
+      div.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      // 方法2: 在 button 上触发完整的鼠标事件
+      const mouseEvents = ['mousedown', 'mouseup', 'click'];
+      for (const eventType of mouseEvents) {
+        const event = new MouseEvent(eventType, {
+          view: window,
+          bubbles: true,
+          cancelable: true,
+          buttons: 1
+        });
+        modelSelectBtn.dispatchEvent(event);
+      }
+      
+      // 方法3: 也在 div 上点击
+      modelSelectBtn.click();
+    // 等待菜单出现
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // 步骤2: 找到菜单中的第3个menuitem（专家模式）
+      const firstMenuItem = await this.waitForElement('div[role="menuitem"]', 3000);
+      if (!firstMenuItem) {
+        console.log(`[MultiAI] ${this.name} menu items not found, skipping...`);
+        return true;
+      }
+      
+      // 查找所有菜单项
+      const allMenuItems = document.querySelectorAll('div[role="menuitem"]');
+      if (allMenuItems.length < 3) {
+        console.log(`[MultiAI] ${this.name} not enough menu items found (found ${allMenuItems.length}), skipping...`);
+        return true;
+      }
+      
+      // 第3个菜单项是"专家模式"（enableWebSearch）
+      const expertModeItem = allMenuItems[2];
+      console.log(`[MultiAI] ${this.name} expert mode menu item found, clicking...`);
+      expertModeItem.click();
+      
+      // 等待菜单关闭
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      console.log(`[MultiAI] ${this.name} web search enabled ✓`);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to enable web search:`, error);
+      return true; // 即使失败也继续执行
+    }
+  }
+
+  /**
+   * 禁用网络搜索
+   * @returns {Promise<boolean>}
+   */
+  async disableWebSearch() {
+    try {
+      console.log(`[MultiAI] ${this.name} - disabling web search...`);
+      
+      // 步骤1: 点击模型选择按钮打开菜单
+      const modelSelectBtn = await this.waitForElement(this.getDeepThinkButtonSelector(), 5000);
+      if (!modelSelectBtn) {
+        console.log(`[MultiAI] ${this.name} model select button not found, may already be disabled`);
+        return true;
+      }
+      
+      console.log(`[MultiAI] ${this.name} model select button found, clicking...`);
+      modelSelectBtn.click();
+      
+      // 等待菜单出现
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // 步骤2: 找到菜单中的第2个menuitem（快速模式）
+      const firstMenuItem = await this.waitForElement('div[role="menuitem"]', 3000);
+      if (!firstMenuItem) {
+        console.log(`[MultiAI] ${this.name} menu items not found, may already be disabled`);
+        return true;
+      }
+      
+      // 查找所有菜单项
+      const allMenuItems = document.querySelectorAll('div[role="menuitem"]');
+      if (allMenuItems.length < 2) {
+        console.log(`[MultiAI] ${this.name} not enough menu items found (found ${allMenuItems.length}), may already be disabled`);
+        return true;
+      }
+      
+      // 第2个菜单项是"快速模式"（disableWebSearch）
+      const fastModeItem = allMenuItems[1];
+      console.log(`[MultiAI] ${this.name} fast mode menu item found, clicking...`);
+      fastModeItem.click();
+      
+      // 等待菜单关闭
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      console.log(`[MultiAI] ${this.name} web search disabled ✓`);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to disable web search:`, error);
+      return true; // 即使失败也继续执行
+    }
   }
 
   async sendQuery(query, startNewChat = false, deepThink = false, webSearch = false) {

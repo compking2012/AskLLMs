@@ -78,6 +78,14 @@ class Wenxin extends AIModel {
   }
 
   /**
+   * 判断是否可进行网络搜索
+   * @returns {boolean}
+   */
+  canWebSearch() {
+    return true;
+  }
+
+  /**
    * 启用深度思考
    * @returns {Promise<boolean>}
    */
@@ -185,6 +193,108 @@ class Wenxin extends AIModel {
    */
   getWebSearchButtonSelector() {
     return ''; // TODO: 实现选择器
+  }
+
+  /**
+   * 启用网络搜索
+   * @returns {Promise<boolean>}
+   */
+  async enableWebSearch() {
+    try {
+      console.log(`[MultiAI] ${this.name} - enabling web search...`);
+      
+      // 步骤1: 找到并点击深度思考按钮
+      const deepThinkButton = await this.waitForElement('div.ant-popover-open', 5000);
+      if (!deepThinkButton) {
+        console.log(`[MultiAI] ${this.name} web search button not found, skipping...`);
+        return true;
+      }
+      
+      console.log(`[MultiAI] ${this.name} web search button found, clicking...`);
+      deepThinkButton.click();
+      
+      // 等待菜单出现
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // 步骤2: 找到菜单中的第二个dtModeItem（开启）
+      const menuItems = await this.waitForElement('div.dtModeItem__R58Gzmsu', 3000);
+      if (!menuItems) {
+        console.log(`[MultiAI] ${this.name} menu items not found, skipping...`);
+        return true;
+      }
+      
+      // 查找所有菜单项
+      const allMenuItems = document.querySelectorAll('div.dtModeItem__R58Gzmsu');
+      if (allMenuItems.length < 2) {
+        console.log(`[MultiAI] ${this.name} not enough menu items found (found ${allMenuItems.length}), skipping...`);
+        return true;
+      }
+      
+      // 第二个菜单项是"开启"
+      const enableButton = allMenuItems[1];
+      console.log(`[MultiAI] ${this.name} enable web search menu item found, clicking...`);
+      enableButton.click();
+      
+      // 等待菜单关闭
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      console.log(`[MultiAI] ${this.name} web search enabled ✓`);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to enable web search:`, error);
+      return true; // 即使失败也继续执行
+    }
+  }
+
+  /**
+   * 禁用网络搜索
+   * @returns {Promise<boolean>}
+   */
+  async disableWebSearch() {
+    try {
+      console.log(`[MultiAI] ${this.name} - disabling web search...`);
+      
+      // 步骤1: 找到并点击深度思考按钮
+      const deepThinkButton = await this.waitForElement('.ant-popover-open', 5000);
+      if (!deepThinkButton) {
+        console.log(`[MultiAI] ${this.name} web search button not found, may already be disabled`);
+        return true;
+      }
+      
+      console.log(`[MultiAI] ${this.name} web search button found, clicking...`);
+      deepThinkButton.click();
+      
+      // 等待菜单出现
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // 步骤2: 找到菜单中的第三个dtModeItem（关闭）
+      const menuItems = await this.waitForElement('div.dtModeItem__R58Gzmsu', 3000);
+      if (!menuItems) {
+        console.log(`[MultiAI] ${this.name} menu items not found, may already be disabled`);
+        return true;
+      }
+      
+      // 查找所有菜单项
+      const allMenuItems = document.querySelectorAll('div.dtModeItem__R58Gzmsu');
+      if (allMenuItems.length < 3) {
+        console.log(`[MultiAI] ${this.name} not enough menu items found (found ${allMenuItems.length}), may already be disabled`);
+        return true;
+      }
+      
+      // 第三个菜单项是"关闭"
+      const disableButton = allMenuItems[2];
+      console.log(`[MultiAI] ${this.name} disable web search menu item found, clicking...`);
+      disableButton.click();
+      
+      // 等待菜单关闭
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      console.log(`[MultiAI] ${this.name} web search disabled ✓`);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to disable web search:`, error);
+      return true; // 即使失败也继续执行
+    }
   }
 
   async sendQuery(query, startNewChat = false, deepThink = false, webSearch = false) {
