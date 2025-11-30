@@ -80,7 +80,7 @@ class MiniMax extends AIModel {
    * @returns {boolean} MiniMax 支持网络搜索
    */
   canWebSearch() {
-    return true;
+    return false;
   }
 
   /**

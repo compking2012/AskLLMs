@@ -78,7 +78,7 @@ class Gemini extends AIModel {
    * @returns {boolean} Gemini 支持网络搜索
    */
   canWebSearch() {
-    return true;
+    return "auto";
   }
 
   /**

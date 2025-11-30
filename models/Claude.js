@@ -88,7 +88,7 @@ class Claude extends AIModel {
    * @returns {boolean}
    */
   canWebSearch() {
-    return true;
+    return false;
   }
 
   /**
@@ -109,52 +109,29 @@ class Claude extends AIModel {
       console.log(`[MultiAI] ${this.name} tools menu button found, clicking...`);
       toolsMenuBtn.click();
       
-      // 等待菜单出现
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // 步骤2: 找到菜单中的第5个按钮（Style按钮）
-      // button.group分别在不同的div下，先等待至少一个出现，然后查找所有并选择第5个
-      const firstButton = await this.waitForElement(this.getStyleButtonSelector(), 3000);
-      if (!firstButton) {
-        console.log(`[MultiAI] ${this.name} menu buttons not found, skipping...`);
-        return true;
-      }
-      
-      // 查找所有button.group（跨所有div）
-      const allButtons = document.querySelectorAll(this.getStyleButtonSelector());
-      if (allButtons.length < 5) {
-        console.log(`[MultiAI] ${this.name} not enough buttons found (found ${allButtons.length}), skipping...`);
-        return true;
-      }
-      
-      // 选择第5个按钮（索引为4）
-      const styleButton = allButtons[4];
-      console.log(`[MultiAI] ${this.name} style button found, clicking...`);
-      styleButton.click();
-      
-      // 等待Style菜单出现
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // 步骤3: 获取所有button.group，点击第一个来启用深度思考
-      const firstStyleButton = await this.waitForElement(this.getStyleButtonSelector(), 3000);
-      if (!firstStyleButton) {
+      // 步骤2: 获取所有button.group，点击第一个来启用深度思考
+      const useStyleButton = await this.waitForElement(this.getStyleButtonSelector(), 3000);
+      if (!useStyleButton) {
         console.log(`[MultiAI] ${this.name} style menu buttons not found, skipping...`);
         return true;
       }
+      useStyleButton.click();
       
-      // 查找所有button.group
-      const allStyleButtons = document.querySelectorAll(this.getStyleButtonSelector());
+      // 步骤3: 查找所有button.groups
+      const allStyleButtons = await this.waitForElement(this.getStyleButtonSelector(), 3000);
       if (allStyleButtons.length < 1) {
         console.log(`[MultiAI] ${this.name} style menu buttons not found, skipping...`);
         return true;
       }
       
-      // 第一个按钮是启用深度思考
+      // 步骤4: 第一个按钮是启用深度思考
       const enableDeepThinkButton = allStyleButtons[1];
       console.log(`[MultiAI] ${this.name} enable deep think button found, clicking...`);
       enableDeepThinkButton.click();
       
-      // 等待操作完成
+      // 步骤5: 等待操作完成
+      await new Promise(resolve => setTimeout(resolve, 500));
+      toolsMenuBtn.click();
       await new Promise(resolve => setTimeout(resolve, 500));
       
       console.log(`[MultiAI] ${this.name} deep think enabled ✓`);
@@ -183,60 +160,37 @@ class Claude extends AIModel {
       console.log(`[MultiAI] ${this.name} tools menu button found, clicking...`);
       toolsMenuBtn.click();
       
-      // 等待菜单出现
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // 步骤2: 找到菜单中的第5个按钮（Style按钮）
-      // button.group分别在不同的div下，先等待至少一个出现，然后查找所有并选择第5个
-      const firstButton = await this.waitForElement(this.getStyleButtonSelector(), 3000);
-      if (!firstButton) {
-        console.log(`[MultiAI] ${this.name} menu buttons not found, skipping...`);
-        return true;
-      }
-      
-      // 查找所有button.group（跨所有div）
-      const allButtons = document.querySelectorAll(this.getStyleButtonSelector());
-      if (allButtons.length < 5) {
-        console.log(`[MultiAI] ${this.name} not enough buttons found (found ${allButtons.length}), skipping...`);
-        return true;
-      }
-      
-      // 选择第5个按钮（索引为4）
-      const styleButton = allButtons[4];
-      console.log(`[MultiAI] ${this.name} style button found, clicking...`);
-      styleButton.click();
-      
-      // 等待Style菜单出现
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // 步骤3: 获取所有button.group，点击第7个来禁用深度思考
-      const firstStyleButton = await this.waitForElement(this.getStyleButtonSelector(), 3000);
-      if (!firstStyleButton) {
-        console.log(`[MultiAI] ${this.name} style menu buttons not found, skipping...`);
-        return true;
-      }
-      
-      // 查找所有button.group
-      const allStyleButtons = document.querySelectorAll(this.getStyleButtonSelector());
-      if (allStyleButtons.length < 7) {
-        console.log(`[MultiAI] ${this.name} style menu buttons not found, skipping...`);
-    return true;
-      }
-      
-      // 第7个按钮是禁用深度思考
-      const disableDeepThinkButton = allStyleButtons[6];
-      console.log(`[MultiAI] ${this.name} disable deep think button found, clicking...`);
-      disableDeepThinkButton.click();
-      
-      // 等待操作完成
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      console.log(`[MultiAI] ${this.name} deep think disabled ✓`);
-      return true;
-    } catch (error) {
-      console.error(`[MultiAI] ${this.name} failed to disable deep think:`, error);
-      return true; // 即使失败也继续执行
-    }
+       // 步骤2: 获取所有button.group，点击第一个来启用深度思考
+       const useStyleButton = await this.waitForElement(this.getStyleButtonSelector(), 3000);
+       if (!useStyleButton) {
+         console.log(`[MultiAI] ${this.name} style menu buttons not found, skipping...`);
+         return true;
+       }
+       useStyleButton.click();
+       
+       // 步骤3: 查找所有button.groups
+       const allStyleButtons = await this.waitForElement(this.getStyleButtonSelector(), 3000);
+       if (allStyleButtons.length < 1) {
+         console.log(`[MultiAI] ${this.name} style menu buttons not found, skipping...`);
+         return true;
+       }
+       
+       // 步骤4: 第4个按钮是启用深度思考
+       const disableDeepThinkButton = allStyleButtons[5];
+       console.log(`[MultiAI] ${this.name} disable deep think button found, clicking...`);
+       disableDeepThinkButton.click();
+       
+       // 步骤5: 等待操作完成
+       await new Promise(resolve => setTimeout(resolve, 500));
+       toolsMenuBtn.click();
+       await new Promise(resolve => setTimeout(resolve, 500));
+        
+       console.log(`[MultiAI] ${this.name} deep think disabled ✓`);
+       return true;
+     } catch (error) {
+       console.error(`[MultiAI] ${this.name} failed to disable deep think:`, error);
+       return true; // 即使失败也继续执行
+     }
   }
 
   /**
@@ -312,7 +266,7 @@ class Claude extends AIModel {
       
       // 等待操作完成
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       console.log(`[MultiAI] ${this.name} web search enabled ✓`);
       return true;
     } catch (error) {

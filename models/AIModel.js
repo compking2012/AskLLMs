@@ -374,7 +374,7 @@ class AIModel {
 
   /**
    * 判断是否可进行网络搜索
-   * @returns {boolean} 返回true表示支持网络搜索，false表示不支持
+   * @returns {boolean|string} 返回true表示支持网络搜索，false表示不支持, "auto"表示自动，"exclusive"表示互斥, "inclusive"表示包含
    */
   canWebSearch() {
     return true; // 默认返回true，子类可以重写此方法

@@ -78,7 +78,7 @@ class Qwen extends AIModel {
    * @returns {boolean} 千问支持网络搜索
    */
   canWebSearch() {
-    return true;
+    return "inclusive";
   }
 
   /**

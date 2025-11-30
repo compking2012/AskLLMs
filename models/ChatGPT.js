@@ -84,7 +84,7 @@ class ChatGPT extends AIModel {
    * @returns {boolean} ChatGPT 支持网络搜索
    */
   canWebSearch() {
-    return true;
+    return "exclusive";
   }
 
   /**

@@ -15,25 +15,55 @@ let settingsEventListenersInitialized = false;
  * @param {Function} loadAndApplySettings - 加载并应用设置的函数
  * @param {Function} initI18n - 初始化 i18n 的函数
  */
-function initSettingsPage(platformBtns, PLATFORM_ICONS, getPlatformDisplayName, DEFAULT_SETTINGS, loadAndApplySettings, initI18n) {
+async function initSettingsPage(platformBtns, PLATFORM_ICONS, getPlatformDisplayName, DEFAULT_SETTINGS, loadAndApplySettings, initI18n) {
   // 生成平台复选框
   const platformCheckboxes = document.getElementById('platform-checkboxes');
   if (!platformCheckboxes) return;
   
   platformCheckboxes.innerHTML = '';
   
+  // 获取平台顺序（从设置中读取，如果没有则使用默认顺序）
+  const result = await new Promise(resolve => {
+    chrome.storage.local.get(['settings'], resolve);
+  });
+  const settings = result.settings || DEFAULT_SETTINGS;
   const allPlatforms = Array.from(platformBtns).map(btn => btn.dataset.platform);
-  allPlatforms.forEach(platform => {
+  const platformOrder = settings.platformOrder && settings.platformOrder.length > 0 
+    ? settings.platformOrder.filter(p => allPlatforms.includes(p))
+    : allPlatforms;
+  
+  // 按照顺序生成复选框
+  platformOrder.forEach(platform => {
+    const btn = Array.from(platformBtns).find(b => b.dataset.platform === platform);
+    if (!btn) return; // 如果平台不存在，跳过
+    
     const checkbox = document.createElement('label');
-    checkbox.className = 'settings-checkbox';
+    checkbox.className = 'settings-checkbox draggable';
+    checkbox.draggable = true;
+    checkbox.dataset.platform = platform;
     const displayName = getPlatformDisplayName(platform);
     checkbox.innerHTML = `
+      <span class="drag-handle">⋮⋮</span>
       <input type="checkbox" value="${platform}" data-platform="${platform}">
-      <span class="icon"><img src="${PLATFORM_ICONS[platform]}" alt="${platform}"></span>
+      <span class="icon"><img src="${PLATFORM_ICONS[platform]}" alt="${platform}" draggable="false"></span>
       <span>${displayName}</span>
     `;
+    // 阻止拖拽手柄的点击事件冒泡到复选框
+    const dragHandle = checkbox.querySelector('.drag-handle');
+    if (dragHandle) {
+      dragHandle.addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+      });
+      dragHandle.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      });
+    }
     platformCheckboxes.appendChild(checkbox);
   });
+  
+  // 添加拖拽排序功能
+  initDragAndDrop(platformCheckboxes, loadAndApplySettings, initI18n);
   
   // 加载设置并填充表单
   loadSettingsToForm(DEFAULT_SETTINGS, loadAndApplySettings, initI18n);
@@ -172,11 +202,16 @@ async function loadSettingsToForm(DEFAULT_SETTINGS, loadAndApplySettings, initI1
  * @param {Function} initI18n - 初始化 i18n 的函数
  */
 async function saveSettings(loadAndApplySettings, initI18n) {
+  // 获取当前平台顺序
+  const platformOrder = Array.from(document.querySelectorAll('#platform-checkboxes .draggable'))
+    .map(item => item.dataset.platform);
+  
   const settings = {
     theme: document.querySelector('input[name="theme"]:checked')?.value || 'auto',
     language: document.querySelector('input[name="language"]:checked')?.value || 'auto',
     visiblePlatforms: Array.from(document.querySelectorAll('#platform-checkboxes input[type="checkbox"]:checked'))
       .map(cb => cb.dataset.platform),
+    platformOrder: platformOrder.length > 0 ? platformOrder : undefined,
     tabGroupTitle: document.getElementById('tab-group-title')?.value.trim() || '',
     colorMode: document.querySelector('input[name="color-mode"]:checked')?.value || 'random',
     fixedColor: document.querySelector('input[name="color"]:checked')?.value || 'blue'
@@ -204,6 +239,98 @@ async function saveSettings(loadAndApplySettings, initI18n) {
   if (settingsPage && settingsPage.classList.contains('active')) {
     // 需要重新调用 initSettingsPage，但这里我们无法直接调用
     // 所以依赖外部调用
+  }
+}
+
+/**
+ * 初始化拖拽排序功能
+ * @param {HTMLElement} container - 容器元素
+ * @param {Function} loadAndApplySettings - 加载并应用设置的函数
+ * @param {Function} initI18n - 初始化 i18n 的函数
+ */
+function initDragAndDrop(container, loadAndApplySettings, initI18n) {
+  let draggedElement = null;
+  
+  container.querySelectorAll('.draggable').forEach(item => {
+    item.addEventListener('dragstart', (e) => {
+      draggedElement = item;
+      item.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/html', item.innerHTML);
+      // 阻止事件冒泡，避免触发复选框点击
+      e.stopPropagation();
+    });
+    
+    item.addEventListener('dragend', () => {
+      item.classList.remove('dragging');
+      draggedElement = null;
+    });
+    
+    item.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      
+      const afterElement = getDragAfterElement(container, e.clientY);
+      if (afterElement == null) {
+        container.appendChild(draggedElement);
+      } else {
+        container.insertBefore(draggedElement, afterElement);
+      }
+    });
+    
+    item.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      if (draggedElement) {
+        // 保存新的顺序
+        const newOrder = Array.from(container.querySelectorAll('.draggable')).map(item => item.dataset.platform);
+        await savePlatformOrder(newOrder, loadAndApplySettings, initI18n);
+      }
+    });
+  });
+}
+
+/**
+ * 获取拖拽后的元素位置
+ * @param {HTMLElement} container - 容器元素
+ * @param {number} y - 鼠标Y坐标
+ * @returns {HTMLElement|null}
+ */
+function getDragAfterElement(container, y) {
+  const draggableElements = [...container.querySelectorAll('.draggable:not(.dragging)')];
+  
+  return draggableElements.reduce((closest, child) => {
+    const box = child.getBoundingClientRect();
+    const offset = y - box.top - box.height / 2;
+    
+    if (offset < 0 && offset > closest.offset) {
+      return { offset: offset, element: child };
+    } else {
+      return closest;
+    }
+  }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+/**
+ * 保存平台顺序
+ * @param {Array<string>} order - 平台顺序数组
+ * @param {Function} loadAndApplySettings - 加载并应用设置的函数
+ * @param {Function} initI18n - 初始化 i18n 的函数
+ */
+async function savePlatformOrder(order, loadAndApplySettings, initI18n) {
+  const result = await new Promise(resolve => {
+    chrome.storage.local.get(['settings'], resolve);
+  });
+  
+  const settings = result.settings || {};
+  settings.platformOrder = order;
+  
+  await new Promise(resolve => {
+    chrome.storage.local.set({ settings }, resolve);
+  });
+  
+  // 立即应用设置
+  if (loadAndApplySettings) {
+    await loadAndApplySettings();
   }
 }
 

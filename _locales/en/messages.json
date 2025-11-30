@@ -306,6 +306,22 @@
   "webSearchLabel": {
     "message": "Web Search",
     "description": "Web search label text"
+  },
+  "settingsAbout": {
+    "message": "About",
+    "description": "About section title"
+  },
+  "aboutDescription": {
+    "message": "Ask LLMs - A Chrome extension for querying multiple AI platforms simultaneously.",
+    "description": "About description"
+  },
+  "aboutAuthor": {
+    "message": "Author: Yang Yang",
+    "description": "About author"
+  },
+  "aboutCopyright": {
+    "message": "© 2024 All rights reserved.",
+    "description": "About copyright"
   }
 }
 

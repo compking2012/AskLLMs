@@ -78,7 +78,7 @@ class Doubao extends AIModel {
    * @returns {boolean} 豆包支持网络搜索
    */
   canWebSearch() {
-    return true;
+    return "auto";
   }
 
   /**

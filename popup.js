@@ -223,20 +223,168 @@ async function loadAndApplySettings() {
     });
   }
   
-  // 应用可见平台设置
-  applyVisiblePlatforms(settings.visiblePlatforms);
+  // 应用可见平台设置和顺序
+  await applyVisiblePlatforms(settings.visiblePlatforms);
   
   return settings;
 }
 
-// 应用可见平台设置
-function applyVisiblePlatforms(visiblePlatforms) {
+// 应用可见平台设置和顺序
+async function applyVisiblePlatforms(visiblePlatforms) {
+  // 获取平台顺序
+  const result = await new Promise(resolve => {
+    chrome.storage.local.get(['settings'], resolve);
+  });
+  const settings = result.settings || {};
+  const platformOrder = settings.platformOrder || Array.from(platformBtns).map(btn => btn.dataset.platform);
+  
+  // 确保平台数据已加载
+  if (!window._platformData) {
+    await getPlatformDataFromBackground();
+  }
+  
+  // 按照顺序重新排列平台按钮
+  const platformsGrid = document.querySelector('.platforms-grid');
+  if (platformsGrid) {
+    // 先隐藏所有按钮
+    platformBtns.forEach(btn => {
+      btn.style.display = 'none';
+    });
+    
+    // 按照顺序显示可见的平台
+    platformOrder.forEach(platform => {
+      const btn = Array.from(platformBtns).find(b => b.dataset.platform === platform);
+      if (btn && visiblePlatforms.includes(platform)) {
+        btn.style.display = '';
+        platformsGrid.appendChild(btn);
+        
+      }
+    });
+  } else {
+    // 回退：如果没有grid容器，使用原来的方式
+    platformBtns.forEach(btn => {
+      const platform = btn.dataset.platform;
+      if (visiblePlatforms.includes(platform)) {
+        btn.style.display = '';
+      } else {
+        btn.style.display = 'none';
+      }
+    });
+  }
+  
+  // 更新所有平台按钮的能力图标
+  updateAllPlatformCapabilityIcons();
+}
+
+/**
+ * 判断是否应该显示深度思考图标
+ * @param {boolean} canDeepThink - 模型是否支持深度思考
+ * @param {boolean} deepThinkEnabled - 深度思考toggle是否开启
+ * @returns {boolean}
+ */
+function shouldShowDeepThinkIcon(canDeepThink, deepThinkEnabled) {
+  return canDeepThink === true && deepThinkEnabled === true;
+}
+
+/**
+ * 判断是否应该显示网络搜索图标
+ * @param {boolean|string} canWebSearch - 模型是否支持网络搜索（可能是true/false/"auto"/"exclusive"/"inclusive"）
+ * @param {boolean} webSearchEnabled - 网络搜索toggle是否开启
+ * @param {boolean} deepThinkEnabled - 深度思考toggle是否开启（用于处理inclusive情况）
+ * @returns {boolean}
+ */
+function shouldShowWebSearchIcon(canWebSearch, webSearchEnabled, deepThinkEnabled) {
+  // false: 不支持，不显示
+  if (canWebSearch === false) {
+    return false;
+  }
+  
+  // "auto": 自动支持，不显示图标（因为用户无法控制）
+  if (canWebSearch === "auto") {
+    return false;
+  }
+  
+  // "inclusive": 深度思考开启时自动包含网络搜索
+  // 但如果只开启深度思考，不显示网络搜索图标（因为它是自动的，不需要提示）
+  // 只有当用户也开启了网络搜索toggle时，才显示网络搜索图标
+  if (canWebSearch === "inclusive") {
+    // 如果用户开启了网络搜索toggle，显示图标
+    if (webSearchEnabled) {
+      return true;
+    }
+    // 如果只开启深度思考，不显示网络搜索图标（因为自动包含，不需要提示）
+    return false;
+  }
+  
+  // "exclusive" 或 true: 如果网络搜索toggle开启，显示图标
+  if (webSearchEnabled) {
+    return true;
+  }
+  
+  return false;
+}
+
+/**
+ * 更新单个平台按钮的能力图标
+ * @param {HTMLElement} btn - 平台按钮元素
+ * @param {string} platform - 平台名称
+ * @param {Object} capabilities - 模型能力信息 {canDeepThink: boolean, canWebSearch: boolean|string}
+ * @param {boolean} deepThinkEnabled - 深度思考toggle是否开启
+ * @param {boolean} webSearchEnabled - 网络搜索toggle是否开启
+ */
+function updatePlatformCapabilityIcons(btn, platform, capabilities, deepThinkEnabled, webSearchEnabled) {
+  // 移除现有图标
+  const existingIcons = btn.querySelector('.capability-icons');
+  if (existingIcons) {
+    existingIcons.remove();
+  }
+  
+  if (!capabilities) {
+    return;
+  }
+  
+  const iconsContainer = document.createElement('div');
+  iconsContainer.className = 'capability-icons';
+  
+  // 判断是否显示深度思考图标
+  if (shouldShowDeepThinkIcon(capabilities.canDeepThink, deepThinkEnabled)) {
+    const icon = document.createElement('div');
+    icon.className = 'capability-icon';
+    icon.textContent = '🧠';
+    icon.title = '支持深度思考';
+    iconsContainer.appendChild(icon);
+  }
+  
+  // 判断是否显示网络搜索图标
+  if (shouldShowWebSearchIcon(capabilities.canWebSearch, webSearchEnabled, deepThinkEnabled)) {
+    const icon = document.createElement('div');
+    icon.className = 'capability-icon';
+    icon.textContent = '🔍';
+    icon.title = '支持网络搜索';
+    iconsContainer.appendChild(icon);
+  }
+  
+  // 如果有图标，添加到按钮
+  if (iconsContainer.children.length > 0) {
+    btn.appendChild(iconsContainer);
+  }
+}
+
+/**
+ * 更新所有平台按钮的能力图标
+ */
+function updateAllPlatformCapabilityIcons() {
+  const modelCapabilities = window._platformData?.modelCapabilities || {};
+  const deepThinkToggle = document.getElementById('deep-think-toggle');
+  const webSearchToggle = document.getElementById('web-search-toggle');
+  const deepThinkEnabled = deepThinkToggle?.classList.contains('active') || false;
+  const webSearchEnabled = webSearchToggle?.classList.contains('active') || false;
+  
   platformBtns.forEach(btn => {
     const platform = btn.dataset.platform;
-    if (visiblePlatforms.includes(platform)) {
-      btn.style.display = '';
-    } else {
-      btn.style.display = 'none';
+    if (btn.style.display !== 'none') {
+      const capabilities = modelCapabilities[platform];
+      updatePlatformCapabilityIcons(btn, platform, capabilities, deepThinkEnabled, webSearchEnabled);
     }
   });
 }
@@ -383,11 +531,14 @@ async function initializeApp() {
   // 尝试从 background 获取平台数据
   const platformData = await getPlatformDataFromBackground();
   if (platformData) {
-    // 更新 AIModel 的默认设置（如果可用）
-    if (platformData.defaultSettings && typeof AIModel !== 'undefined') {
-      // 将数据存储到全局变量中供后续使用
-      window._platformData = platformData;
-    }
+    // 将数据存储到全局变量中供后续使用
+    window._platformData = platformData;
+    console.log('[Popup] Platform data loaded:', {
+      hasCapabilities: !!platformData.modelCapabilities,
+      capabilities: platformData.modelCapabilities
+    });
+  } else {
+    console.warn('[Popup] Failed to load platform data');
   }
 
 // 初始化 i18n
@@ -396,14 +547,19 @@ async function initializeApp() {
 // 加载设置
   await loadAndApplySettings();
   
+  // 初始化新对话 toggle（需要在更新图标之前，因为需要加载toggle状态）
+  initNewChatToggle();
+  
+  // 确保能力图标已显示（延迟一下，确保DOM和toggle状态已更新）
+  setTimeout(() => {
+    updateAllPlatformCapabilityIcons();
+  }, 150);
+  
   // 清理历史记录中的无效数据
   await cleanQueryHistory();
   
   // 初始化历史记录下拉框
   await updateHistoryDropdown();
-  
-  // 初始化新对话 toggle
-  initNewChatToggle();
   
   // 检查并恢复进度
   await checkAndRestoreProgress();
@@ -1333,6 +1489,8 @@ function updateDeepThinkToggleUI() {
       deepThinkToggle.classList.remove('active');
     }
   }
+  // 更新所有平台按钮的能力图标
+  updateAllPlatformCapabilityIcons();
 }
 
 // 保存网络搜索 toggle 状态
@@ -1357,6 +1515,8 @@ function updateWebSearchToggleUI() {
       webSearchToggle.classList.remove('active');
     }
   }
+  // 更新所有平台按钮的能力图标
+  updateAllPlatformCapabilityIcons();
 }
 
 // 初始化新对话 toggle

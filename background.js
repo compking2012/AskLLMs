@@ -45,16 +45,52 @@ async function loadModelsData() {
       const i18nKeys = getPlatformI18nKeys();
       const platformNames = getAllPlatformNames();
 
+      // 获取每个模型的能力信息（canDeepThink和canWebSearch）
+      const modelCapabilities = {};
+      console.log('[Background] Checking getAllModelClasses:', typeof getAllModelClasses);
+      if (typeof getAllModelClasses === 'function') {
+        const modelClasses = getAllModelClasses();
+        console.log('[Background] Found', modelClasses.length, 'model classes');
+        for (const ModelClass of modelClasses) {
+          if (ModelClass && ModelClass.NAME) {
+            try {
+              const instance = new ModelClass();
+              const canDeepThink = instance.canDeepThink ? instance.canDeepThink() : false;
+              const canWebSearch = instance.canWebSearch ? instance.canWebSearch() : false;
+              modelCapabilities[ModelClass.NAME] = {
+                canDeepThink: canDeepThink,
+                canWebSearch: canWebSearch
+              };
+              console.log('[Background] Capabilities for', ModelClass.NAME, ':', {
+                canDeepThink,
+                canWebSearch
+              });
+            } catch (e) {
+              console.warn('[Background] Failed to get capabilities for', ModelClass.NAME, e);
+              modelCapabilities[ModelClass.NAME] = {
+                canDeepThink: false,
+                canWebSearch: false
+              };
+            }
+          }
+        }
+      } else {
+        console.warn('[Background] getAllModelClasses is not available');
+      }
+      console.log('[Background] Final modelCapabilities:', modelCapabilities);
+
       // 缓存数据
       modelsDataCache = {
         sites,
         icons,
         i18nKeys,
         platformNames,
+        modelCapabilities,
         defaultSettings: {
           theme: 'auto',
           language: 'auto',
           visiblePlatforms: platformNames,
+          platformOrder: platformNames, // 添加平台顺序
           tabGroupTitle: '',
           colorMode: 'random',
           fixedColor: 'blue'
@@ -70,10 +106,12 @@ async function loadModelsData() {
         icons: {},
         i18nKeys: {},
         platformNames: [],
+        modelCapabilities: {},
         defaultSettings: {
           theme: 'auto',
           language: 'auto',
           visiblePlatforms: [],
+          platformOrder: [],
           tabGroupTitle: '',
           colorMode: 'random',
           fixedColor: 'blue'
@@ -886,6 +924,7 @@ async function getDefaultSettings() {
             platformNames: data.platformNames,
             platformIcons: data.icons,
             platformI18nKeys: data.i18nKeys,
+            modelCapabilities: data.modelCapabilities,
             defaultSettings: data.defaultSettings
           });
         } catch (error) {
