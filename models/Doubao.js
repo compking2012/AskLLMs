@@ -242,6 +242,40 @@ class Doubao extends AIModel {
   }
 
   /**
+   * 获取生成图片按钮选择器
+   * @returns {string}
+   */
+  getGenImageButtonSelector() {
+    return ''; // TODO: 实现选择器
+  }
+
+  /**
+   * 判断是否可生成图片
+   * @returns {boolean} 豆包支持生成图片（自动）
+   */
+  canGenImage() {
+    return "auto";
+  }
+
+  /**
+   * 启用生成图片（豆包特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async enableGenImage() {
+    // 豆包自动支持生成图片，无需操作
+    return true;
+  }
+
+  /**
+   * 禁用生成图片（豆包特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async disableGenImage() {
+    // 豆包自动支持生成图片，无需操作
+    return true;
+  }
+
+  /**
    * 启用网络搜索（豆包特殊实现）
    * @returns {Promise<boolean>}
    */
@@ -393,10 +427,11 @@ class Doubao extends AIModel {
     }
   }
 
-  async sendQuery(query, startNewChat = false, deepThink = false, webSearch = false) {
+  async sendQuery(query, startNewChat = false, deepThink = false, webSearch = false, genImage = false) {
     console.log(`[MultiAI] ${this.name} - startNewChat:`, startNewChat);
     console.log(`[MultiAI] ${this.name} - deepThink:`, deepThink);
     console.log(`[MultiAI] ${this.name} - webSearch:`, webSearch);
+    console.log(`[MultiAI] ${this.name} - genImage:`, genImage);
     
     // 如果启用了新对话，先开启新对话
     if (startNewChat) {
@@ -418,6 +453,15 @@ class Doubao extends AIModel {
       await this.enableWebSearch();
       } else {
         await this.disableWebSearch();
+      }
+    }
+    
+    // 如果启用了生成图片，先启用生成图片，否则禁用
+    if (this.canGenImage()) {
+    if (genImage) {
+      await this.enableGenImage();
+      } else {
+        await this.disableGenImage();
       }
     }
     

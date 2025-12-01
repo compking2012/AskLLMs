@@ -1404,6 +1404,7 @@ document.addEventListener('click', (e) => {
 let startNewChatEnabled = false;
 let deepThinkEnabled = false;
 let webSearchEnabled = false;
+let genImageEnabled = false;
 
 // 加载新对话 toggle 状态
 async function loadNewChatToggleState() {
@@ -1441,6 +1442,44 @@ async function loadWebSearchToggleState() {
     updateWebSearchToggleUI();
   } catch (error) {
     console.error('Failed to load web search toggle state:', error);
+  }
+}
+
+// 加载生成图片 toggle 状态
+async function loadGenImageToggleState() {
+  try {
+    const result = await new Promise(resolve => {
+      chrome.storage.local.get(['genImageEnabled'], resolve);
+    });
+    genImageEnabled = result.genImageEnabled || false;
+    updateGenImageToggleUI();
+  } catch (error) {
+    console.error('Failed to load gen image toggle state:', error);
+  }
+}
+
+// 保存生成图片 toggle 状态
+async function saveGenImageToggleState(enabled) {
+  genImageEnabled = enabled;
+  try {
+    await new Promise(resolve => {
+      chrome.storage.local.set({ genImageEnabled: enabled }, resolve);
+    });
+    console.log('[Popup] Gen image toggle state saved:', enabled);
+  } catch (error) {
+    console.error('Failed to save gen image toggle state:', error);
+  }
+}
+
+// 更新生成图片 toggle UI
+function updateGenImageToggleUI() {
+  const genImageToggle = document.getElementById('gen-image-toggle');
+  if (genImageToggle) {
+    if (genImageEnabled) {
+      genImageToggle.classList.add('active');
+    } else {
+      genImageToggle.classList.remove('active');
+    }
   }
 }
 
@@ -1590,6 +1629,28 @@ function initNewChatToggle() {
     });
     loadWebSearchToggleState();
   }
+  
+  // 初始化生成图片 toggle
+  const genImageToggle = document.getElementById('gen-image-toggle');
+  if (genImageToggle) {
+    genImageToggle.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      genImageEnabled = !genImageEnabled;
+      console.log('[Popup] Gen image toggle clicked, new state:', genImageEnabled);
+      await saveGenImageToggleState(genImageEnabled);
+      updateGenImageToggleUI();
+      
+      // 验证保存是否成功
+      const verify = await new Promise(resolve => {
+        chrome.storage.local.get(['genImageEnabled'], (result) => {
+          resolve(result.genImageEnabled);
+        });
+      });
+      console.log('[Popup] Verified gen image saved state:', verify);
+    });
+    loadGenImageToggleState();
+  }
 }
 
 
@@ -1613,20 +1674,23 @@ async function sendQuery() {
   const newChatToggleBtn = document.getElementById('new-chat-toggle');
   const deepThinkToggleBtn = document.getElementById('deep-think-toggle');
   const webSearchToggleBtn = document.getElementById('web-search-toggle');
+  const genImageToggleBtn = document.getElementById('gen-image-toggle');
   
   const domState = {
     startNewChat: newChatToggleBtn?.classList.contains('active') || false,
     deepThink: deepThinkToggleBtn?.classList.contains('active') || false,
-    webSearch: webSearchToggleBtn?.classList.contains('active') || false
+    webSearch: webSearchToggleBtn?.classList.contains('active') || false,
+    genImage: genImageToggleBtn?.classList.contains('active') || false
   };
   
   // 同时从存储中读取状态（作为备份）
   const currentState = await new Promise(resolve => {
-    chrome.storage.local.get(['startNewChatEnabled', 'deepThinkEnabled', 'webSearchEnabled'], (result) => {
+    chrome.storage.local.get(['startNewChatEnabled', 'deepThinkEnabled', 'webSearchEnabled', 'genImageEnabled'], (result) => {
       resolve({
         startNewChat: result.startNewChatEnabled || false,
         deepThink: result.deepThinkEnabled || false,
-        webSearch: result.webSearchEnabled || false
+        webSearch: result.webSearchEnabled || false,
+        genImage: result.genImageEnabled || false
       });
     });
   });
@@ -1635,9 +1699,10 @@ async function sendQuery() {
   startNewChatEnabled = domState.startNewChat;
   deepThinkEnabled = domState.deepThink;
   webSearchEnabled = domState.webSearch;
+  genImageEnabled = domState.genImage;
   
   console.log('[Popup] State check - DOM:', domState, 'Storage:', currentState);
-  console.log('[Popup] Using DOM state - startNewChat:', startNewChatEnabled, 'deepThink:', deepThinkEnabled, 'webSearch:', webSearchEnabled);
+  console.log('[Popup] Using DOM state - startNewChat:', startNewChatEnabled, 'deepThink:', deepThinkEnabled, 'webSearch:', webSearchEnabled, 'genImage:', genImageEnabled);
   
   // 如果 DOM 状态和存储状态不一致，同步存储状态（确保一致性）
   if (domState.startNewChat !== currentState.startNewChat) {
@@ -1651,6 +1716,10 @@ async function sendQuery() {
   if (domState.webSearch !== currentState.webSearch) {
     console.log('[Popup] Syncing webSearch state to storage:', domState.webSearch);
     await saveWebSearchToggleState(domState.webSearch);
+  }
+  if (domState.genImage !== currentState.genImage) {
+    console.log('[Popup] Syncing genImage state to storage:', domState.genImage);
+    await saveGenImageToggleState(domState.genImage);
   }
   
   // 保存历史记录
@@ -1680,14 +1749,15 @@ async function sendQuery() {
   startProgressListening();
   
   // 发送消息到 background，包含选中的平台和新对话状态
-  console.log('[Popup] Sending query with startNewChat:', startNewChatEnabled, 'deepThink:', deepThinkEnabled, 'webSearch:', webSearchEnabled);
+  console.log('[Popup] Sending query with startNewChat:', startNewChatEnabled, 'deepThink:', deepThinkEnabled, 'webSearch:', webSearchEnabled, 'genImage:', genImageEnabled);
   chrome.runtime.sendMessage({ 
     action: 'sendToAllAIs', 
     query,
     platforms: selectedPlatforms,
     startNewChat: startNewChatEnabled,
     deepThink: deepThinkEnabled,
-    webSearch: webSearchEnabled
+    webSearch: webSearchEnabled,
+    genImage: genImageEnabled
   }, (response) => {
     if (chrome.runtime.lastError) {
       stopProgressListening();

@@ -101,6 +101,38 @@ class MiniMax extends AIModel {
   }
 
   /**
+   * 获取生成图片按钮选择器
+   * @returns {string}
+   */
+  getGenImageButtonSelector() {
+    return ''; // TODO: 实现选择器
+  }
+
+  /**
+   * 判断是否可生成图片
+   * @returns {boolean} MiniMax 不支持生成图片
+   */
+  canGenImage() {
+    return false;
+  }
+
+  /**
+   * 启用生成图片（MiniMax 特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async enableGenImage() {
+    return false;
+  }
+
+  /**
+   * 禁用生成图片（MiniMax 特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async disableGenImage() {
+    return false;
+  }
+
+  /**
    * 启用网络搜索（MiniMax 特殊实现）
    * @returns {Promise<boolean>}
    */
@@ -118,10 +150,11 @@ class MiniMax extends AIModel {
     return true;
   }
 
-  async sendQuery(query, startNewChat = false, deepThink = false, webSearch = false) {
+  async sendQuery(query, startNewChat = false, deepThink = false, webSearch = false, genImage = false) {
     console.log(`[MultiAI] ${this.name} - startNewChat:`, startNewChat);
     console.log(`[MultiAI] ${this.name} - deepThink:`, deepThink);
     console.log(`[MultiAI] ${this.name} - webSearch:`, webSearch);
+    console.log(`[MultiAI] ${this.name} - genImage:`, genImage);
     
     // 如果启用了新对话，先开启新对话
     if (startNewChat) {
@@ -143,6 +176,15 @@ class MiniMax extends AIModel {
       await this.enableWebSearch();
       } else {
         await this.disableWebSearch();
+      }
+    }
+    
+    // 如果启用了生成图片，先启用生成图片，否则禁用
+    if (this.canGenImage()) {
+    if (genImage) {
+      await this.enableGenImage();
+      } else {
+        await this.disableGenImage();
       }
     }
     

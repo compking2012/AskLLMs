@@ -307,6 +307,14 @@
     "message": "网络搜索",
     "description": "网络搜索标签文本"
   },
+  "genImageToggle": {
+    "message": "生成图片",
+    "description": "生成图片切换按钮"
+  },
+  "genImageLabel": {
+    "message": "生成图片",
+    "description": "生成图片标签文本"
+  },
   "settingsAbout": {
     "message": "关于",
     "description": "关于部分标题"

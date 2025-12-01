@@ -451,14 +451,101 @@ class AIModel {
   }
 
   /**
+   * 获取生成图片按钮选择器
+   * @returns {string}
+   */
+  getGenImageButtonSelector() {
+    return '';
+  }
+
+  /**
+   * 判断是否可生成图片
+   * @returns {boolean} 返回true表示支持生成图片，false表示不支持
+   */
+  canGenImage() {
+    return false; // 默认返回false，子类可以重写此方法
+  }
+
+  /**
+   * 启用生成图片（可选方法，由子类实现）
+   * @returns {Promise<boolean>} 返回true表示成功，false表示失败或不需要
+   */
+  async enableGenImage() {
+    try {
+      const selector = this.getGenImageButtonSelector();
+      if (!selector) {
+        return true; // 如果未实现，返回true表示跳过
+      }
+      
+      const btn = await this.waitForElement(selector, 5000);
+      if (!btn) {
+        console.log(`[MultiAI] ${this.name} gen image button not found, skipping...`);
+        return true;
+      }
+      
+      // 检查按钮是否已经激活
+      const isActive = btn.checked || btn.classList.contains('active') || 
+                       btn.getAttribute('aria-pressed') === 'true' ||
+                       btn.getAttribute('data-active') === 'true';
+      
+      if (!isActive) {
+        btn.click();
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      
+      console.log(`[MultiAI] ${this.name} gen image enabled ✓`);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to enable gen image:`, error);
+      return true; // 即使失败也继续执行
+    }
+  }
+
+  /**
+   * 禁用生成图片（可选方法，由子类实现）
+   * @returns {Promise<boolean>} 返回true表示成功，false表示失败或不需要
+   */
+  async disableGenImage() {
+    try {
+      const selector = this.getGenImageButtonSelector();
+      if (!selector) {
+        return true; // 如果未实现，返回true表示跳过
+      }
+      
+      const btn = await this.waitForElement(selector, 5000);
+      if (!btn) {
+        console.log(`[MultiAI] ${this.name} gen image button not found, skipping...`);
+        return true;
+      }
+      
+      // 检查按钮是否已经激活
+      const isActive = btn.checked || btn.classList.contains('active') || 
+                       btn.getAttribute('aria-pressed') === 'true' ||
+                       btn.getAttribute('data-active') === 'true';
+      
+      if (isActive) {
+        btn.click();
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      
+      console.log(`[MultiAI] ${this.name} gen image disabled ✓`);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to disable gen image:`, error);
+      return true; // 即使失败也继续执行
+    }
+  }
+
+  /**
    * 发送查询（抽象方法，由子类实现）
    * @param {string} query - 查询文本
    * @param {boolean} startNewChat - 是否开启新对话
    * @param {boolean} deepThink - 是否启用深度思考
    * @param {boolean} webSearch - 是否启用网络搜索
+   * @param {boolean} genImage - 是否启用生成图片
    * @returns {Promise<boolean>}
    */
-  async sendQuery(query, startNewChat = false, deepThink = false, webSearch = false) {
+  async sendQuery(query, startNewChat = false, deepThink = false, webSearch = false, genImage = false) {
     throw new Error('sendQuery must be implemented by subclass');
   }
 

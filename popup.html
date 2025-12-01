@@ -897,7 +897,6 @@
       display: flex;
       gap: 12px;
       justify-content: center;
-      padding-bottom: 10px; /* 为能力图标留出空间 */
     }
     
     .platform-btn {
@@ -905,16 +904,7 @@
     }
     
     .platform-btn .capability-icons {
-      position: absolute;
-      bottom: -10px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      gap: 3px;
-      font-size: 10px;
-      line-height: 1;
-      z-index: 10;
-      pointer-events: none;
+      display: none; /* 隐藏图标下的状态 */
     }
     
     .platform-btn .capability-icon {
@@ -1217,6 +1207,10 @@
     <button id="web-search-toggle" class="new-chat-toggle" title="网络搜索" data-i18n-title="webSearchToggle">
       <span class="new-chat-toggle-icon">🔍</span>
       <span data-i18n="webSearchLabel">网络搜索</span>
+    </button>
+    <button id="gen-image-toggle" class="new-chat-toggle" title="生成图片" data-i18n-title="genImageToggle">
+      <span class="new-chat-toggle-icon">🎨</span>
+      <span data-i18n="genImageLabel">生成图片</span>
     </button>
   </div>
   
