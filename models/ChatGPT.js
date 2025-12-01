@@ -28,6 +28,37 @@ class ChatGPT extends AIModel {
   }
 
   /**
+   * 获取深度思考按钮选择器
+   * @returns {string}
+   */
+  getDeepThinkButtonSelector() {
+    // ChatGPT 的深度思考需要先点击加号按钮，然后在菜单中找到"思考"选项
+    // 改为定位到包含按钮的 div
+    return 'div[class*="grid-area:leading"]';
+  }
+
+  getRemoveDeepThinkButtonSelector() {
+    return 'button.__composer-pill.group';
+  }
+
+    /**
+   * 获取网络搜索按钮选择器
+   * @returns {string}
+   */
+    getWebSearchButtonSelector() {
+      // ChatGPT 的网络搜索按钮选择器（需要根据实际DOM调整）
+      return 'button[aria-label*="Web"]'; // 示例，需要根据实际调整
+    }
+  
+    /**
+     * 获取生成图片按钮选择器
+     * @returns {string}
+     */
+    getGenImageButtonSelector() {
+      return ''; // TODO: 实现选择器
+    }
+    
+    /**
    * 开启新对话
    * @returns {Promise<boolean>}
    */
@@ -58,20 +89,6 @@ class ChatGPT extends AIModel {
   }
 
   /**
-   * 获取深度思考按钮选择器
-   * @returns {string}
-   */
-  getDeepThinkButtonSelector() {
-    // ChatGPT 的深度思考需要先点击加号按钮，然后在菜单中找到"思考"选项
-    // 改为定位到包含按钮的 div
-    return 'div[class*="grid-area:leading"]';
-  }
-
-  getRemoveDeepThinkButtonSelector() {
-    return 'button.__composer-pill.group';
-  }
-
-  /**
    * 判断是否可进行深度思考
    * @returns {boolean} ChatGPT 不支持深度思考
    */
@@ -85,6 +102,50 @@ class ChatGPT extends AIModel {
    */
   canWebSearch() {
     return "exclusive";
+  }
+
+  /**
+   * 判断是否可生成图片
+   * @returns {boolean} ChatGPT 支持生成图片
+   */
+  canGenImage() {
+    return true;
+  }
+
+  /**
+   * 启用深度思考（ChatGPT 特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async enableDeepThink() {
+    try {
+      console.log(`[MultiAI] ${this.name} - enabling deep think...`);
+      
+      // 步骤1: 找到并点击 composer plus 按钮
+      // 使用 data-testid 属性作为选择器（更稳定）
+      const plusButton = await this.waitForElement('button[data-testid="composer-plus-btn"]', 5000);
+      if (!plusButton) {
+        console.log(`[MultiAI] ${this.name} composer plus button not found, skipping deep think...`);
+        return true;
+      }
+      
+      console.log(`[MultiAI] ${this.name} composer plus button found, clicking...`);
+      
+      // 滚动到按钮位置，确保可见
+      plusButton.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // 点击按钮
+      plusButton.click();
+      
+      // 等待菜单出现
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      console.log(`[MultiAI] ${this.name} composer plus button clicked ✓`);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to enable deep think:`, error);
+      return true; // 即使失败也继续执行
+    }
   }
 
   /**
@@ -114,49 +175,6 @@ class ChatGPT extends AIModel {
       console.error(`[MultiAI] ${this.name} failed to disable deep think:`, error);
       return true; // 即使失败也继续执行
     }
-  }
-
-  /**
-   * 获取网络搜索按钮选择器
-   * @returns {string}
-   */
-  getWebSearchButtonSelector() {
-    // ChatGPT 的网络搜索按钮选择器（需要根据实际DOM调整）
-    return 'button[aria-label*="Web"]'; // 示例，需要根据实际调整
-  }
-
-  /**
-   * 获取生成图片按钮选择器
-   * @returns {string}
-   */
-  getGenImageButtonSelector() {
-    return ''; // TODO: 实现选择器
-  }
-
-  /**
-   * 判断是否可生成图片
-   * @returns {boolean} ChatGPT 支持生成图片
-   */
-  canGenImage() {
-    return true;
-  }
-
-  /**
-   * 启用生成图片（ChatGPT 特殊实现）
-   * @returns {Promise<boolean>}
-   */
-  async enableGenImage() {
-    // TODO: 实现生成图片功能
-    return true;
-  }
-
-  /**
-   * 禁用生成图片（ChatGPT 特殊实现）
-   * @returns {Promise<boolean>}
-   */
-  async disableGenImage() {
-    // TODO: 实现生成图片功能
-    return true;
   }
 
   /**
@@ -225,39 +243,21 @@ class ChatGPT extends AIModel {
   }
 
   /**
-   * 启用深度思考（ChatGPT 特殊实现）
+   * 启用生成图片（ChatGPT 特殊实现）
    * @returns {Promise<boolean>}
    */
-  async enableDeepThink() {
-    try {
-      console.log(`[MultiAI] ${this.name} - enabling deep think...`);
-      
-      // 步骤1: 找到并点击 composer plus 按钮
-      // 使用 data-testid 属性作为选择器（更稳定）
-      const plusButton = await this.waitForElement('button[data-testid="composer-plus-btn"]', 5000);
-      if (!plusButton) {
-        console.log(`[MultiAI] ${this.name} composer plus button not found, skipping deep think...`);
-        return true;
-      }
-      
-      console.log(`[MultiAI] ${this.name} composer plus button found, clicking...`);
-      
-      // 滚动到按钮位置，确保可见
-      plusButton.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      // 点击按钮
-      plusButton.click();
-      
-      // 等待菜单出现
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      console.log(`[MultiAI] ${this.name} composer plus button clicked ✓`);
-      return true;
-    } catch (error) {
-      console.error(`[MultiAI] ${this.name} failed to enable deep think:`, error);
-      return true; // 即使失败也继续执行
-    }
+  async enableGenImage() {
+    // TODO: 实现生成图片功能
+    return true;
+  }
+
+  /**
+   * 禁用生成图片（ChatGPT 特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async disableGenImage() {
+    // TODO: 实现生成图片功能
+    return true;
   }
 
   async sendQuery(query, startNewChat = false, deepThink = false, webSearch = false, genImage = false) {
