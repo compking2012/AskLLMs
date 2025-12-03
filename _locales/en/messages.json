@@ -315,6 +315,22 @@
     "message": "Generate Image",
     "description": "Generate image label text"
   },
+  "settingsHistory": {
+    "message": "History",
+    "description": "History settings title"
+  },
+  "clearHistory": {
+    "message": "Clear History",
+    "description": "Clear history button"
+  },
+  "clearHistoryConfirm": {
+    "message": "Are you sure you want to clear all history? This action cannot be undone.",
+    "description": "Clear history confirmation message"
+  },
+  "clearHistorySuccess": {
+    "message": "History cleared",
+    "description": "Clear history success message"
+  },
   "settingsAbout": {
     "message": "About",
     "description": "About section title"

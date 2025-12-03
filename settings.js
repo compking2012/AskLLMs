@@ -119,6 +119,44 @@ async function initSettingsPage(platformBtns, PLATFORM_ICONS, getPlatformDisplay
       });
     }
     
+    // 清空历史记录按钮
+    const clearHistoryBtn = document.getElementById('clear-history-btn');
+    if (clearHistoryBtn) {
+      clearHistoryBtn.addEventListener('click', async () => {
+        // 获取 i18n 函数（从全局作用域）
+        const i18nFunc = window.i18n;
+        if (!i18nFunc) {
+          console.error('[Settings] i18n function not available');
+          alert('i18n function not available');
+          return;
+        }
+        
+        // 确认对话框
+        const confirmMessage = i18nFunc('clearHistoryConfirm');
+        if (!confirm(confirmMessage)) {
+          return;
+        }
+        
+        // 调用清空历史记录函数（从全局作用域）
+        const clearQueryHistoryFunc = window.clearQueryHistory;
+        if (!clearQueryHistoryFunc) {
+          console.error('[Settings] clearQueryHistory function not available');
+          alert('clearQueryHistory function not available');
+          return;
+        }
+        
+        const success = await clearQueryHistoryFunc();
+        if (success) {
+          // 显示成功消息
+          const successMessage = i18nFunc('clearHistorySuccess');
+          alert(successMessage);
+        } else {
+          const errorMessage = i18nFunc('errorSendFailed') || 'Failed to clear history';
+          alert(errorMessage);
+        }
+      });
+    }
+    
     settingsEventListenersInitialized = true;
   }
 }

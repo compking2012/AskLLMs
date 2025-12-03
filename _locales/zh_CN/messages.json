@@ -315,6 +315,22 @@
     "message": "生成图片",
     "description": "生成图片标签文本"
   },
+  "settingsHistory": {
+    "message": "历史记录",
+    "description": "历史记录设置标题"
+  },
+  "clearHistory": {
+    "message": "清空历史记录",
+    "description": "清空历史记录按钮"
+  },
+  "clearHistoryConfirm": {
+    "message": "确定要清空所有历史记录吗？此操作无法撤销。",
+    "description": "清空历史记录确认提示"
+  },
+  "clearHistorySuccess": {
+    "message": "历史记录已清空",
+    "description": "清空历史记录成功提示"
+  },
   "settingsAbout": {
     "message": "关于",
     "description": "关于部分标题"

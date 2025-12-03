@@ -80,6 +80,9 @@ function i18n(messageName, substitutions) {
   return chrome.i18n.getMessage(messageName, substitutions);
 }
 
+// 导出到全局作用域，供 settings.js 调用
+window.i18n = i18n;
+
 // 初始化 i18n
 async function initI18n() {
   // 更新当前语言
@@ -101,6 +104,12 @@ async function initI18n() {
   document.querySelectorAll('[data-i18n-title]').forEach(element => {
     const messageName = element.getAttribute('data-i18n-title');
     element.title = i18n(messageName);
+  });
+  
+  // 翻译所有带有 data-i18n 属性的按钮（用于按钮文本）
+  document.querySelectorAll('button[data-i18n]').forEach(element => {
+    const messageName = element.getAttribute('data-i18n');
+    element.textContent = i18n(messageName);
   });
   
   // 更新平台按钮的 tooltip 和 title（支持 i18n）
@@ -1374,6 +1383,27 @@ async function updateHistoryDropdown() {
     });
   }
 }
+
+// 清空历史记录
+async function clearQueryHistory() {
+  try {
+    await new Promise(resolve => {
+      chrome.storage.local.set({ queryHistory: [] }, resolve);
+    });
+    
+    // 更新下拉框显示
+    updateHistoryDropdown();
+    
+    console.log('[Popup] History cleared');
+    return true;
+  } catch (error) {
+    console.error('Failed to clear query history:', error);
+    return false;
+  }
+}
+
+// 导出到全局作用域，供 settings.js 调用
+window.clearQueryHistory = clearQueryHistory;
 
 // 切换历史记录下拉框
 function toggleHistoryDropdown() {

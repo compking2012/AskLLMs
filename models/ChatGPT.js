@@ -113,6 +113,22 @@ class ChatGPT extends AIModel {
   }
 
   /**
+   * 模拟点击元素（兼容 React 合成事件）
+   * @param {HTMLElement} element
+   */
+  simulateClick(element) {
+    const events = ['mousedown'];
+    events.forEach(eventType => {
+      const event = new MouseEvent(eventType, {
+        bubbles: true,
+        cancelable: true,
+        view: window
+      });
+      element.dispatchEvent(event);
+    });
+  }
+
+  /**
    * 启用深度思考（ChatGPT 特殊实现）
    * @returns {Promise<boolean>}
    */
@@ -132,15 +148,18 @@ class ChatGPT extends AIModel {
       
       // 滚动到按钮位置，确保可见
       plusButton.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 3000));
       
       // 点击按钮
-      plusButton.click();
+      this.simulateClick(plusButton);
       
       // 等待菜单出现
       await new Promise(resolve => setTimeout(resolve, 500));
       
       console.log(`[MultiAI] ${this.name} composer plus button clicked ✓`);
+      
+      // TODO: 菜单打开后，需要分析DOM找到"深度思考"选项并点击
+      
       return true;
     } catch (error) {
       console.error(`[MultiAI] ${this.name} failed to enable deep think:`, error);
@@ -167,7 +186,7 @@ class ChatGPT extends AIModel {
       deepThinkButton.click();
       
       // 等待按钮消失或状态更新
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 5000));
       
       console.log(`[MultiAI] ${this.name} deep think disabled ✓`);
       return true;
@@ -197,13 +216,13 @@ class ChatGPT extends AIModel {
       
       // 滚动到按钮位置，确保可见
       plusButton.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 3000));
       
       // 点击按钮
-      plusButton.click();
+      this.simulateClick(plusButton);
       
       // 等待菜单出现
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 5000));
       
       console.log(`[MultiAI] ${this.name} composer plus button clicked ✓`);
       return true;
@@ -247,8 +266,33 @@ class ChatGPT extends AIModel {
    * @returns {Promise<boolean>}
    */
   async enableGenImage() {
-    // TODO: 实现生成图片功能
-    return true;
+    try {
+      console.log(`[MultiAI] ${this.name} - enabling gen image...`);
+      
+      // 步骤1: 找到并点击 composer plus 按钮
+      const plusButton = await this.waitForElement('button[data-testid="composer-plus-btn"]', 5000);
+      if (!plusButton) {
+        console.log(`[MultiAI] ${this.name} composer plus button not found, skipping...`);
+        return true;
+      }
+      
+      // 滚动到按钮位置，确保可见
+      plusButton.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // 点击按钮打开菜单
+      this.simulateClick(plusButton);
+      
+      // 等待菜单出现
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // TODO: 菜单打开后，需要分析DOM找到"生成图片"或"DALL·E"选项并点击
+      
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to enable gen image:`, error);
+      return true;
+    }
   }
 
   /**

@@ -450,6 +450,13 @@
       flex-wrap: wrap;
     }
     
+    /* 隐藏深度思考、网络搜索和生成图片按钮 */
+    #deep-think-toggle,
+    #web-search-toggle,
+    #gen-image-toggle {
+      display: none;
+    }
+    
     .new-chat-toggle {
       display: flex;
       align-items: center;
@@ -1466,6 +1473,13 @@
             <span data-i18n="colorCyan">Cyan</span>
           </label>
         </div>
+      </div>
+    </div>
+    
+    <div class="settings-section">
+      <div class="settings-section-title" data-i18n="settingsHistory">History</div>
+      <div class="settings-option">
+        <button id="clear-history-btn" class="settings-btn-secondary" style="flex: 0 0 auto; width: auto;" data-i18n="clearHistory">Clear History</button>
       </div>
     </div>
     
