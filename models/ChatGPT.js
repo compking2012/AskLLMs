@@ -27,6 +27,10 @@ class ChatGPT extends AIModel {
     return 'a[data-testid="create-new-chat-button"]';
   }
 
+  getPlusButtonSelector() {
+    return 'button#composer-plus-btn';
+  }
+  
   /**
    * 获取深度思考按钮选择器
    * @returns {string}
@@ -34,7 +38,7 @@ class ChatGPT extends AIModel {
   getDeepThinkButtonSelector() {
     // ChatGPT 的深度思考需要先点击加号按钮，然后在菜单中找到"思考"选项
     // 改为定位到包含按钮的 div
-    return 'div[class*="grid-area:leading"]';
+    return 'div[role="group"] div[role="menuitemradio"]:nth-of-type(2)';
   }
 
   getRemoveDeepThinkButtonSelector() {
@@ -49,15 +53,23 @@ class ChatGPT extends AIModel {
       // ChatGPT 的网络搜索按钮选择器（需要根据实际DOM调整）
       return 'button[aria-label*="Web"]'; // 示例，需要根据实际调整
     }
+
+    getRemoveWebSearchButtonSelector() {
+      return 'button.__composer-pill.group';
+    }
   
     /**
      * 获取生成图片按钮选择器
      * @returns {string}
      */
     getGenImageButtonSelector() {
-      return ''; // TODO: 实现选择器
+      return 'div[role="group"] div[role="menuitemradio"]:nth-of-type(1)';
     }
     
+    getRemoveGenImageButtonSelector() {
+      return 'button.__composer-pill.group';
+    }
+
     /**
    * 开启新对话
    * @returns {Promise<boolean>}
@@ -101,7 +113,7 @@ class ChatGPT extends AIModel {
    * @returns {boolean} ChatGPT 支持网络搜索
    */
   canWebSearch() {
-    return "exclusive";
+    return true; //"exclusive";
   }
 
   /**
@@ -117,9 +129,9 @@ class ChatGPT extends AIModel {
    * @param {HTMLElement} element
    */
   simulateClick(element) {
-    const events = ['mousedown'];
+    const events = ['pointerdown', 'pointerup', 'click'];
     events.forEach(eventType => {
-      const event = new MouseEvent(eventType, {
+      const event = new PointerEvent(eventType, {
         bubbles: true,
         cancelable: true,
         view: window
@@ -138,7 +150,7 @@ class ChatGPT extends AIModel {
       
       // 步骤1: 找到并点击 composer plus 按钮
       // 使用 data-testid 属性作为选择器（更稳定）
-      const plusButton = await this.waitForElement('button[data-testid="composer-plus-btn"]', 5000);
+      const plusButton = await this.waitForElement(this.getPlusButtonSelector(), 5000);
       if (!plusButton) {
         console.log(`[MultiAI] ${this.name} composer plus button not found, skipping deep think...`);
         return true;
@@ -154,11 +166,19 @@ class ChatGPT extends AIModel {
       this.simulateClick(plusButton);
       
       // 等待菜单出现
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       console.log(`[MultiAI] ${this.name} composer plus button clicked ✓`);
       
-      // TODO: 菜单打开后，需要分析DOM找到"深度思考"选项并点击
+      // 找到深度思考按钮（pill button）
+      const deepThinkButton = await this.waitForElement(this.getDeepThinkButtonSelector(), 3000);
+      if (!deepThinkButton) {
+        console.log(`[MultiAI] ${this.name} deep think button not found, may already be disabled`);
+        return true; // 如果找不到按钮，可能已经禁用了
+      }
+      
+      console.log(`[MultiAI] ${this.name} deep think button found, clicking...`);
+      deepThinkButton.click();
       
       return true;
     } catch (error) {
@@ -206,7 +226,7 @@ class ChatGPT extends AIModel {
       
       // 步骤1: 找到并点击 composer plus 按钮
       // 使用 data-testid 属性作为选择器（更稳定）
-      const plusButton = await this.waitForElement('button[data-testid="composer-plus-btn"]', 5000);
+      const plusButton = await this.waitForElement(this.getPlusButtonSelector(), 5000);
       if (!plusButton) {
         console.log(`[MultiAI] ${this.name} composer plus button not found, skipping web search...`);
         return true;
@@ -241,7 +261,7 @@ class ChatGPT extends AIModel {
       console.log(`[MultiAI] ${this.name} - disabling web search...`);
       
       // 找到网络搜索按钮（pill button）
-      const webSearchButton = await this.waitForElement(this.getRemoveDeepThinkButtonSelector(), 3000);
+      const webSearchButton = await this.waitForElement(this.getRemoveWebSearchButtonSelector(), 3000);
       if (!webSearchButton) {
         console.log(`[MultiAI] ${this.name} web search button not found, may already be disabled`);
         return true; // 如果找不到按钮，可能已经禁用了
@@ -270,7 +290,7 @@ class ChatGPT extends AIModel {
       console.log(`[MultiAI] ${this.name} - enabling gen image...`);
       
       // 步骤1: 找到并点击 composer plus 按钮
-      const plusButton = await this.waitForElement('button[data-testid="composer-plus-btn"]', 5000);
+      const plusButton = await this.waitForElement(this.getPlusButtonSelector(), 5000);
       if (!plusButton) {
         console.log(`[MultiAI] ${this.name} composer plus button not found, skipping...`);
         return true;
@@ -286,7 +306,15 @@ class ChatGPT extends AIModel {
       // 等待菜单出现
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // TODO: 菜单打开后，需要分析DOM找到"生成图片"或"DALL·E"选项并点击
+       // 找到深度思考按钮（pill button）
+       const genImageButton = await this.waitForElement(this.getGenImageButtonSelector(), 3000);
+       if (!genImageButton) {
+         console.log(`[MultiAI] ${this.name} gen Image button not found, may already be disabled`);
+         return true; // 如果找不到按钮，可能已经禁用了
+       }
+       
+       console.log(`[MultiAI] ${this.name} gen Image button found, clicking...`);
+       genImageButton.click();
       
       return true;
     } catch (error) {
@@ -300,8 +328,28 @@ class ChatGPT extends AIModel {
    * @returns {Promise<boolean>}
    */
   async disableGenImage() {
-    // TODO: 实现生成图片功能
-    return true;
+    try {
+      console.log(`[MultiAI] ${this.name} - disabling gen image...`);
+      
+      // 找到生成图片按钮（pill button）
+      const genImageButton = await this.waitForElement(this.getRemoveGenImageButtonSelector(), 3000);
+      if (!genImageButton) {
+        console.log(`[MultiAI] ${this.name} gen Image button not found, may already be disabled`);
+        return true; // 如果找不到按钮，可能已经禁用了
+      }
+      
+      console.log(`[MultiAI] ${this.name} gen Image button found, clicking...`);
+      genImageButton.click();
+      
+      // 等待按钮消失或状态更新
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      console.log(`[MultiAI] ${this.name} gen image disabled ✓`);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to disable gen image:`, error);
+      return true; // 即使失败也继续执行
+    }
   }
 
   async sendQuery(query, startNewChat = false, deepThink = false, webSearch = false, genImage = false) {
