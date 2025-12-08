@@ -195,8 +195,19 @@ class ChatGPT extends AIModel {
     try {
       console.log(`[MultiAI] ${this.name} - disabling deep think...`);
       
-      // 找到深度思考按钮（pill button）
-      const deepThinkButton = await this.waitForElement(this.getRemoveDeepThinkButtonSelector(), 3000);
+      // 找到所有可能的深度思考按钮（pill button）
+      const buttons = document.querySelectorAll(this.getRemoveDeepThinkButtonSelector());
+      const deepthinkSign = 'M14.3352';
+      
+      let deepThinkButton = null;
+      for (const button of buttons) {
+        const iconSignature = button.querySelector('svg path')?.getAttribute('d');
+        if (iconSignature?.startsWith(deepthinkSign)) {
+          deepThinkButton = button;
+          break;
+        }
+      }
+      
       if (!deepThinkButton) {
         console.log(`[MultiAI] ${this.name} deep think button not found, may already be disabled`);
         return true; // 如果找不到按钮，可能已经禁用了
@@ -260,8 +271,19 @@ class ChatGPT extends AIModel {
     try {
       console.log(`[MultiAI] ${this.name} - disabling web search...`);
       
-      // 找到网络搜索按钮（pill button）
-      const webSearchButton = await this.waitForElement(this.getRemoveWebSearchButtonSelector(), 3000);
+      // 找到所有可能的网络搜索按钮（pill button）
+      const buttons = document.querySelectorAll(this.getRemoveWebSearchButtonSelector());
+      const websearchSign = 'M10';
+      
+      let webSearchButton = null;
+      for (const button of buttons) {
+        const iconSignature = button.querySelector('svg path')?.getAttribute('d');
+        if (iconSignature?.startsWith(websearchSign)) {
+          webSearchButton = button;
+          break;
+        }
+      }
+      
       if (!webSearchButton) {
         console.log(`[MultiAI] ${this.name} web search button not found, may already be disabled`);
         return true; // 如果找不到按钮，可能已经禁用了
@@ -331,8 +353,19 @@ class ChatGPT extends AIModel {
     try {
       console.log(`[MultiAI] ${this.name} - disabling gen image...`);
       
-      // 找到生成图片按钮（pill button）
-      const genImageButton = await this.waitForElement(this.getRemoveGenImageButtonSelector(), 3000);
+      // 找到所有可能的生成图片按钮（pill button）
+      const buttons = document.querySelectorAll(this.getRemoveGenImageButtonSelector());
+      const genimageSign = 'M9.38759';
+      
+      let genImageButton = null;
+      for (const button of buttons) {
+        const iconSignature = button.querySelector('svg path')?.getAttribute('d');
+        if (iconSignature?.startsWith(genimageSign)) {
+          genImageButton = button;
+          break;
+        }
+      }
+      
       if (!genImageButton) {
         console.log(`[MultiAI] ${this.name} gen Image button not found, may already be disabled`);
         return true; // 如果找不到按钮，可能已经禁用了

@@ -22,7 +22,7 @@
 【done】10）增加对Tab的排序，排序的顺序就按设置中的顺序。同时设置中的顺序中设置中是可以进行调整的
 【done】11）增加关于的介绍
 12）增加打开/关闭“深度思考”的功能（如果模型支持的话）
-        -- 【partially done】ChatGPT：在“+”中打开或关闭“思考”
+        -- 【done】ChatGPT：在“+”中打开或关闭“思考”
         -- 【done】Claude：在Search and Tools中打开Use style，选Normal和Thinking Claude
         -- 【done】Gemini：在工具栏选“快速”或“思考”
         -- Grok：在输入框中选“快速模式”或“专家模式”
