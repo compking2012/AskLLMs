@@ -30,6 +30,10 @@ class ChatGPT extends AIModel {
   getPlusButtonSelector() {
     return 'button#composer-plus-btn';
   }
+
+  getMoreButtonSelector() {
+    return 'div[data-side="top"] div[role="group"] div[role="menuitem"]';
+  }
   
   /**
    * 获取深度思考按钮选择器
@@ -38,7 +42,7 @@ class ChatGPT extends AIModel {
   getDeepThinkButtonSelector() {
     // ChatGPT 的深度思考需要先点击加号按钮，然后在菜单中找到"思考"选项
     // 改为定位到包含按钮的 div
-    return 'div[role="group"] div[role="menuitemradio"]:nth-of-type(2)';
+    return 'div[data-side="top"] div[role="group"] div[role="menuitemradio"]:nth-of-type(2)';
   }
 
   getRemoveDeepThinkButtonSelector() {
@@ -51,7 +55,7 @@ class ChatGPT extends AIModel {
    */
     getWebSearchButtonSelector() {
       // ChatGPT 的网络搜索按钮选择器（需要根据实际DOM调整）
-      return 'button[aria-label*="Web"]'; // 示例，需要根据实际调整
+      return 'div[data-side="right"] div[role="group"] div[role="menuitemradio"]:nth-of-type(2)';
     }
 
     getRemoveWebSearchButtonSelector() {
@@ -63,7 +67,7 @@ class ChatGPT extends AIModel {
      * @returns {string}
      */
     getGenImageButtonSelector() {
-      return 'div[role="group"] div[role="menuitemradio"]:nth-of-type(1)';
+      return 'div[data-side="top"] div[role="group"] div[role="menuitemradio"]:nth-of-type(1)';
     }
     
     getRemoveGenImageButtonSelector() {
@@ -137,6 +141,26 @@ class ChatGPT extends AIModel {
         view: window
       });
       element.dispatchEvent(event);
+    });
+  }
+
+  /**
+   * 模拟鼠标悬停在元素上
+   * @param {HTMLElement} element
+   */
+  simulateHover(element) {
+    const rect = element.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    
+    ['pointerover', 'pointerenter', 'pointermove'].forEach(type => {
+      element.dispatchEvent(new PointerEvent(type, {
+        view: window,
+        bubbles: true,
+        cancelable: true,
+        clientX: x,
+        clientY: y
+      }));
     });
   }
 
@@ -253,9 +277,30 @@ class ChatGPT extends AIModel {
       this.simulateClick(plusButton);
       
       // 等待菜单出现
-      await new Promise(resolve => setTimeout(resolve, 5000));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      console.log(`[MultiAI] ${this.name} composer plus button clicked ✓`);
+     // 找到更多按钮（more button）
+     const moreButton = await this.waitForElement(this.getMoreButtonSelector(), 3000);
+     if (!moreButton) {
+       console.log(`[MultiAI] ${this.name} more button not found, may already be disabled`);
+       return true; // 如果找不到按钮，可能已经禁用了
+     }
+     
+     console.log(`[MultiAI] ${this.name} more button found, hovering...`);
+     this.simulateHover(moreButton);
+
+      console.log(`[MultiAI] ${this.name} more button hovered ✓`);
+
+      // 找到网络搜索按钮（pill button）
+      const webSearchButton = await this.waitForElement(this.getWebSearchButtonSelector(), 3000);
+      if (!webSearchButton) {
+        console.log(`[MultiAI] ${this.name} web search button not found, may already be disabled`);
+        return true; // 如果找不到按钮，可能已经禁用了
+      }
+      
+      console.log(`[MultiAI] ${this.name} web search button found, clicking...`);
+      webSearchButton.click();
+
       return true;
     } catch (error) {
       console.error(`[MultiAI] ${this.name} failed to enable web search:`, error);
