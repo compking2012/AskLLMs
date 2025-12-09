@@ -113,7 +113,7 @@ class Claude extends AIModel {
    * @returns {boolean}
    */
   canWebSearch() {
-    return false;
+    return true;
   }
 
   /**
@@ -207,7 +207,8 @@ class Claude extends AIModel {
     } catch (error) {
       console.error(`[MultiAI] ${this.name} failed to disable deep think:`, error);
       return true; // 即使失败也继续执行
-    }  }
+    }  
+  }
 
   /**
    * 启用网络搜索
@@ -232,45 +233,14 @@ class Claude extends AIModel {
       
       // 步骤2: 找到菜单中的第5个按钮（Style按钮）
       // button.group分别在不同的div下，先等待至少一个出现，然后查找所有并选择第5个
-      const firstButton = await this.waitForElement(this.getStyleButtonSelector(), 3000);
-      if (!firstButton) {
-        console.log(`[MultiAI] ${this.name} menu buttons not found, skipping...`);
+      const webSearchButton = await this.waitForElement(this.getStyleButtonSelector(), 3000);
+      if (webSearchButton.length < 3) {
+        console.log(`[MultiAI] ${this.name} web search button not found, skipping...`);
         return true;
       }
       
-      // 查找所有button.group（跨所有div）
-      const allButtons = document.querySelectorAll(this.getStyleButtonSelector());
-      if (allButtons.length < 5) {
-        console.log(`[MultiAI] ${this.name} not enough buttons found (found ${allButtons.length}), skipping...`);
-        return true;
-      }
-      
-      // 选择第5个按钮（索引为4）
-      const styleButton = allButtons[4];
-      console.log(`[MultiAI] ${this.name} style button found, clicking...`);
-      styleButton.click();
-      
-      // 等待Style菜单出现
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // 步骤3: 获取所有button.group，点击第一个来启用网络搜索
-      const firstStyleButton = await this.waitForElement(this.getStyleButtonSelector(), 3000);
-      if (!firstStyleButton) {
-        console.log(`[MultiAI] ${this.name} style menu buttons not found, skipping...`);
-        return true;
-      }
-      
-      // 查找所有button.group
-      const allStyleButtons = document.querySelectorAll(this.getStyleButtonSelector());
-      if (allStyleButtons.length < 1) {
-        console.log(`[MultiAI] ${this.name} style menu buttons not found, skipping...`);
-        return true;
-      }
-      
-      // 第一个按钮是启用网络搜索
-      const enableWebSearchButton = allStyleButtons[1];
       console.log(`[MultiAI] ${this.name} enable web search button found, clicking...`);
-      enableWebSearchButton.click();
+      webSearchButton[2].click();
       
       // 等待操作完成
       await new Promise(resolve => setTimeout(resolve, 500));
