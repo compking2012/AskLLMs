@@ -154,7 +154,7 @@ class ChatGPT extends AIModel {
     const y = rect.top + rect.height / 2;
     
     ['pointerover', 'pointerenter', 'pointermove'].forEach(type => {
-      element.dispatchEvent(new PointerEvent(type, {
+      document.dispatchEvent(new PointerEvent(type, {
         view: window,
         bubbles: true,
         cancelable: true,

@@ -18,14 +18,27 @@ class AIModel {
    * 等待元素出现
    * @param {string} selector - CSS 选择器
    * @param {number} timeout - 超时时间（毫秒）
-   * @returns {Promise<Element|null>}
+   * @returns {Promise<Element|Element[]|null>} 如果找到多个元素，返回数组；如果找到单个元素，返回该元素；如果未找到，返回null
    */
   waitForElement(selector, timeout = 15000) {
     return new Promise((resolve) => {
+      // 检查函数：查找元素并返回结果
+      const checkElements = () => {
+        const elements = document.querySelectorAll(selector);
+        if (elements.length > 1) {
+          // 如果找到多个元素，返回数组
+          return Array.from(elements);
+        } else if (elements.length === 1) {
+          // 如果只找到一个元素，返回单个元素
+          return elements[0];
+        }
+        return null;
+      };
+      
       // 首先检查元素是否已经存在
-      const element = document.querySelector(selector);
-      if (element) {
-        resolve(element);
+      const result = checkElements();
+      if (result) {
+        resolve(result);
         return;
       }
       
@@ -53,9 +66,9 @@ class AIModel {
       
       const startObserving = () => {
         // 再次检查元素（可能在等待 body 时已经出现）
-        const element = document.querySelector(selector);
-        if (element) {
-          resolve(element);
+        const result = checkElements();
+        if (result) {
+          resolve(result);
           return;
         }
         
@@ -67,10 +80,10 @@ class AIModel {
         }
         
         const observer = new MutationObserver(() => {
-          const element = document.querySelector(selector);
-          if (element) {
+          const result = checkElements();
+          if (result) {
             observer.disconnect();
-            resolve(element);
+            resolve(result);
           }
         });
         
