@@ -75,6 +75,30 @@ class ChatGPT extends AIModel {
     }
 
     /**
+     * 判断是否可进行深度思考
+     * @returns {boolean} ChatGPT 不支持深度思考
+     */
+    canDeepThink() {
+      return true;
+    }
+
+    /**
+     * 判断是否可进行网络搜索
+     * @returns {boolean} ChatGPT 支持网络搜索
+     */
+    canWebSearch() {
+      return false; // FIXME: ChatGPT 支持网络搜索, 但目前有bug无法启用
+    }
+
+    /**
+     * 判断是否可生成图片
+     * @returns {boolean} ChatGPT 支持生成图片
+     */
+    canGenImage() {
+      return true;
+    }
+
+    /**
    * 开启新对话
    * @returns {Promise<boolean>}
    */
@@ -102,30 +126,6 @@ class ChatGPT extends AIModel {
       // 即使失败也继续执行，不阻塞后续流程
       return true;
     }
-  }
-
-  /**
-   * 判断是否可进行深度思考
-   * @returns {boolean} ChatGPT 不支持深度思考
-   */
-  canDeepThink() {
-    return true;
-  }
-
-  /**
-   * 判断是否可进行网络搜索
-   * @returns {boolean} ChatGPT 支持网络搜索
-   */
-  canWebSearch() {
-    return true; //"exclusive";
-  }
-
-  /**
-   * 判断是否可生成图片
-   * @returns {boolean} ChatGPT 支持生成图片
-   */
-  canGenImage() {
-    return true;
   }
 
   /**

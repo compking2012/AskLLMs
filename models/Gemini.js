@@ -28,6 +28,54 @@ class Gemini extends AIModel {
   }
 
   /**
+   * 获取深度思考按钮选择器
+   * @returns {string}
+   */
+  getDeepThinkButtonSelector() {
+    return 'div[data-test-id="bard-mode-menu-button"] button';
+  }
+
+  /**
+   * 获取工具箱抽屉按钮选择器
+   * @returns {string}
+   */
+  getToolboxDrawerButtonSelector() {
+    return 'button.toolbox-drawer-button';
+  }
+
+  /**
+   * 获取生成图片按钮选择器（在工具箱抽屉菜单中）
+   * @returns {string}
+   */
+  getGenImageButtonSelector() {
+    return 'toolbox-drawer-item.toolbox-drawer-menu-item button span span img';
+  }
+
+  /**
+   * 判断是否可进行深度思考
+   * @returns {boolean} Gemini 支持深度思考
+   */
+  canDeepThink() {
+    return true;
+  }
+
+  /**
+   * 判断是否可进行网络搜索
+   * @returns {boolean} Gemini 支持网络搜索
+   */
+  canWebSearch() {
+    return false;
+  }
+
+  /**
+   * 判断是否可生成图片
+   * @returns {boolean} Gemini 支持生成图片
+   */
+  canGenImage() {
+    return true;
+  }
+
+  /**
    * 开启新对话
    * @returns {Promise<boolean>}
    */
@@ -55,30 +103,6 @@ class Gemini extends AIModel {
       // 即使失败也继续执行，不阻塞后续流程
       return true;
     }
-  }
-
-  /**
-   * 获取深度思考按钮选择器
-   * @returns {string}
-   */
-  getDeepThinkButtonSelector() {
-    return 'div[data-test-id="bard-mode-menu-button"] button';
-  }
-
-  /**
-   * 判断是否可进行深度思考
-   * @returns {boolean} Gemini 支持深度思考
-   */
-  canDeepThink() {
-    return true;
-  }
-
-  /**
-   * 判断是否可进行网络搜索
-   * @returns {boolean} Gemini 支持网络搜索
-   */
-  canWebSearch() {
-    return "auto";
   }
 
   /**
@@ -174,48 +198,6 @@ class Gemini extends AIModel {
   }
 
   /**
-   * 获取网络搜索按钮选择器
-   * @returns {string}
-   */
-  getWebSearchButtonSelector() {
-    return ''; // TODO: 实现选择器
-  }
-
-  /**
-   * 获取生成图片按钮选择器
-   * @returns {string}
-   */
-  getGenImageButtonSelector() {
-    return ''; // TODO: 实现选择器
-  }
-
-  /**
-   * 判断是否可生成图片
-   * @returns {boolean} Gemini 支持生成图片
-   */
-  canGenImage() {
-    return true;
-  }
-
-  /**
-   * 启用生成图片（Gemini 特殊实现）
-   * @returns {Promise<boolean>}
-   */
-  async enableGenImage() {
-    // TODO: 实现生成图片功能
-    return true;
-  }
-
-  /**
-   * 禁用生成图片（Gemini 特殊实现）
-   * @returns {Promise<boolean>}
-   */
-  async disableGenImage() {
-    // TODO: 实现生成图片功能
-    return true;
-  }
-
-  /**
    * 启用网络搜索（Gemini 特殊实现）
    * @returns {Promise<boolean>}
    */
@@ -303,6 +285,98 @@ class Gemini extends AIModel {
       return true;
     } catch (error) {
       console.error(`[MultiAI] ${this.name} failed to disable web search:`, error);
+      return true; // 即使失败也继续执行
+    }
+  }
+
+  /**
+   * 启用生成图片（Gemini 特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async enableGenImage() {
+    try {
+      console.log(`[MultiAI] ${this.name} - enabling gen image...`);
+      
+      // 步骤1: 点击工具箱抽屉按钮打开菜单
+      const toolboxButton = await this.waitForElement(this.getToolboxDrawerButtonSelector(), 5000);
+      if (!toolboxButton) {
+        console.log(`[MultiAI] ${this.name} toolbox drawer button not found, skipping...`);
+        return true;
+      }
+      
+      console.log(`[MultiAI] ${this.name} toolbox drawer button found, clicking...`);
+      toolboxButton.click();
+ 
+      // 等待菜单出现
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // 步骤2: 找到菜单中的图片按钮
+      const genImageElement = await this.waitForElement(this.getGenImageButtonSelector(), 3000);
+      if (!genImageElement) {
+        console.log(`[MultiAI] ${this.name} gen image element not found, skipping...`);
+        return true;
+      }
+      
+      // 找到第3级父节点，然后查找其中的 button
+      const parent3 = genImageElement.parentNode?.parentNode?.parentNode;
+      if (!parent3) {
+        console.log(`[MultiAI] ${this.name} parent node not found, skipping...`);
+        return true;
+      }
+      
+      const genImageButton = parent3.querySelector('button');
+      if (!genImageButton) {
+        console.log(`[MultiAI] ${this.name} gen image button not found in parent, skipping...`);
+        return true;
+      }
+      
+      console.log(`[MultiAI] ${this.name} enable gen image button found, clicking...`);
+      genImageButton.click();      
+
+      console.log(`[MultiAI] ${this.name} gen image enabled ✓`);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to enable gen image:`, error);
+      return true; // 即使失败也继续执行
+    }
+  }
+
+  /**
+   * 禁用生成图片（Gemini 特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async disableGenImage() {
+    try {
+      console.log(`[MultiAI] ${this.name} - disabling gen image...`);
+      
+      // 查找取消选择按钮（toolbox-drawer-item-deselect-button）
+      // 这个按钮包含 img.img-icon，表示图片功能已启用
+      const deselectButtons = document.querySelectorAll('button.toolbox-drawer-item-deselect-button');
+      
+      let imageDeselectButton = null;
+      for (const btn of deselectButtons) {
+        const img = btn.querySelector('img.img-icon');
+        if (img) {
+          imageDeselectButton = btn;
+          break;
+        }
+      }
+      
+      if (!imageDeselectButton) {
+        console.log(`[MultiAI] ${this.name} image deselect button not found, may already be disabled`);
+        return true; // 如果找不到按钮，可能已经禁用了
+      }
+      
+      console.log(`[MultiAI] ${this.name} image deselect button found, clicking...`);
+      imageDeselectButton.click();
+      
+      // 等待按钮消失或状态更新
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      console.log(`[MultiAI] ${this.name} gen image disabled ✓`);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to disable gen image:`, error);
       return true; // 即使失败也继续执行
     }
   }
