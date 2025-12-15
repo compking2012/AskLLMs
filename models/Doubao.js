@@ -24,7 +24,55 @@ class Doubao extends AIModel {
    * @returns {string}
    */
   getNewChatButtonSelector() {
-    return 'div[data-testid="create_conversation_button"]';
+    return 'div[data-testid="flow_chat_sidebar"]>div.relative:not([data-testid="chat_list_wrapper"])>div>div>div';
+  }
+
+  /**
+   * 获取深度思考按钮选择器
+   * @returns {string}
+   */
+  getDeepThinkButtonSelector() {
+    return 'div[data-testid="use-deep-thinking-switch-btn"]';
+  }
+
+  /**
+   * 获取网络搜索按钮选择器
+   * @returns {string}
+   */
+  getWebSearchButtonSelector() {
+    return ''; // TODO: 实现选择器
+  }
+
+  /**
+   * 获取生成图片按钮选择器
+   * @returns {string}
+   */
+  getGenImageButtonSelector() {
+    return ''; // TODO: 实现选择器
+  }
+
+  /**
+   * 判断是否可进行深度思考
+   * @returns {boolean} 豆包支持深度思考
+   */
+  canDeepThink() {
+    return true;
+  }
+
+  /**
+   * 判断是否可进行网络搜索
+   * @returns {boolean} 豆包支持网络搜索
+   */
+  canWebSearch() {
+    return "auto";
+  }
+
+  /**
+   * 判断是否可生成图片
+   * @returns {boolean} 豆包支持生成图片（自动）
+   */
+  canGenImage() {
+    return "auto";
   }
 
   /**
@@ -55,30 +103,6 @@ class Doubao extends AIModel {
       // 即使失败也继续执行，不阻塞后续流程
       return true;
     }
-  }
-
-  /**
-   * 获取深度思考按钮选择器
-   * @returns {string}
-   */
-  getDeepThinkButtonSelector() {
-    return 'div[data-testid="use-deep-thinking-switch-btn"]';
-  }
-
-  /**
-   * 判断是否可进行深度思考
-   * @returns {boolean} 豆包支持深度思考
-   */
-  canDeepThink() {
-    return true;
-  }
-
-  /**
-   * 判断是否可进行网络搜索
-   * @returns {boolean} 豆包支持网络搜索
-   */
-  canWebSearch() {
-    return "auto";
   }
 
   /**
@@ -234,48 +258,6 @@ class Doubao extends AIModel {
   }
 
   /**
-   * 获取网络搜索按钮选择器
-   * @returns {string}
-   */
-  getWebSearchButtonSelector() {
-    return ''; // TODO: 实现选择器
-  }
-
-  /**
-   * 获取生成图片按钮选择器
-   * @returns {string}
-   */
-  getGenImageButtonSelector() {
-    return ''; // TODO: 实现选择器
-  }
-
-  /**
-   * 判断是否可生成图片
-   * @returns {boolean} 豆包支持生成图片（自动）
-   */
-  canGenImage() {
-    return "auto";
-  }
-
-  /**
-   * 启用生成图片（豆包特殊实现）
-   * @returns {Promise<boolean>}
-   */
-  async enableGenImage() {
-    // 豆包自动支持生成图片，无需操作
-    return true;
-  }
-
-  /**
-   * 禁用生成图片（豆包特殊实现）
-   * @returns {Promise<boolean>}
-   */
-  async disableGenImage() {
-    // 豆包自动支持生成图片，无需操作
-    return true;
-  }
-
-  /**
    * 启用网络搜索（豆包特殊实现）
    * @returns {Promise<boolean>}
    */
@@ -425,6 +407,24 @@ class Doubao extends AIModel {
       console.error(`[MultiAI] ${this.name} failed to disable web search:`, error);
       return true; // 即使失败也继续执行
     }
+  }
+
+  /**
+   * 启用生成图片（豆包特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async enableGenImage() {
+    // 豆包自动支持生成图片，无需操作
+    return true;
+  }
+
+  /**
+   * 禁用生成图片（豆包特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async disableGenImage() {
+    // 豆包自动支持生成图片，无需操作
+    return true;
   }
 
   async sendQuery(query, startNewChat = false, deepThink = false, webSearch = false, genImage = false) {

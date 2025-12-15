@@ -24,7 +24,7 @@ class ChatGPT extends AIModel {
    * @returns {string}
    */
   getNewChatButtonSelector() {
-    return 'a[data-testid="create-new-chat-button"]';
+    return 'a[data-testid="create-new-chat-button"][class*="gap-1.5"]';
   }
 
   getPlusButtonSelector() {

@@ -53,46 +53,47 @@ class Claude extends AIModel {
   getRemoveDeepThinkButtonSelector() {
     return 'div.flex.shrink button[aria-pressed="true"].group';
   }
-    /**
+
+  /**
    * 获取网络搜索按钮选择器
    * @returns {string}
    */
-    getWebSearchButtonSelector() {
-      return 'div.absolute.block button.group';
-    }
-  
-    /**
-     * 获取生成图片按钮选择器
-     * @returns {string}
-     */
-    getGenImageButtonSelector() {
-      return ''; // TODO: 实现选择器
-    }
-  
-    /**
+  getWebSearchButtonSelector() {
+    return 'div.absolute.block button.group';
+  }
+
+  /**
+   * 获取生成图片按钮选择器
+   * @returns {string}
+   */
+  getGenImageButtonSelector() {
+    return ''; // TODO: 实现选择器
+  }
+
+  /**
    * 判断是否可进行深度思考
    * @returns {boolean}
    */
-    canDeepThink() {
-      return true;
-    }
-  
-    /**
-     * 判断是否可进行网络搜索
-     * @returns {boolean}
-     */
-    canWebSearch() {
-      return false; // FIXME: Claude 支持网络搜索, 但目前有bug无法启用
-    }
-  
-    /**
-     * 判断是否可生成图片
-     * @returns {boolean} Claude 不支持生成图片
-     */
-    canGenImage() {
-      return false;
-    }
-  
+  canDeepThink() {
+    return true;
+  }
+
+  /**
+   * 判断是否可进行网络搜索
+   * @returns {boolean}
+   */
+  canWebSearch() {
+    return false; // FIXME: Claude 支持网络搜索, 但目前有bug无法启用
+  }
+
+  /**
+   * 判断是否可生成图片
+   * @returns {boolean} Claude 不支持生成图片
+   */
+  canGenImage() {
+    return false;
+  }
+
   /**
    * 开启新对话
    * @returns {Promise<boolean>}

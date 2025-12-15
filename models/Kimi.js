@@ -30,6 +30,66 @@ class Kimi extends AIModel {
   }
 
   /**
+   * 获取深度思考按钮选择器
+   * @returns {string}
+   */
+  getToolkitTriggerButtonSelector() {
+    return 'div.toolkit-trigger-btn.icon-button';
+  }
+
+  getDeepThinkSwitchSelector() {
+    return 'div.toolkit-popover div.toolkit-container div.toolkit-item:nth-of-type(2) div.search-switch label.switch';
+  }
+
+  getRemoveDeepThinkButtonSelector() {
+    return 'div.thinking-open';
+  }
+
+  /**
+   * 获取网络搜索按钮选择器
+   * @returns {string}
+   */
+  getWebSearchButtonSelector() {
+    return ''; // TODO: 实现选择器
+  }
+
+  getWebSearchSwitchSelector() {
+    return 'div.toolkit-popover div.toolkit-container div.toolkit-item:nth-of-type(1) div.search-switch label.switch';
+  }
+
+  /**
+   * 获取生成图片按钮选择器
+   * @returns {string}
+   */
+  getGenImageButtonSelector() {
+    return ''; // TODO: 实现选择器
+  }
+
+  /**
+   * 判断是否可进行深度思考
+   * @returns {boolean} Kimi 支持深度思考
+   */
+  canDeepThink() {
+    return true;
+  }
+
+  /**
+   * 判断是否可进行网络搜索
+   * @returns {boolean} Kimi 支持网络搜索
+   */
+  canWebSearch() {
+    return false;
+  }
+
+  /**
+   * 判断是否可生成图片
+   * @returns {boolean} Kimi 不支持生成图片
+   */
+  canGenImage() {
+    return false;
+  }
+
+  /**
    * 开启新对话
    * @returns {Promise<boolean>}
    */
@@ -57,42 +117,6 @@ class Kimi extends AIModel {
       // 即使失败也继续执行，不阻塞后续流程
       return true;
     }
-  }
-
-  /**
-   * 获取深度思考按钮选择器
-   * @returns {string}
-   */
-  getToolkitTriggerButtonSelector() {
-    return 'div.toolkit-trigger-btn.icon-button';
-  }
-
-  getDeepThinkSwitchSelector() {
-    return 'div.toolkit-popover div.toolkit-container div.toolkit-item:nth-of-type(2) div.search-switch label.switch';
-  }
-
-  getWebSearchSwitchSelector() {
-    return 'div.toolkit-popover div.toolkit-container div.toolkit-item:nth-of-type(1) div.search-switch label.switch';
-  }
-
-  getRemoveDeepThinkButtonSelector() {
-    return 'div.thinking-open';
-  }
-
-  /**
-   * 判断是否可进行深度思考
-   * @returns {boolean} Kimi 支持深度思考
-   */
-  canDeepThink() {
-    return true;
-  }
-
-  /**
-   * 判断是否可进行网络搜索
-   * @returns {boolean} Kimi 支持网络搜索
-   */
-  canWebSearch() {
-    return true;
   }
 
   /**
@@ -188,46 +212,6 @@ class Kimi extends AIModel {
   }
 
   /**
-   * 获取网络搜索按钮选择器
-   * @returns {string}
-   */
-  getWebSearchButtonSelector() {
-    return ''; // TODO: 实现选择器
-  }
-
-  /**
-   * 获取生成图片按钮选择器
-   * @returns {string}
-   */
-  getGenImageButtonSelector() {
-    return ''; // TODO: 实现选择器
-  }
-
-  /**
-   * 判断是否可生成图片
-   * @returns {boolean} Kimi 不支持生成图片
-   */
-  canGenImage() {
-    return false;
-  }
-
-  /**
-   * 启用生成图片（Kimi 特殊实现）
-   * @returns {Promise<boolean>}
-   */
-  async enableGenImage() {
-    return false;
-  }
-
-  /**
-   * 禁用生成图片（Kimi 特殊实现）
-   * @returns {Promise<boolean>}
-   */
-  async disableGenImage() {
-    return false;
-  }
-
-  /**
    * 启用网络搜索（Kimi 特殊实现）
    * @returns {Promise<boolean>}
    */
@@ -317,6 +301,22 @@ class Kimi extends AIModel {
       console.error(`[MultiAI] ${this.name} failed to disable web search:`, error);
       return true; // 即使失败也继续执行
     }
+  }
+
+  /**
+   * 启用生成图片（Kimi 特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async enableGenImage() {
+    return false;
+  }
+
+  /**
+   * 禁用生成图片（Kimi 特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async disableGenImage() {
+    return false;
   }
 
   async sendQuery(query, startNewChat = false, deepThink = false, webSearch = false, genImage = false) {

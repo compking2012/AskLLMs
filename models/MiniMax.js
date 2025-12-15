@@ -30,6 +30,54 @@ class MiniMax extends AIModel {
   }
 
   /**
+   * 获取深度思考按钮选择器
+   * @returns {string}
+   */
+  getDeepThinkButtonSelector() {
+    return ''; // TODO: 实现选择器
+  }
+
+  /**
+   * 获取网络搜索按钮选择器
+   * @returns {string}
+   */
+  getWebSearchButtonSelector() {
+    return ''; // TODO: 实现选择器
+  }
+
+  /**
+   * 获取生成图片按钮选择器
+   * @returns {string}
+   */
+  getGenImageButtonSelector() {
+    return ''; // TODO: 实现选择器
+  }
+
+  /**
+   * 判断是否可进行深度思考
+   * @returns {boolean} MiniMax 不支持深度思考
+   */
+  canDeepThink() {
+    return false;
+  }
+
+  /**
+   * 判断是否可进行网络搜索
+   * @returns {boolean} MiniMax 支持网络搜索
+   */
+  canWebSearch() {
+    return false;
+  }
+
+  /**
+   * 判断是否可生成图片
+   * @returns {boolean} MiniMax 不支持生成图片
+   */
+  canGenImage() {
+    return false;
+  }
+
+  /**
    * 开启新对话
    * @returns {Promise<boolean>}
    */
@@ -60,27 +108,12 @@ class MiniMax extends AIModel {
   }
 
   /**
-   * 获取深度思考按钮选择器
-   * @returns {string}
+   * 启用深度思考（MiniMax 特殊实现）
+   * @returns {Promise<boolean>}
    */
-  getDeepThinkButtonSelector() {
-    return ''; // TODO: 实现选择器
-  }
-
-  /**
-   * 判断是否可进行深度思考
-   * @returns {boolean} MiniMax 不支持深度思考
-   */
-  canDeepThink() {
-    return false;
-  }
-
-  /**
-   * 判断是否可进行网络搜索
-   * @returns {boolean} MiniMax 支持网络搜索
-   */
-  canWebSearch() {
-    return false;
+  async enableDeepThink() {
+    // MiniMax 不支持深度思考，直接返回 true 表示跳过
+    return true;
   }
 
   /**
@@ -90,46 +123,6 @@ class MiniMax extends AIModel {
   async disableDeepThink() {
     // MiniMax 不支持深度思考，直接返回 true 表示跳过
     return true;
-  }
-
-  /**
-   * 获取网络搜索按钮选择器
-   * @returns {string}
-   */
-  getWebSearchButtonSelector() {
-    return ''; // TODO: 实现选择器
-  }
-
-  /**
-   * 获取生成图片按钮选择器
-   * @returns {string}
-   */
-  getGenImageButtonSelector() {
-    return ''; // TODO: 实现选择器
-  }
-
-  /**
-   * 判断是否可生成图片
-   * @returns {boolean} MiniMax 不支持生成图片
-   */
-  canGenImage() {
-    return false;
-  }
-
-  /**
-   * 启用生成图片（MiniMax 特殊实现）
-   * @returns {Promise<boolean>}
-   */
-  async enableGenImage() {
-    return false;
-  }
-
-  /**
-   * 禁用生成图片（MiniMax 特殊实现）
-   * @returns {Promise<boolean>}
-   */
-  async disableGenImage() {
-    return false;
   }
 
   /**
@@ -148,6 +141,22 @@ class MiniMax extends AIModel {
   async disableWebSearch() {
     // MiniMax 的网络搜索实现，暂时和深度思考一致
     return true;
+  }
+
+  /**
+   * 启用生成图片（MiniMax 特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async enableGenImage() {
+    return false;
+  }
+
+  /**
+   * 禁用生成图片（MiniMax 特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async disableGenImage() {
+    return false;
   }
 
   async sendQuery(query, startNewChat = false, deepThink = false, webSearch = false, genImage = false) {

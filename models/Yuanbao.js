@@ -30,6 +30,54 @@ class Yuanbao extends AIModel {
   }
 
   /**
+   * 获取深度思考按钮选择器
+   * @returns {string}
+   */
+  getDeepThinkButtonSelector() {
+    return 'div[dt-button-id="deep_think"]';
+  }
+
+  /**
+   * 获取网络搜索按钮选择器
+   * @returns {string}
+   */
+  getWebSearchButtonSelector() {
+    return ''; // TODO: 实现选择器
+  }
+
+  /**
+   * 获取生成图片按钮选择器
+   * @returns {string}
+   */
+  getGenImageButtonSelector() {
+    return ''; // TODO: 实现选择器
+  }
+
+  /**
+   * 判断是否可进行深度思考
+   * @returns {boolean} 腾讯元宝支持深度思考
+   */
+  canDeepThink() {
+    return true;
+  }
+
+  /**
+   * 判断是否可进行网络搜索
+   * @returns {boolean} 腾讯元宝支持网络搜索
+   */
+  canWebSearch() {
+    return true;
+  }
+
+  /**
+   * 判断是否可生成图片
+   * @returns {boolean} 腾讯元宝支持生成图片（自动）
+   */
+  canGenImage() {
+    return "auto";
+  }
+
+  /**
    * 开启新对话
    * @returns {Promise<boolean>}
    */
@@ -57,30 +105,6 @@ class Yuanbao extends AIModel {
       // 即使失败也继续执行，不阻塞后续流程
       return true;
     }
-  }
-
-  /**
-   * 获取深度思考按钮选择器
-   * @returns {string}
-   */
-  getDeepThinkButtonSelector() {
-    return 'div[dt-button-id="deep_think"]';
-  }
-
-  /**
-   * 判断是否可进行深度思考
-   * @returns {boolean} 腾讯元宝支持深度思考
-   */
-  canDeepThink() {
-    return true;
-  }
-
-  /**
-   * 判断是否可进行网络搜索
-   * @returns {boolean} 腾讯元宝支持网络搜索
-   */
-  canWebSearch() {
-    return true;
   }
 
   /**
@@ -156,48 +180,6 @@ class Yuanbao extends AIModel {
   }
 
   /**
-   * 获取网络搜索按钮选择器
-   * @returns {string}
-   */
-  getWebSearchButtonSelector() {
-    return ''; // TODO: 实现选择器
-  }
-
-  /**
-   * 获取生成图片按钮选择器
-   * @returns {string}
-   */
-  getGenImageButtonSelector() {
-    return ''; // TODO: 实现选择器
-  }
-
-  /**
-   * 判断是否可生成图片
-   * @returns {boolean} 腾讯元宝支持生成图片（自动）
-   */
-  canGenImage() {
-    return "auto";
-  }
-
-  /**
-   * 启用生成图片（元宝特殊实现）
-   * @returns {Promise<boolean>}
-   */
-  async enableGenImage() {
-    // 腾讯元宝自动支持生成图片，无需操作
-    return true;
-  }
-
-  /**
-   * 禁用生成图片（元宝特殊实现）
-   * @returns {Promise<boolean>}
-   */
-  async disableGenImage() {
-    // 腾讯元宝自动支持生成图片，无需操作
-    return true;
-  }
-
-  /**
    * 启用网络搜索（元宝特殊实现）
    * @returns {Promise<boolean>}
    */
@@ -267,6 +249,24 @@ class Yuanbao extends AIModel {
       console.error(`[MultiAI] ${this.name} failed to disable web search:`, error);
       return true; // 即使失败也继续执行
     }
+  }
+
+  /**
+   * 启用生成图片（元宝特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async enableGenImage() {
+    // 腾讯元宝自动支持生成图片，无需操作
+    return true;
+  }
+
+  /**
+   * 禁用生成图片（元宝特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async disableGenImage() {
+    // 腾讯元宝自动支持生成图片，无需操作
+    return true;
   }
 
   async sendQuery(query, startNewChat = false, deepThink = false, webSearch = false, genImage = false) {

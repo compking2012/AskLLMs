@@ -24,7 +24,7 @@ class Gemini extends AIModel {
    * @returns {string}
    */
   getNewChatButtonSelector() {
-    return 'side-nav-action-button[data-test-id="new-chat-button"] button';
+    return 'side-nav-action-button[data-test-id="new-chat-button"] button[data-test-id="expanded-button"]';
   }
 
   /**
@@ -41,6 +41,14 @@ class Gemini extends AIModel {
    */
   getToolboxDrawerButtonSelector() {
     return 'button.toolbox-drawer-button';
+  }
+
+  /**
+   * 获取网络搜索按钮选择器
+   * @returns {string}
+   */
+  getWebSearchButtonSelector() {
+    return ''; // TODO: 实现选择器
   }
 
   /**

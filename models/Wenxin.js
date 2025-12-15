@@ -27,7 +27,56 @@ class Wenxin extends AIModel {
    */
   getNewChatButtonSelector() {
     // 使用 class 名称的部分匹配，CSS Modules 的哈希值会变化，但 "newSession" 部分应该稳定
-    return 'div[class*="newSession"]';
+    return 'div[class*="sideBarTop"]>div>div[class*="newSession"]';
+  }
+
+  /**
+   * 获取深度思考按钮选择器
+   * @returns {string}
+   */
+  getDeepThinkButtonSelector() {
+    // 深度思考按钮，包含"思考·自动"文本
+    return 'div.item__y5RP9d4z, div[class*="item"]';
+  }
+
+  /**
+   * 获取网络搜索按钮选择器
+   * @returns {string}
+   */
+  getWebSearchButtonSelector() {
+    return ''; // TODO: 实现选择器
+  }
+
+  /**
+   * 获取生成图片按钮选择器
+   * @returns {string}
+   */
+  getGenImageButtonSelector() {
+    return ''; // TODO: 实现选择器
+  }
+
+  /**
+   * 判断是否可进行深度思考
+   * @returns {boolean}
+   */
+  canDeepThink() {
+    return true;
+  }
+
+  /**
+   * 判断是否可进行网络搜索
+   * @returns {boolean}
+   */
+  canWebSearch() {
+    return false;
+  }
+
+  /**
+   * 判断是否可生成图片
+   * @returns {boolean} 文心一言支持生成图片（自动）
+   */
+  canGenImage() {
+    return "auto";
   }
 
   /**
@@ -58,31 +107,6 @@ class Wenxin extends AIModel {
       // 即使失败也继续执行，不阻塞后续流程
       return true;
     }
-  }
-
-  /**
-   * 获取深度思考按钮选择器
-   * @returns {string}
-   */
-  getDeepThinkButtonSelector() {
-    // 深度思考按钮，包含"思考·自动"文本
-    return 'div.item__y5RP9d4z, div[class*="item"]';
-  }
-
-  /**
-   * 判断是否可进行深度思考
-   * @returns {boolean}
-   */
-  canDeepThink() {
-    return true;
-  }
-
-  /**
-   * 判断是否可进行网络搜索
-   * @returns {boolean}
-   */
-  canWebSearch() {
-    return "auto";
   }
 
   /**
@@ -188,48 +212,6 @@ class Wenxin extends AIModel {
   }
 
   /**
-   * 获取网络搜索按钮选择器
-   * @returns {string}
-   */
-  getWebSearchButtonSelector() {
-    return ''; // TODO: 实现选择器
-  }
-
-  /**
-   * 获取生成图片按钮选择器
-   * @returns {string}
-   */
-  getGenImageButtonSelector() {
-    return ''; // TODO: 实现选择器
-  }
-
-  /**
-   * 判断是否可生成图片
-   * @returns {boolean} 文心一言支持生成图片（自动）
-   */
-  canGenImage() {
-    return "auto";
-  }
-
-  /**
-   * 启用生成图片
-   * @returns {Promise<boolean>}
-   */
-  async enableGenImage() {
-    // 文心一言自动支持生成图片，无需操作
-    return true;
-  }
-
-  /**
-   * 禁用生成图片
-   * @returns {Promise<boolean>}
-   */
-  async disableGenImage() {
-    // 文心一言自动支持生成图片，无需操作
-    return true;
-  }
-
-  /**
    * 启用网络搜索
    * @returns {Promise<boolean>}
    */
@@ -331,6 +313,24 @@ class Wenxin extends AIModel {
     }
   }
 
+  /**
+   * 启用生成图片
+   * @returns {Promise<boolean>}
+   */
+  async enableGenImage() {
+    // 文心一言自动支持生成图片，无需操作
+    return true;
+  }
+
+  /**
+   * 禁用生成图片
+   * @returns {Promise<boolean>}
+   */
+  async disableGenImage() {
+    // 文心一言自动支持生成图片，无需操作
+    return true;
+  }
+
   async sendQuery(query, startNewChat = false, deepThink = false, webSearch = false, genImage = false) {
     console.log(`[MultiAI] ${this.name} - startNewChat:`, startNewChat);
     console.log(`[MultiAI] ${this.name} - deepThink:`, deepThink);
@@ -425,4 +425,3 @@ class Wenxin extends AIModel {
     return await instance.sendQuery(query);
   }
 }
-

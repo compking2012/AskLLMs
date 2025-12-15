@@ -32,6 +32,54 @@ class ChatGLM extends AIModel {
   }
 
   /**
+   * 获取深度思考按钮选择器
+   * @returns {string}
+   */
+  getDeepThinkButtonSelector() {
+    return 'div.mode-button'; // 需要通过文本内容进一步筛选
+  }
+
+  /**
+   * 获取网络搜索按钮选择器
+   * @returns {string}
+   */
+  getWebSearchButtonSelector() {
+    return 'div.session-button-container div.mode-button:nth-of-type(2)';
+  }
+
+  /**
+   * 获取生成图片按钮选择器
+   * @returns {string}
+   */
+  getGenImageButtonSelector() {
+    return ''; // TODO: 实现选择器
+  }
+
+  /**
+   * 判断是否可进行深度思考
+   * @returns {boolean} 智谱清言支持深度思考
+   */
+  canDeepThink() {
+    return true;
+  }
+
+  /**
+   * 判断是否可进行网络搜索
+   * @returns {boolean} 智谱清言支持网络搜索
+   */
+  canWebSearch() {
+    return true;
+  }
+
+  /**
+   * 判断是否可生成图片
+   * @returns {boolean} 智谱清言支持生成图片（自动）
+   */
+  canGenImage() {
+    return "auto";
+  }
+
+  /**
    * 开启新对话
    * @returns {Promise<boolean>}
    */
@@ -90,30 +138,6 @@ class ChatGLM extends AIModel {
       // 即使失败也继续执行，不阻塞后续流程
       return true;
     }
-  }
-
-  /**
-   * 获取深度思考按钮选择器
-   * @returns {string}
-   */
-  getDeepThinkButtonSelector() {
-    return 'div.mode-button'; // 需要通过文本内容进一步筛选
-  }
-
-  /**
-   * 判断是否可进行深度思考
-   * @returns {boolean} 智谱清言支持深度思考
-   */
-  canDeepThink() {
-    return true;
-  }
-
-  /**
-   * 判断是否可进行网络搜索
-   * @returns {boolean} 智谱清言支持网络搜索
-   */
-  canWebSearch() {
-    return true;
   }
 
   /**
@@ -219,48 +243,6 @@ class ChatGLM extends AIModel {
   }
 
   /**
-   * 获取网络搜索按钮选择器
-   * @returns {string}
-   */
-  getWebSearchButtonSelector() {
-    return 'div.session-button-container div.mode-button:nth-of-type(2)';
-  }
-
-  /**
-   * 获取生成图片按钮选择器
-   * @returns {string}
-   */
-  getGenImageButtonSelector() {
-    return ''; // TODO: 实现选择器
-  }
-
-  /**
-   * 判断是否可生成图片
-   * @returns {boolean} 智谱清言支持生成图片（自动）
-   */
-  canGenImage() {
-    return "auto";
-  }
-
-  /**
-   * 启用生成图片（智谱清言特殊实现）
-   * @returns {Promise<boolean>}
-   */
-  async enableGenImage() {
-    // 智谱清言自动支持生成图片，无需操作
-    return true;
-  }
-
-  /**
-   * 禁用生成图片（智谱清言特殊实现）
-   * @returns {Promise<boolean>}
-   */
-  async disableGenImage() {
-    // 智谱清言自动支持生成图片，无需操作
-    return true;
-  }
-
-  /**
    * 启用网络搜索（ChatGLM 特殊实现）
    * @returns {Promise<boolean>}
    */
@@ -314,6 +296,24 @@ class ChatGLM extends AIModel {
       console.error(`[MultiAI] ${this.name} failed to disable web search:`, error);
       return true; // 即使失败也继续执行
     }
+  }
+
+  /**
+   * 启用生成图片（智谱清言特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async enableGenImage() {
+    // 智谱清言自动支持生成图片，无需操作
+    return true;
+  }
+
+  /**
+   * 禁用生成图片（智谱清言特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async disableGenImage() {
+    // 智谱清言自动支持生成图片，无需操作
+    return true;
   }
 
   async sendQuery(query, startNewChat = false, deepThink = false, webSearch = false, genImage = false) {
