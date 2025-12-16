@@ -49,56 +49,60 @@ class ChatGPT extends AIModel {
     return 'button.__composer-pill.group';
   }
 
-    /**
+  /**
    * 获取网络搜索按钮选择器
    * @returns {string}
    */
-    getWebSearchButtonSelector() {
-      // ChatGPT 的网络搜索按钮选择器（需要根据实际DOM调整）
-      return 'div[data-side="right"] div[role="group"] div[role="menuitemradio"]:nth-of-type(2)';
-    }
+  getWebSearchButtonSelector() {
+    // ChatGPT 的网络搜索按钮选择器（需要根据实际 DOM 调整）
+    return 'div[data-side="right"] div[role="group"] div[role="menuitemradio"]:nth-of-type(2)';
+  }
 
-    getRemoveWebSearchButtonSelector() {
-      return 'button.__composer-pill.group';
-    }
+  getRemoveWebSearchButtonSelector() {
+    return 'button.__composer-pill.group';
+  }
   
-    /**
-     * 获取生成图片按钮选择器
-     * @returns {string}
-     */
-    getGenImageButtonSelector() {
-      return 'div[data-side="top"] div[role="group"] div[role="menuitemradio"]:nth-of-type(1)';
-    }
+  /**
+   * 获取生成图片按钮选择器
+   * @returns {string}
+   */
+  getGenImageButtonSelector() {
+    return 'div[data-side="top"] div[role="group"] div[role="menuitemradio"]:nth-of-type(1)';
+  }
     
-    getRemoveGenImageButtonSelector() {
-      return 'button.__composer-pill.group';
-    }
+  getRemoveGenImageButtonSelector() {
+    return 'button.__composer-pill.group';
+  }
 
-    /**
-     * 判断是否可进行深度思考
-     * @returns {boolean} ChatGPT 不支持深度思考
-     */
-    canDeepThink() {
-      return true;
-    }
+  /**
+   * 判断是否可进行深度思考
+   *
+   * 说明：ChatGPT 的“深度思考/思考”通过点击输入框左侧“+”菜单开启。
+   * @returns {boolean}
+   */
+  canDeepThink() {
+    return true;
+  }
 
-    /**
-     * 判断是否可进行网络搜索
-     * @returns {boolean} ChatGPT 支持网络搜索
-     */
-    canWebSearch() {
-      return false; // FIXME: ChatGPT 支持网络搜索, 但目前有bug无法启用
-    }
+  /**
+   * 判断是否可进行网络搜索
+   *
+   * 说明：ChatGPT 理论上支持网络搜索，但当前自动化启用存在已知问题，暂时返回 false。
+   * @returns {boolean|string}
+   */
+  canWebSearch() {
+    return false; // FIXME: ChatGPT 支持网络搜索, 但目前有bug无法启用
+  }
 
-    /**
-     * 判断是否可生成图片
-     * @returns {boolean} ChatGPT 支持生成图片
-     */
-    canGenImage() {
-      return true;
-    }
+  /**
+   * 判断是否可生成图片
+   * @returns {boolean}
+   */
+  canGenImage() {
+    return true;
+  }
 
-    /**
+  /**
    * 开启新对话
    * @returns {Promise<boolean>}
    */
@@ -279,16 +283,16 @@ class ChatGPT extends AIModel {
       // 等待菜单出现
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-     // 找到更多按钮（more button）
-     const moreButton = await this.waitForElement(this.getMoreButtonSelector(), 3000);
-     if (!moreButton) {
-       console.log(`[MultiAI] ${this.name} more button not found, may already be disabled`);
-       return true; // 如果找不到按钮，可能已经禁用了
-     }
-     
-     console.log(`[MultiAI] ${this.name} more button found, hovering...`);
-     this.simulateHover(moreButton);
-
+      // 找到更多按钮（more button）
+      const moreButton = await this.waitForElement(this.getMoreButtonSelector(), 3000);
+      if (!moreButton) {
+        console.log(`[MultiAI] ${this.name} more button not found, may already be disabled`);
+        return true; // 如果找不到按钮，可能已经禁用了
+      }
+      
+      console.log(`[MultiAI] ${this.name} more button found, hovering...`);
+      this.simulateHover(moreButton);
+ 
       console.log(`[MultiAI] ${this.name} more button hovered ✓`);
 
       // 找到网络搜索按钮（pill button）
@@ -373,15 +377,15 @@ class ChatGPT extends AIModel {
       // 等待菜单出现
       await new Promise(resolve => setTimeout(resolve, 500));
       
-       // 找到深度思考按钮（pill button）
-       const genImageButton = await this.waitForElement(this.getGenImageButtonSelector(), 3000);
-       if (!genImageButton) {
-         console.log(`[MultiAI] ${this.name} gen Image button not found, may already be disabled`);
-         return true; // 如果找不到按钮，可能已经禁用了
-       }
-       
-       console.log(`[MultiAI] ${this.name} gen Image button found, clicking...`);
-       genImageButton.click();
+      // 找到生成图片按钮（pill button）
+      const genImageButton = await this.waitForElement(this.getGenImageButtonSelector(), 3000);
+      if (!genImageButton) {
+        console.log(`[MultiAI] ${this.name} gen Image button not found, may already be disabled`);
+        return true; // 如果找不到按钮，可能已经禁用了
+      }
+      
+      console.log(`[MultiAI] ${this.name} gen Image button found, clicking...`);
+      genImageButton.click();
       
       return true;
     } catch (error) {
@@ -444,8 +448,8 @@ class ChatGPT extends AIModel {
     
     // 如果启用了深度思考，先启用深度思考，否则禁用
     if (this.canDeepThink()) {
-    if (deepThink) {
-      await this.enableDeepThink();
+      if (deepThink) {
+        await this.enableDeepThink();
       } else {
         await this.disableDeepThink();
       }
@@ -453,8 +457,8 @@ class ChatGPT extends AIModel {
     
     // 如果启用了网络搜索，先启用网络搜索，否则禁用
     if (this.canWebSearch()) {
-    if (webSearch) {
-      await this.enableWebSearch();
+      if (webSearch) {
+        await this.enableWebSearch();
       } else {
         await this.disableWebSearch();
       }
@@ -462,8 +466,8 @@ class ChatGPT extends AIModel {
     
     // 如果启用了生成图片，先启用生成图片，否则禁用
     if (this.canGenImage()) {
-    if (genImage) {
-      await this.enableGenImage();
+      if (genImage) {
+        await this.enableGenImage();
       } else {
         await this.disableGenImage();
       }

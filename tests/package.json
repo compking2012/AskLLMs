@@ -1,0 +1,15 @@
+{
+  "name": "askllms-e2e-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node run.mjs",
+    "test:debug": "node run.mjs --debug",
+    "pw:install": "npx playwright install chromium"
+  },
+  "devDependencies": {
+    "playwright": "^1.50.0"
+  }
+}
+
+

@@ -75,7 +75,12 @@ class Qwen extends AIModel {
 
   /**
    * 判断是否可进行网络搜索
-   * @returns {boolean} 千问支持网络搜索
+   *
+   * 说明：千问的“联网搜索”与“深度思考”存在联动关系：
+   * - `"inclusive"`：开启深度思考时会自动包含联网能力；但也允许用户显式开启联网 toggle。
+   * 该返回值会影响 popup 中能力图标的展示逻辑（见 `popup.js` 的 `shouldShowWebSearchIcon`）。
+   *
+   * @returns {boolean|string} false | true | "auto" | "exclusive" | "inclusive"
    */
   canWebSearch() {
     return "inclusive";
@@ -276,8 +281,8 @@ class Qwen extends AIModel {
     
     // 如果启用了深度思考，先启用深度思考，否则禁用
     if (this.canDeepThink()) {
-    if (deepThink) {
-      await this.enableDeepThink();
+      if (deepThink) {
+        await this.enableDeepThink();
       } else {
         await this.disableDeepThink();
       }
@@ -285,8 +290,8 @@ class Qwen extends AIModel {
     
     // 如果启用了网络搜索，先启用网络搜索，否则禁用
     if (this.canWebSearch()) {
-    if (webSearch) {
-      await this.enableWebSearch();
+      if (webSearch) {
+        await this.enableWebSearch();
       } else {
         await this.disableWebSearch();
       }
@@ -294,8 +299,8 @@ class Qwen extends AIModel {
     
     // 如果启用了生成图片，先启用生成图片，否则禁用
     if (this.canGenImage()) {
-    if (genImage) {
-      await this.enableGenImage();
+      if (genImage) {
+        await this.enableGenImage();
       } else {
         await this.disableGenImage();
       }

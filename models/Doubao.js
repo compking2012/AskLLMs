@@ -440,8 +440,8 @@ class Doubao extends AIModel {
     
     // 如果启用了深度思考，先启用深度思考，否则禁用
     if (this.canDeepThink()) {
-    if (deepThink) {
-      await this.enableDeepThink();
+      if (deepThink) {
+        await this.enableDeepThink();
       } else {
         await this.disableDeepThink();
       }
@@ -449,8 +449,8 @@ class Doubao extends AIModel {
     
     // 如果启用了网络搜索，先启用网络搜索，否则禁用
     if (this.canWebSearch()) {
-    if (webSearch) {
-      await this.enableWebSearch();
+      if (webSearch) {
+        await this.enableWebSearch();
       } else {
         await this.disableWebSearch();
       }
@@ -458,8 +458,8 @@ class Doubao extends AIModel {
     
     // 如果启用了生成图片，先启用生成图片，否则禁用
     if (this.canGenImage()) {
-    if (genImage) {
-      await this.enableGenImage();
+      if (genImage) {
+        await this.enableGenImage();
       } else {
         await this.disableGenImage();
       }

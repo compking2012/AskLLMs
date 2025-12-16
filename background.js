@@ -1,6 +1,39 @@
-// 模型数据缓存
+/**
+ * Ask LLMs - Background Service Worker (Manifest V3)
+ *
+ * 主要职责：
+ * - 通过 `importScripts(...)` 加载各平台模型类与 `models/index.js` 注册表，汇总平台元数据（站点/图标/i18n key/能力）
+ * - 打开/复用各平台标签页，并注入模型脚本，在页面上下文中执行 `sendQuery(...)`
+ * - 跟踪每个平台打开/加载/完成进度，并通过 storage + runtime message 双通道通知 popup
+ * - 创建/复用标签组，并根据用户设置更新标题与颜色
+ *
+ * 重要说明：
+ * - `models/index.js` 在全局作用域注册了若干工具函数（如 `getAllAISites()` / `getAllModelClasses()` 等）。
+ *   这些函数名可能与本文件中的局部包装函数同名；本文件在 `loadModelsData()` 内**有意**使用
+ *   `importScripts` 后的全局实现，并将结果缓存到 `modelsDataCache` 供后续流程使用。
+ */
+
+// 模型数据缓存（避免每次打开 popup/发送都重复 importScripts + 计算）
 let modelsDataCache = null;
 let modelsLoadingPromise = null;
+
+// 需要加载/注入的模型脚本清单（顺序很重要：`models/index.js` 依赖前面的类定义）
+const MODEL_SCRIPT_FILES = [
+  'models/AIModel.js',
+  'models/ChatGPT.js',
+  'models/Claude.js',
+  'models/Gemini.js',
+  'models/Grok.js',
+  'models/Qwen.js',
+  'models/Doubao.js',
+  'models/DeepSeek.js',
+  'models/Kimi.js',
+  'models/Wenxin.js',
+  'models/ChatGLM.js',
+  'models/MiniMax.js',
+  'models/Yuanbao.js',
+  'models/index.js' // 必须最后加载：注册表/收集函数依赖所有模型类已定义
+];
 
 /**
  * 加载模型类并收集数据
@@ -23,20 +56,7 @@ async function loadModelsData() {
       // 在 service worker 中使用 importScripts 加载模型文件
       // 注意：这会在全局作用域中定义类
       importScripts(
-        'models/AIModel.js',
-        'models/ChatGPT.js',
-        'models/Claude.js',
-        'models/Gemini.js',
-        'models/Grok.js',
-        'models/Qwen.js',
-        'models/Doubao.js',
-        'models/DeepSeek.js',
-        'models/Kimi.js',
-        'models/Wenxin.js',
-        'models/ChatGLM.js',
-        'models/MiniMax.js',
-        'models/Yuanbao.js',
-        'models/index.js'  // 最后加载 index.js，它包含所有收集函数
+        ...MODEL_SCRIPT_FILES
       );
 
       // 使用 models/index.js 中的函数来收集数据
@@ -224,65 +244,13 @@ async function getDefaultSettings() {
   const data = await loadModelsData();
   return data.defaultSettings;
 }
-  
-  // 注入到目标 AI 页面的脚本（发送 query）
-  // 注意：此函数需要先注入模型类代码才能使用
-  // 注意：此函数已不再使用，改为内联执行
-  // function sendQueryToPage(query) {
-  // const host = window.location.hostname;
-  
-    // 返回 Promise，确保异步执行完成
-  // return (async () => {
-  // try {
-        // 尝试使用模型类（通过 models/index.js 中的注册表）
-  // if (typeof getModelByHostname === 'function') {
-  // const model = getModelByHostname(host);
-  // if (model) {
-  // console.log('[MultiAI] Detected:', host, 'using model:', model.name);
-  // const result = await model.sendQuery(query);
-  // console.log('[MultiAI] Query execution result:', result);
-  // return result;
-  // }
-  // }
-  // } catch (error) {
-  // console.error(`[MultiAI] Error using model class:`, error);
-  // throw error; // 重新抛出错误以便上层处理
-  // }
-      
-      // 回退：尝试使用静态 fallback 方法
-  // console.log('[MultiAI] Model class not available, trying fallback for:', host);
-  // try {
-  // if (typeof getFallbackActions === 'function') {
-  // const fallbackActions = getFallbackActions();
-  // if (fallbackActions[host]) {
-  // const result = await fallbackActions[host](query);
-  // console.log('[MultiAI] Fallback execution result:', result);
-  // return result;
-  // }
-          
-          // 模糊匹配回退
-  // for (const domain in fallbackActions) {
-  // if (host === domain || host.endsWith('.' + domain)) {
-  // const result = await fallbackActions[domain](query);
-  // console.log('[MultiAI] Fallback execution result (fuzzy match):', result);
-  // return result;
-  // }
-  // }
-  // }
-  // } catch (fallbackError) {
-  // console.error(`[MultiAI] Fallback also failed:`, fallbackError);
-  // throw fallbackError; // 重新抛出错误
-  // }
-      
-  // console.error('[MultiAI] Unknown domain or all methods failed:', host);
-  // throw new Error(`No model handler found for domain: ${host}`);
-  // })();
-  // }
-  // }
 
-  // 注意：旧的 actions 对象代码已移至各模型类的 fallback 方法中
-  // 功能现在完全由模型类提供，通过 getModelByHostname() 和 getFallbackActions() 访问
-  // injectInputUI 函数已移至 inject-ui.js 文件中
+/**
+ * 说明（历史遗留）：
+ * 早期版本通过注入 `sendQueryToPage()` 再调用的方式发送 query。
+ * 目前为了减少依赖/命名冲突/加载时序问题，已改为在 `openAndSend()` 内使用
+ * `chrome.scripting.executeScript({ func })` 直接“内联执行”发送逻辑。
+ */
   
   // 等待标签页加载完成
   // 等待标签页加载完成并检查页面就绪
@@ -433,22 +401,7 @@ async function getDefaultSettings() {
         // 先注入模型类文件（按依赖顺序）
         await chrome.scripting.executeScript({
           target: { tabId: tab.id },
-          files: [
-            'models/AIModel.js',
-            'models/ChatGPT.js',
-            'models/Claude.js',
-            'models/Gemini.js',
-            'models/Grok.js',
-            'models/Qwen.js',
-            'models/Doubao.js',
-            'models/DeepSeek.js',
-            'models/Kimi.js',
-            'models/Wenxin.js',
-            'models/ChatGLM.js',
-            'models/MiniMax.js',
-            'models/Yuanbao.js',
-            'models/index.js'  // 最后注入注册表
-          ]
+          files: MODEL_SCRIPT_FILES
         });
         console.log('[Background] Model classes injected to tab:', tab.id);
         

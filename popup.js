@@ -1,3 +1,18 @@
+/**
+ * Ask LLMs - Popup 脚本
+ *
+ * 主要职责：
+ * - i18n：按用户设置/浏览器语言加载 `_locales/<locale>/messages.json`，并提供同步 `i18n()` 读取（依赖缓存）
+ * - 设置页：与 `settings.js` 协作（设置页嵌在 `popup.html` 中），即时保存并应用主题/语言/平台可见性/排序等
+ * - 平台选择：支持点击与“按住拖动”批量取反选择，并把选择结果持久化到 `chrome.storage`
+ * - 发送：收集输入、选中平台与各 toggle 状态，发消息给 `background.js` 执行打开标签/注入/发送
+ * - 进度：监听 `chrome.storage.onChanged`（并保留轮询兜底）展示每个平台 opening/loading/completed 的状态
+ * - 历史：保存最近输入，提供下拉选择/删除/清空
+ *
+ * 数据来源：
+ * - 平台元数据（平台名/图标/i18n key/能力/默认设置）优先从 background 获取，并缓存到 `window._platformData`。
+ */
+
 // 消息缓存
 let messagesCache = {
   en: null,
@@ -469,8 +484,8 @@ function showMainPage() {
 async function showSettingsPage() {
   if (!settingsPage) {
     console.error('Settings page not found');
-      showStatus(i18n('errorLoadSettings') || '加载设置页面失败', 'error');
-      return;
+    showStatus(i18n('errorLoadSettings') || '加载设置页面失败', 'error');
+    return;
   }
   
   mainPage.classList.remove('active');

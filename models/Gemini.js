@@ -69,7 +69,10 @@ class Gemini extends AIModel {
 
   /**
    * 判断是否可进行网络搜索
-   * @returns {boolean} Gemini 支持网络搜索
+   *
+   * 说明：Gemini 的联网能力通常为自动/不需要显式开关；为了避免在 popup 中暴露一个不可控或不稳定的开关，
+   * 这里返回 false（对应 UI 不显示“可手动控制网络搜索”的能力图标）。
+   * @returns {boolean|string}
    */
   canWebSearch() {
     return false;
@@ -402,8 +405,8 @@ class Gemini extends AIModel {
     
     // 如果启用了深度思考，先启用深度思考，否则禁用
     if (this.canDeepThink()) {
-    if (deepThink) {
-      await this.enableDeepThink();
+      if (deepThink) {
+        await this.enableDeepThink();
       } else {
         await this.disableDeepThink();
       }
@@ -411,8 +414,8 @@ class Gemini extends AIModel {
     
     // 如果启用了网络搜索，先启用网络搜索，否则禁用
     if (this.canWebSearch()) {
-    if (webSearch) {
-      await this.enableWebSearch();
+      if (webSearch) {
+        await this.enableWebSearch();
       } else {
         await this.disableWebSearch();
       }
@@ -420,8 +423,8 @@ class Gemini extends AIModel {
     
     // 如果启用了生成图片，先启用生成图片，否则禁用
     if (this.canGenImage()) {
-    if (genImage) {
-      await this.enableGenImage();
+      if (genImage) {
+        await this.enableGenImage();
       } else {
         await this.disableGenImage();
       }
