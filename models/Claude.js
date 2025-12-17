@@ -31,6 +31,11 @@ class Claude extends AIModel {
    * 获取深度思考按钮选择器
    * @returns {string}
    */
+  getDeepThinkButtonSelector() {
+    // 返回选择器，用于查找第5个button.group
+    return 'div.absolute.block button.group';
+  }
+
   getToolKitTriggerButtonSelector() {
     // Claude 的工具菜单按钮
     return 'button#input-tools-menu-trigger';
@@ -41,11 +46,6 @@ class Claude extends AIModel {
    * @returns {string}
    */
   getStyleButtonSelector() {
-    // 返回选择器，用于查找第5个button.group
-    return 'div.absolute.block button.group';
-  }
-  
-  getDeepThinkButtonSelector() {
     // 返回选择器，用于查找第5个button.group
     return 'div.absolute.block button.group';
   }

@@ -28,36 +28,6 @@ class Qwen extends AIModel {
   }
 
   /**
-   * 开启新对话
-   * @returns {Promise<boolean>}
-   */
-  async startNewChat() {
-    try {
-      console.log(`[MultiAI] ${this.name} - starting new chat...`);
-      
-      // 等待新聊天按钮出现
-      const newChatBtn = await this.waitForElement(this.getNewChatButtonSelector(), 10000);
-      if (!newChatBtn) {
-        console.log(`[MultiAI] ${this.name} new chat button not found, skipping...`);
-        return true; // 如果找不到按钮，继续执行（可能已经在新对话中）
-      }
-      
-      console.log(`[MultiAI] ${this.name} new chat button found, clicking...`);
-      newChatBtn.click();
-      
-      // 等待新对话页面加载
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      console.log(`[MultiAI] ${this.name} new chat started ✓`);
-      return true;
-    } catch (error) {
-      console.error(`[MultiAI] ${this.name} failed to start new chat:`, error);
-      // 即使失败也继续执行，不阻塞后续流程
-      return true;
-    }
-  }
-
-  /**
    * 获取深度思考按钮选择器
    * @returns {string}
    */
@@ -181,28 +151,40 @@ class Qwen extends AIModel {
   }
 
   /**
-   * 启用生成图片（千问特殊实现）
+   * 开启新对话
    * @returns {Promise<boolean>}
    */
-  async enableGenImage() {
-    // TODO: 实现生成图片功能
-    return true;
+  async startNewChat() {
+    try {
+      console.log(`[MultiAI] ${this.name} - starting new chat...`);
+      
+      // 等待新聊天按钮出现
+      const newChatBtn = await this.waitForElement(this.getNewChatButtonSelector(), 10000);
+      if (!newChatBtn) {
+        console.log(`[MultiAI] ${this.name} new chat button not found, skipping...`);
+        return true; // 如果找不到按钮，继续执行（可能已经在新对话中）
+      }
+      
+      console.log(`[MultiAI] ${this.name} new chat button found, clicking...`);
+      newChatBtn.click();
+      
+      // 等待新对话页面加载
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      console.log(`[MultiAI] ${this.name} new chat started ✓`);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to start new chat:`, error);
+      // 即使失败也继续执行，不阻塞后续流程
+      return true;
+    }
   }
 
   /**
-   * 禁用生成图片（千问特殊实现）
+   * 启用深度思考（千问特殊实现）
    * @returns {Promise<boolean>}
    */
-  async disableGenImage() {
-    // TODO: 实现生成图片功能
-    return true;
-  }
-
-  /**
-   * 启用网络搜索（千问特殊实现）
-   * @returns {Promise<boolean>}
-   */
-  async enableWebSearch() {
+  async enableDeepThink() {
     try {
       console.log(`[MultiAI] ${this.name} - enabling web search...`);
       

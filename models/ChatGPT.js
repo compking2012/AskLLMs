@@ -27,14 +27,6 @@ class ChatGPT extends AIModel {
     return 'a[data-testid="create-new-chat-button"][class*="gap-1.5"]';
   }
 
-  getPlusButtonSelector() {
-    return 'button#composer-plus-btn';
-  }
-
-  getMoreButtonSelector() {
-    return 'div[data-side="top"] div[role="group"] div[role="menuitem"]';
-  }
-  
   /**
    * 获取深度思考按钮选择器
    * @returns {string}
@@ -43,6 +35,14 @@ class ChatGPT extends AIModel {
     // ChatGPT 的深度思考需要先点击加号按钮，然后在菜单中找到"思考"选项
     // 改为定位到包含按钮的 div
     return 'div[data-side="top"] div[role="group"] div[role="menuitemradio"]:nth-of-type(2)';
+  }
+
+  getPlusButtonSelector() {
+    return 'button#composer-plus-btn';
+  }
+
+  getMoreButtonSelector() {
+    return 'div[data-side="top"] div[role="group"] div[role="menuitem"]';
   }
 
   getRemoveDeepThinkButtonSelector() {
@@ -61,7 +61,7 @@ class ChatGPT extends AIModel {
   getRemoveWebSearchButtonSelector() {
     return 'button.__composer-pill.group';
   }
-  
+
   /**
    * 获取生成图片按钮选择器
    * @returns {string}
@@ -69,7 +69,7 @@ class ChatGPT extends AIModel {
   getGenImageButtonSelector() {
     return 'div[data-side="top"] div[role="group"] div[role="menuitemradio"]:nth-of-type(1)';
   }
-    
+
   getRemoveGenImageButtonSelector() {
     return 'button.__composer-pill.group';
   }
@@ -77,7 +77,7 @@ class ChatGPT extends AIModel {
   /**
    * 判断是否可进行深度思考
    *
-   * 说明：ChatGPT 的“深度思考/思考”通过点击输入框左侧“+”菜单开启。
+   * 说明：ChatGPT 的"深度思考/思考"通过点击输入框左侧"+"菜单开启。
    * @returns {boolean}
    */
   canDeepThink() {
@@ -130,42 +130,6 @@ class ChatGPT extends AIModel {
       // 即使失败也继续执行，不阻塞后续流程
       return true;
     }
-  }
-
-  /**
-   * 模拟点击元素（兼容 React 合成事件）
-   * @param {HTMLElement} element
-   */
-  simulateClick(element) {
-    const events = ['pointerdown', 'pointerup', 'click'];
-    events.forEach(eventType => {
-      const event = new PointerEvent(eventType, {
-        bubbles: true,
-        cancelable: true,
-        view: window
-      });
-      element.dispatchEvent(event);
-    });
-  }
-
-  /**
-   * 模拟鼠标悬停在元素上
-   * @param {HTMLElement} element
-   */
-  simulateHover(element) {
-    const rect = element.getBoundingClientRect();
-    const x = rect.left + rect.width / 2;
-    const y = rect.top + rect.height / 2;
-    
-    ['pointerover', 'pointerenter', 'pointermove'].forEach(type => {
-      document.dispatchEvent(new PointerEvent(type, {
-        view: window,
-        bubbles: true,
-        cancelable: true,
-        clientX: x,
-        clientY: y
-      }));
-    });
   }
 
   /**
@@ -499,6 +463,41 @@ class ChatGPT extends AIModel {
     return true;
   }
 
+  /**
+   * 模拟点击元素（兼容 React 合成事件）
+   * @param {HTMLElement} element
+   */
+  simulateClick(element) {
+    const events = ['pointerdown', 'pointerup', 'click'];
+    events.forEach(eventType => {
+      const event = new PointerEvent(eventType, {
+        bubbles: true,
+        cancelable: true,
+        view: window
+      });
+      element.dispatchEvent(event);
+    });
+  }
+
+  /**
+   * 模拟鼠标悬停在元素上
+   * @param {HTMLElement} element
+   */
+  simulateHover(element) {
+    const rect = element.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    
+    ['pointerover', 'pointerenter', 'pointermove'].forEach(type => {
+      document.dispatchEvent(new PointerEvent(type, {
+        view: window,
+        bubbles: true,
+        cancelable: true,
+        clientX: x,
+        clientY: y
+      }));
+    });
+  }
 
   /**
    * 静态回退方法（当模型类未正确加载时使用）
@@ -510,4 +509,3 @@ class ChatGPT extends AIModel {
     return await instance.sendQuery(query);
   }
 }
-

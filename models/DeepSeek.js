@@ -34,66 +34,6 @@ class DeepSeek extends AIModel {
   }
 
   /**
-   * 开启新对话
-   * @returns {Promise<boolean>}
-   */
-  async startNewChat() {
-    try {
-      console.log(`[MultiAI] ${this.name} - starting new chat...`);
-      
-      // 由于 CSS 选择器无法直接匹配文本，我们需要通过 JavaScript 查找
-      // 查找所有包含 "开启新对话" 或 "New Chat" 文本的 span，然后找到其父 div
-      const maxWaitTime = 10000;
-      const startTime = Date.now();
-      let newChatBtn = null;
-      
-      while (!newChatBtn && (Date.now() - startTime) < maxWaitTime) {
-        // 查找所有 span 元素
-        const allSpans = document.querySelectorAll('span');
-        
-        for (const span of allSpans) {
-          const text = span.textContent.trim();
-          if (text === '开启新对话' || text === 'New Chat' || text.includes('新对话')) {
-            // 找到包含该文本的 span，向上查找可点击的父元素
-            let parent = span.parentElement;
-            while (parent && parent !== document.body) {
-              // 检查父元素是否可点击（有 cursor-pointer 或可点击的样式）
-              if (parent.tagName === 'DIV' || parent.tagName === 'BUTTON' || parent.tagName === 'A') {
-                newChatBtn = parent;
-                break;
-              }
-              parent = parent.parentElement;
-            }
-            if (newChatBtn) break;
-          }
-        }
-        
-        if (!newChatBtn) {
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
-      }
-      
-      if (!newChatBtn) {
-        console.log(`[MultiAI] ${this.name} new chat button not found, skipping...`);
-        return true; // 如果找不到按钮，继续执行（可能已经在新对话中）
-      }
-      
-      console.log(`[MultiAI] ${this.name} new chat button found, clicking...`);
-      newChatBtn.click();
-      
-      // 等待新对话页面加载
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      console.log(`[MultiAI] ${this.name} new chat started ✓`);
-      return true;
-    } catch (error) {
-      console.error(`[MultiAI] ${this.name} failed to start new chat:`, error);
-      // 即使失败也继续执行，不阻塞后续流程
-      return true;
-    }
-  }
-
-  /**
    * 获取深度思考按钮选择器
    * @returns {string}
    */
@@ -237,6 +177,66 @@ class DeepSeek extends AIModel {
    */
   canGenImage() {
     return false;
+  }
+
+  /**
+   * 开启新对话
+   * @returns {Promise<boolean>}
+   */
+  async startNewChat() {
+    try {
+      console.log(`[MultiAI] ${this.name} - starting new chat...`);
+      
+      // 由于 CSS 选择器无法直接匹配文本，我们需要通过 JavaScript 查找
+      // 查找所有包含 "开启新对话" 或 "New Chat" 文本的 span，然后找到其父 div
+      const maxWaitTime = 10000;
+      const startTime = Date.now();
+      let newChatBtn = null;
+      
+      while (!newChatBtn && (Date.now() - startTime) < maxWaitTime) {
+        // 查找所有 span 元素
+        const allSpans = document.querySelectorAll('span');
+        
+        for (const span of allSpans) {
+          const text = span.textContent.trim();
+          if (text === '开启新对话' || text === 'New Chat' || text.includes('新对话')) {
+            // 找到包含该文本的 span，向上查找可点击的父元素
+            let parent = span.parentElement;
+            while (parent && parent !== document.body) {
+              // 检查父元素是否可点击（有 cursor-pointer 或可点击的样式）
+              if (parent.tagName === 'DIV' || parent.tagName === 'BUTTON' || parent.tagName === 'A') {
+                newChatBtn = parent;
+                break;
+              }
+              parent = parent.parentElement;
+            }
+            if (newChatBtn) break;
+          }
+        }
+        
+        if (!newChatBtn) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+      
+      if (!newChatBtn) {
+        console.log(`[MultiAI] ${this.name} new chat button not found, skipping...`);
+        return true; // 如果找不到按钮，继续执行（可能已经在新对话中）
+      }
+      
+      console.log(`[MultiAI] ${this.name} new chat button found, clicking...`);
+      newChatBtn.click();
+      
+      // 等待新对话页面加载
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      console.log(`[MultiAI] ${this.name} new chat started ✓`);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to start new chat:`, error);
+      // 即使失败也继续执行，不阻塞后续流程
+      return true;
+    }
   }
 
   /**
