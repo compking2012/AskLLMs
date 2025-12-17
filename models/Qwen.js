@@ -36,6 +36,22 @@ class Qwen extends AIModel {
   }
 
   /**
+   * 获取网络搜索按钮选择器
+   * @returns {string}
+   */
+  getWebSearchButtonSelector() {
+    return ''; // TODO: 实现选择器
+  }
+
+  /**
+   * 获取生成图片按钮选择器
+   * @returns {string}
+   */
+  getGenImageButtonSelector() {
+    return ''; // TODO: 实现选择器
+  }
+
+  /**
    * 判断是否可进行深度思考
    * @returns {boolean} 千问支持深度思考
    */
@@ -46,7 +62,7 @@ class Qwen extends AIModel {
   /**
    * 判断是否可进行网络搜索
    *
-   * 说明：千问的“联网搜索”与“深度思考”存在联动关系：
+   * 说明：千问的"联网搜索"与"深度思考"存在联动关系：
    * - `"inclusive"`：开启深度思考时会自动包含联网能力；但也允许用户显式开启联网 toggle。
    * 该返回值会影响 popup 中能力图标的展示逻辑（见 `popup.js` 的 `shouldShowWebSearchIcon`）。
    *
@@ -54,6 +70,44 @@ class Qwen extends AIModel {
    */
   canWebSearch() {
     return "inclusive";
+  }
+
+  /**
+   * 判断是否可生成图片
+   * @returns {boolean} 千问支持生成图片
+   */
+  canGenImage() {
+    return true;
+  }
+
+  /**
+   * 开启新对话
+   * @returns {Promise<boolean>}
+   */
+  async startNewChat() {
+    try {
+      console.log(`[MultiAI] ${this.name} - starting new chat...`);
+      
+      // 等待新聊天按钮出现
+      const newChatBtn = await this.waitForElement(this.getNewChatButtonSelector(), 10000);
+      if (!newChatBtn) {
+        console.log(`[MultiAI] ${this.name} new chat button not found, skipping...`);
+        return true; // 如果找不到按钮，继续执行（可能已经在新对话中）
+      }
+      
+      console.log(`[MultiAI] ${this.name} new chat button found, clicking...`);
+      newChatBtn.click();
+      
+      // 等待新对话页面加载
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      console.log(`[MultiAI] ${this.name} new chat started ✓`);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to start new chat:`, error);
+      // 即使失败也继续执行，不阻塞后续流程
+      return true;
+    }
   }
 
   /**
@@ -127,64 +181,10 @@ class Qwen extends AIModel {
   }
 
   /**
-   * 获取网络搜索按钮选择器
-   * @returns {string}
-   */
-  getWebSearchButtonSelector() {
-    return ''; // TODO: 实现选择器
-  }
-
-  /**
-   * 获取生成图片按钮选择器
-   * @returns {string}
-   */
-  getGenImageButtonSelector() {
-    return ''; // TODO: 实现选择器
-  }
-
-  /**
-   * 判断是否可生成图片
-   * @returns {boolean} 千问支持生成图片
-   */
-  canGenImage() {
-    return true;
-  }
-
-  /**
-   * 开启新对话
+   * 启用网络搜索（千问特殊实现）
    * @returns {Promise<boolean>}
    */
-  async startNewChat() {
-    try {
-      console.log(`[MultiAI] ${this.name} - starting new chat...`);
-      
-      // 等待新聊天按钮出现
-      const newChatBtn = await this.waitForElement(this.getNewChatButtonSelector(), 10000);
-      if (!newChatBtn) {
-        console.log(`[MultiAI] ${this.name} new chat button not found, skipping...`);
-        return true; // 如果找不到按钮，继续执行（可能已经在新对话中）
-      }
-      
-      console.log(`[MultiAI] ${this.name} new chat button found, clicking...`);
-      newChatBtn.click();
-      
-      // 等待新对话页面加载
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      console.log(`[MultiAI] ${this.name} new chat started ✓`);
-      return true;
-    } catch (error) {
-      console.error(`[MultiAI] ${this.name} failed to start new chat:`, error);
-      // 即使失败也继续执行，不阻塞后续流程
-      return true;
-    }
-  }
-
-  /**
-   * 启用深度思考（千问特殊实现）
-   * @returns {Promise<boolean>}
-   */
-  async enableDeepThink() {
+  async enableWebSearch() {
     try {
       console.log(`[MultiAI] ${this.name} - enabling web search...`);
       
@@ -248,6 +248,24 @@ class Qwen extends AIModel {
       console.error(`[MultiAI] ${this.name} failed to disable web search:`, error);
       return true; // 即使失败也继续执行
     }
+  }
+
+  /**
+   * 启用生成图片（千问特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async enableGenImage() {
+    // TODO: 实现生成图片功能
+    return true;
+  }
+
+  /**
+   * 禁用生成图片（千问特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async disableGenImage() {
+    // TODO: 实现生成图片功能
+    return true;
   }
 
   async sendQuery(query, startNewChat = false, deepThink = false, webSearch = false, genImage = false) {

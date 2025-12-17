@@ -24,7 +24,7 @@
 12）增加打开/关闭“深度思考”的功能（如果模型支持的话）
         -- 【done】ChatGPT：在“+”中打开或关闭“思考”
         -- 【done】Claude：在Search and Tools中打开Use style，选Normal和Thinking Claude
-        -- Gemini：在工具栏选“快速”或“思考”
+        -- 【done】Gemini：在工具栏选“快速”或“思考”
         -- Grok：在输入框中选“快速模式”或“专家模式”
         -- 千问：在工具栏选“深度思考”
         -- 豆包：在工具栏选“深度思考”
@@ -35,7 +35,7 @@
         -- MiniMax：不支持
         -- 腾讯元宝：在工具栏选“深度思考”
 13）增加打开/关闭“网络搜索”的功能（如果模型支持的话）
-        -- ChatGPT：在“+”中“更多”中打开或关闭“网页搜索”，但与深度思考互斥
+        -- 【有bug】ChatGPT：在“+”中“更多”中打开或关闭“网页搜索”，但与深度思考互斥
         -- Claude：在Search and Tools中打开Web Search
         -- 【done】Gemini：自动
         -- 【done】Grok：自动
@@ -50,7 +50,7 @@
 14）增加打开/关闭“生成图片”的功能（如果模型支持的话）
         -- 【done】ChatGPT：在“+”中“创建图片”
         -- 【done】Claude：不支持
-        -- Gemini：在工具栏选“生成图片“
+        -- 【done】Gemini：在工具栏选“生成图片“
         -- Grok：在工具栏选"Create Image"
         -- 千问：在工具栏选中图像
         -- 【done】豆包：自动

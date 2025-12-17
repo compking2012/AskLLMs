@@ -33,12 +33,12 @@ class Claude extends AIModel {
    */
   getDeepThinkButtonSelector() {
     // 返回选择器，用于查找第5个button.group
-    return 'div.absolute.block button.group';
+    return 'div[data-side="inline-end"] div[role="menuitemcheckbox"]';
   }
 
   getToolKitTriggerButtonSelector() {
     // Claude 的工具菜单按钮
-    return 'button#input-tools-menu-trigger';
+    return 'button[aria-label="Toggle menu"]';
   }
 
   /**
@@ -47,7 +47,7 @@ class Claude extends AIModel {
    */
   getStyleButtonSelector() {
     // 返回选择器，用于查找第5个button.group
-    return 'div.absolute.block button.group';
+    return 'div[type="submenu"][role="menuitem"]';
   }
 
   getRemoveDeepThinkButtonSelector() {
@@ -146,26 +146,26 @@ class Claude extends AIModel {
       
       // 步骤2: 获取所有button.group，点击第一个来启用深度思考
       const useStyleButton = await this.waitForElement(this.getStyleButtonSelector(), 3000);
-      if (useStyleButton.length < 5) {
+      if (useStyleButton.length < 2) {
         console.log(`[MultiAI] ${this.name} use style menu button not found, skipping...`);
         return true;
       }
       console.log(`[MultiAI] ${this.name} use style menu button found, clicking...`);
-      useStyleButton[4].click();
+      useStyleButton[1].click();
 
       // 等待菜单出现
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       // 步骤3: 查找所有button.groups
       const allStyleButtons = await this.waitForElement(this.getDeepThinkButtonSelector(), 3000);
-      if (allStyleButtons.length < 2) {
+      if (allStyleButtons.length < 6) {
         console.log(`[MultiAI] ${this.name} enable deep think button not found, skipping...`);
         return true;
       }
       
       // 步骤4: 第一个按钮是启用深度思考
       console.log(`[MultiAI] ${this.name} enable deep think button found, clicking...`);
-      allStyleButtons[1].click();
+      allStyleButtons[5].click();
       
       // 步骤5: 等待操作完成
       await new Promise(resolve => setTimeout(resolve, 500));

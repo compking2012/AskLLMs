@@ -1,0 +1,22 @@
+{
+  "name": "ask-llms",
+  "version": "1.4.0",
+  "description": "Chrome extension for asking multiple LLMs",
+  "scripts": {
+    "build": "node build.js",
+    "build:dev": "node build.js --dev",
+    "test": "node tests/run.mjs",
+    "test:debug": "node tests/run.mjs --debug",
+    "test:mock": "node tests/run.mjs --mode mock",
+    "test:real": "node tests/run.mjs --mode real",
+    "pw:install": "npx playwright install chromium"
+  },
+  "devDependencies": {
+    "archiver": "^7.0.1",
+    "playwright": "^1.50.0",
+    "terser": "^5.31.0"
+  },
+  "author": "Yang Yang",
+  "license": "MIT"
+}
+

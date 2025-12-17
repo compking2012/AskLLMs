@@ -70,7 +70,7 @@ class Grok extends AIModel {
    * @returns {boolean}
    */
   canWebSearch() {
-    return "auto";
+    return false;
   }
 
   /**

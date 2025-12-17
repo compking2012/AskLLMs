@@ -56,7 +56,7 @@ class Gemini extends AIModel {
    * @returns {string}
    */
   getGenImageButtonSelector() {
-    return 'toolbox-drawer-item.toolbox-drawer-menu-item button span span img';
+    return 'toolbox-drawer-item.toolbox-drawer-menu-item button';
   }
 
   /**
@@ -322,27 +322,14 @@ class Gemini extends AIModel {
       await new Promise(resolve => setTimeout(resolve, 500));
       
       // 步骤2: 找到菜单中的图片按钮
-      const genImageElement = await this.waitForElement(this.getGenImageButtonSelector(), 3000);
-      if (!genImageElement) {
-        console.log(`[MultiAI] ${this.name} gen image element not found, skipping...`);
+      const genImageButton = await this.waitForElement(this.getGenImageButtonSelector(), 3000);
+      if (genImageButton.length < 2) {
+        console.log(`[MultiAI] ${this.name} gen image button not found, skipping...`);
         return true;
       }
-      
-      // 找到第3级父节点，然后查找其中的 button
-      const parent3 = genImageElement.parentNode?.parentNode?.parentNode;
-      if (!parent3) {
-        console.log(`[MultiAI] ${this.name} parent node not found, skipping...`);
-        return true;
-      }
-      
-      const genImageButton = parent3.querySelector('button');
-      if (!genImageButton) {
-        console.log(`[MultiAI] ${this.name} gen image button not found in parent, skipping...`);
-        return true;
-      }
-      
+
       console.log(`[MultiAI] ${this.name} enable gen image button found, clicking...`);
-      genImageButton.click();      
+      genImageButton[1].click();      
 
       console.log(`[MultiAI] ${this.name} gen image enabled ✓`);
       return true;
