@@ -1779,7 +1779,18 @@ async function sendQuery() {
     return;
   }
   
-  const selectedPlatforms = getSelectedPlatforms();
+  let selectedPlatforms = getSelectedPlatforms();
+  
+  // 过滤掉被禁用的平台（disabled 状态的大模型不发送）
+  selectedPlatforms = selectedPlatforms.filter(platform => {
+    const btn = Array.from(platformBtns).find(b => b.dataset.platform === platform);
+    // 如果按钮被禁用，则过滤掉
+    if (btn && (btn.disabled || btn.classList.contains('disabled'))) {
+      console.log(`[Popup] Platform ${platform} is disabled, skipping...`);
+      return false;
+    }
+    return true;
+  });
   
   if (selectedPlatforms.length === 0) {
     showStatus(i18n('errorNoPlatform'), 'error');
