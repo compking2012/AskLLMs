@@ -65,7 +65,7 @@ async function loadModelsData() {
       const i18nKeys = getPlatformI18nKeys();
       const platformNames = getAllPlatformNames();
 
-      // 获取每个模型的能力信息（canDeepThink和canWebSearch）
+      // 获取每个模型的能力信息（canDeepThink、canWebSearch和canGenImage）
       const modelCapabilities = {};
       console.log('[Background] Checking getAllModelClasses:', typeof getAllModelClasses);
       if (typeof getAllModelClasses === 'function') {
@@ -77,19 +77,23 @@ async function loadModelsData() {
               const instance = new ModelClass();
               const canDeepThink = instance.canDeepThink ? instance.canDeepThink() : false;
               const canWebSearch = instance.canWebSearch ? instance.canWebSearch() : false;
+              const canGenImage = instance.canGenImage ? instance.canGenImage() : false;
               modelCapabilities[ModelClass.NAME] = {
                 canDeepThink: canDeepThink,
-                canWebSearch: canWebSearch
+                canWebSearch: canWebSearch,
+                canGenImage: canGenImage
               };
               console.log('[Background] Capabilities for', ModelClass.NAME, ':', {
                 canDeepThink,
-                canWebSearch
+                canWebSearch,
+                canGenImage
               });
             } catch (e) {
               console.warn('[Background] Failed to get capabilities for', ModelClass.NAME, e);
               modelCapabilities[ModelClass.NAME] = {
                 canDeepThink: false,
-                canWebSearch: false
+                canWebSearch: false,
+                canGenImage: false
               };
             }
           }

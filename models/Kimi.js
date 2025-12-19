@@ -78,7 +78,7 @@ class Kimi extends AIModel {
    * @returns {boolean} Kimi 支持网络搜索
    */
   canWebSearch() {
-    return false;
+    return false; // FIXME: Kimi 支持网络搜索, 但目前有bug暂不启用
   }
 
   /**

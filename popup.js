@@ -413,6 +413,61 @@ function updateAllPlatformCapabilityIcons() {
   });
 }
 
+/**
+ * 根据 toggle 状态更新平台按钮的禁用状态
+ * 检查所有三个 toggle 的状态（DeepThink、WebSearch、GenImage）
+ * 如果某个 toggle 被选中，但平台不支持该功能，则禁用该平台按钮
+ */
+function updatePlatformButtonsDisabledState() {
+  const modelCapabilities = window._platformData?.modelCapabilities || {};
+  
+  // 使用全局变量获取最新的 toggle 状态，而不是从 DOM 读取
+  // 这样可以确保在按钮抬起时使用最新的状态值
+  // 注意：这里直接使用全局变量 deepThinkEnabled、webSearchEnabled、genImageEnabled
+  
+  platformBtns.forEach(btn => {
+    const platform = btn.dataset.platform;
+    const capabilities = modelCapabilities[platform] || {};
+    
+    // 如果按钮被隐藏，跳过
+    if (btn.style.display === 'none') {
+      return;
+    }
+    
+    // 检查平台是否支持所有选中的功能
+    // 需要检查所有三个能力，而不是只检查当前按钮对应的能力
+    let shouldDisable = false;
+    
+    // 如果 DeepThink 启用，但平台不支持，则禁用
+    if (deepThinkEnabled && !capabilities.canDeepThink) {
+      shouldDisable = true;
+    }
+    
+    // 如果 WebSearch 启用，但平台不支持，则禁用
+    if (webSearchEnabled && !capabilities.canWebSearch) {
+      shouldDisable = true;
+    }
+    
+    // 如果 GenImage 启用，但平台不支持，则禁用
+    if (genImageEnabled && !capabilities.canGenImage) {
+      shouldDisable = true;
+    }
+    
+    // 更新按钮的禁用状态
+    // 注意：active 和 disabled 可以并存，表示选中但被禁用
+    if (shouldDisable) {
+      btn.disabled = true;
+      btn.classList.add('disabled');
+      // 保留 active 类，使其看起来是选中但被禁用的状态
+      btn.style.cursor = 'not-allowed';
+    } else {
+      btn.disabled = false;
+      btn.classList.remove('disabled');
+      btn.style.cursor = '';
+    }
+  });
+}
+
 // 设置页面相关函数已移至 settings.js
 // 使用 settings.js 中的函数
 async function initSettingsPage() {
@@ -577,6 +632,7 @@ async function initializeApp() {
   // 确保能力图标已显示（延迟一下，确保DOM和toggle状态已更新）
   setTimeout(() => {
     updateAllPlatformCapabilityIcons();
+    updatePlatformButtonsDisabledState();
   }, 150);
   
   // 清理历史记录中的无效数据
@@ -698,6 +754,13 @@ platformBtns.forEach(btn => {
   });
   
   btn.addEventListener('mousedown', (e) => {
+    // 如果按钮被禁用，阻止拖拽选择
+    if (btn.disabled) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    
     mouseDownTime = Date.now();
     hasMoved = false;
     isDragSelecting = false;
@@ -712,6 +775,11 @@ platformBtns.forEach(btn => {
   
   btn.addEventListener('mouseenter', (e) => {
     if (isDragSelecting && dragStartBtn) {
+      // 如果按钮被禁用，跳过
+      if (btn.disabled) {
+        return;
+      }
+      
       if (!visitedButtons.has(btn)) {
         visitedButtons.add(btn);
         // 取反操作：如果当前是选中的就取消选中，如果未选中就选中
@@ -724,6 +792,13 @@ platformBtns.forEach(btn => {
   });
   
   btn.addEventListener('click', (e) => {
+    // 如果按钮被禁用，阻止点击
+    if (btn.disabled) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    
     // 如果是在拖拽选择模式下，阻止默认的点击切换行为
     // 主要检查 isDragSelecting，因为一旦进入拖拽选择模式，就不应该触发点击切换
     if (isDragSelecting) {
@@ -1464,60 +1539,102 @@ async function loadNewChatToggleState() {
   }
 }
 
-// 加载深度思考 toggle 状态
-async function loadDeepThinkToggleState() {
-  try {
-    const result = await new Promise(resolve => {
-      chrome.storage.local.get(['deepThinkEnabled'], resolve);
-    });
-    deepThinkEnabled = result.deepThinkEnabled || false;
-    updateDeepThinkToggleUI();
-  } catch (error) {
-    console.error('Failed to load deep think toggle state:', error);
-  }
-}
+// 统一的 toggle 状态管理函数
 
-// 加载网络搜索 toggle 状态
-async function loadWebSearchToggleState() {
-  try {
-    const result = await new Promise(resolve => {
-      chrome.storage.local.get(['webSearchEnabled'], resolve);
-    });
-    webSearchEnabled = result.webSearchEnabled || false;
-    updateWebSearchToggleUI();
-  } catch (error) {
-    console.error('Failed to load web search toggle state:', error);
+/**
+ * 保存 toggle 状态
+ * @param {string} type - toggle 类型：'deepThink' | 'webSearch' | 'genImage'
+ * @param {boolean} enabled - 是否启用
+ */
+async function saveToggleUI(type, enabled) {
+  const storageKeys = {
+    deepThink: 'deepThinkEnabled',
+    webSearch: 'webSearchEnabled',
+    genImage: 'genImageEnabled'
+  };
+  
+  const stateVars = {
+    deepThink: () => { deepThinkEnabled = enabled; },
+    webSearch: () => { webSearchEnabled = enabled; },
+    genImage: () => { genImageEnabled = enabled; }
+  };
+  
+  const logMessages = {
+    deepThink: 'Deep think',
+    webSearch: 'Web search',
+    genImage: 'Gen image'
+  };
+  
+  if (stateVars[type]) {
+    stateVars[type]();
   }
-}
-
-// 加载生成图片 toggle 状态
-async function loadGenImageToggleState() {
-  try {
-    const result = await new Promise(resolve => {
-      chrome.storage.local.get(['genImageEnabled'], resolve);
-    });
-    genImageEnabled = result.genImageEnabled || false;
-    updateGenImageToggleUI();
-  } catch (error) {
-    console.error('Failed to load gen image toggle state:', error);
-  }
-}
-
-// 保存生成图片 toggle 状态
-async function saveGenImageToggleState(enabled) {
-  genImageEnabled = enabled;
+  
   try {
     await new Promise(resolve => {
-      chrome.storage.local.set({ genImageEnabled: enabled }, resolve);
+      chrome.storage.local.set({ [storageKeys[type]]: enabled }, resolve);
     });
-    console.log('[Popup] Gen image toggle state saved:', enabled);
+    console.log(`[Popup] ${logMessages[type]} toggle state saved:`, enabled);
   } catch (error) {
-    console.error('Failed to save gen image toggle state:', error);
+    console.error(`Failed to save ${type} toggle state:`, error);
   }
 }
 
-// 更新生成图片 toggle UI
-function updateGenImageToggleUI() {
+/**
+ * 加载 toggle 状态
+ * @param {string} type - toggle 类型：'deepThink' | 'webSearch' | 'genImage'
+ */
+async function loadToggleUI(type) {
+  const storageKeys = {
+    deepThink: 'deepThinkEnabled',
+    webSearch: 'webSearchEnabled',
+    genImage: 'genImageEnabled'
+  };
+  
+  const stateVars = {
+    deepThink: (value) => { deepThinkEnabled = value; },
+    webSearch: (value) => { webSearchEnabled = value; },
+    genImage: (value) => { genImageEnabled = value; }
+  };
+  
+  try {
+    const result = await new Promise(resolve => {
+      chrome.storage.local.get([storageKeys[type]], resolve);
+    });
+    const value = result[storageKeys[type]] || false;
+    if (stateVars[type]) {
+      stateVars[type](value);
+    }
+    updateToggleUI();
+  } catch (error) {
+    console.error(`Failed to load ${type} toggle state:`, error);
+  }
+}
+
+/**
+ * 更新所有 toggle UI 和平台按钮状态
+ */
+function updateToggleUI() {
+  // 更新深度思考 toggle UI
+  const deepThinkToggle = document.getElementById('deep-think-toggle');
+  if (deepThinkToggle) {
+    if (deepThinkEnabled) {
+      deepThinkToggle.classList.add('active');
+    } else {
+      deepThinkToggle.classList.remove('active');
+    }
+  }
+  
+  // 更新网络搜索 toggle UI
+  const webSearchToggle = document.getElementById('web-search-toggle');
+  if (webSearchToggle) {
+    if (webSearchEnabled) {
+      webSearchToggle.classList.add('active');
+    } else {
+      webSearchToggle.classList.remove('active');
+    }
+  }
+  
+  // 更新生成图片 toggle UI
   const genImageToggle = document.getElementById('gen-image-toggle');
   if (genImageToggle) {
     if (genImageEnabled) {
@@ -1526,6 +1643,11 @@ function updateGenImageToggleUI() {
       genImageToggle.classList.remove('active');
     }
   }
+  
+  // 更新所有平台按钮的能力图标
+  updateAllPlatformCapabilityIcons();
+  // 更新平台按钮的禁用状态
+  updatePlatformButtonsDisabledState();
 }
 
 // 保存新对话 toggle 状态
@@ -1551,57 +1673,6 @@ function updateNewChatToggleUI() {
   }
 }
 
-// 保存深度思考 toggle 状态
-async function saveDeepThinkToggleState(enabled) {
-  deepThinkEnabled = enabled;
-  try {
-    await new Promise(resolve => {
-      chrome.storage.local.set({ deepThinkEnabled: enabled }, resolve);
-    });
-  } catch (error) {
-    console.error('Failed to save deep think toggle state:', error);
-  }
-}
-
-// 更新深度思考 toggle UI
-function updateDeepThinkToggleUI() {
-  const deepThinkToggle = document.getElementById('deep-think-toggle');
-  if (deepThinkToggle) {
-    if (deepThinkEnabled) {
-      deepThinkToggle.classList.add('active');
-    } else {
-      deepThinkToggle.classList.remove('active');
-    }
-  }
-  // 更新所有平台按钮的能力图标
-  updateAllPlatformCapabilityIcons();
-}
-
-// 保存网络搜索 toggle 状态
-async function saveWebSearchToggleState(enabled) {
-  webSearchEnabled = enabled;
-  try {
-    await new Promise(resolve => {
-      chrome.storage.local.set({ webSearchEnabled: enabled }, resolve);
-    });
-  } catch (error) {
-    console.error('Failed to save web search toggle state:', error);
-  }
-}
-
-// 更新网络搜索 toggle UI
-function updateWebSearchToggleUI() {
-  const webSearchToggle = document.getElementById('web-search-toggle');
-  if (webSearchToggle) {
-    if (webSearchEnabled) {
-      webSearchToggle.classList.add('active');
-    } else {
-      webSearchToggle.classList.remove('active');
-    }
-  }
-  // 更新所有平台按钮的能力图标
-  updateAllPlatformCapabilityIcons();
-}
 
 // 初始化新对话 toggle
 function initNewChatToggle() {
@@ -1639,8 +1710,8 @@ function initNewChatToggle() {
       e.stopPropagation();
       deepThinkEnabled = !deepThinkEnabled;
       console.log('[Popup] Deep think toggle clicked, new state:', deepThinkEnabled);
-      await saveDeepThinkToggleState(deepThinkEnabled);
-      updateDeepThinkToggleUI();
+      await saveToggleUI('deepThink', deepThinkEnabled);
+      updateToggleUI();
       
       // 验证保存是否成功
       const verify = await new Promise(resolve => {
@@ -1650,7 +1721,7 @@ function initNewChatToggle() {
       });
       console.log('[Popup] Verified deep think saved state:', verify);
     });
-    loadDeepThinkToggleState();
+    loadToggleUI('deepThink');
   }
   
   // 初始化网络搜索 toggle
@@ -1661,8 +1732,8 @@ function initNewChatToggle() {
       e.stopPropagation();
       webSearchEnabled = !webSearchEnabled;
       console.log('[Popup] Web search toggle clicked, new state:', webSearchEnabled);
-      await saveWebSearchToggleState(webSearchEnabled);
-      updateWebSearchToggleUI();
+      await saveToggleUI('webSearch', webSearchEnabled);
+      updateToggleUI();
       
       // 验证保存是否成功
       const verify = await new Promise(resolve => {
@@ -1672,7 +1743,7 @@ function initNewChatToggle() {
       });
       console.log('[Popup] Verified web search saved state:', verify);
     });
-    loadWebSearchToggleState();
+    loadToggleUI('webSearch');
   }
   
   // 初始化生成图片 toggle
@@ -1683,8 +1754,8 @@ function initNewChatToggle() {
       e.stopPropagation();
       genImageEnabled = !genImageEnabled;
       console.log('[Popup] Gen image toggle clicked, new state:', genImageEnabled);
-      await saveGenImageToggleState(genImageEnabled);
-      updateGenImageToggleUI();
+      await saveToggleUI('genImage', genImageEnabled);
+      updateToggleUI();
       
       // 验证保存是否成功
       const verify = await new Promise(resolve => {
@@ -1694,7 +1765,7 @@ function initNewChatToggle() {
       });
       console.log('[Popup] Verified gen image saved state:', verify);
     });
-    loadGenImageToggleState();
+    loadToggleUI('genImage');
   }
 }
 
@@ -1756,15 +1827,15 @@ async function sendQuery() {
   }
   if (domState.deepThink !== currentState.deepThink) {
     console.log('[Popup] Syncing deepThink state to storage:', domState.deepThink);
-    await saveDeepThinkToggleState(domState.deepThink);
+    await saveToggleUI('deepThink', domState.deepThink);
   }
   if (domState.webSearch !== currentState.webSearch) {
     console.log('[Popup] Syncing webSearch state to storage:', domState.webSearch);
-    await saveWebSearchToggleState(domState.webSearch);
+    await saveToggleUI('webSearch', domState.webSearch);
   }
   if (domState.genImage !== currentState.genImage) {
     console.log('[Popup] Syncing genImage state to storage:', domState.genImage);
-    await saveGenImageToggleState(domState.genImage);
+    await saveToggleUI('genImage', domState.genImage);
   }
   
   // 保存历史记录

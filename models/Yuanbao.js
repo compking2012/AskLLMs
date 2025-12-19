@@ -71,10 +71,10 @@ class Yuanbao extends AIModel {
 
   /**
    * 判断是否可生成图片
-   * @returns {boolean} 腾讯元宝支持生成图片（自动）
+   * @returns {boolean} 腾讯元宝不支持生成图片
    */
   canGenImage() {
-    return "auto";
+    return false;
   }
 
   /**

@@ -69,7 +69,7 @@ class Qwen extends AIModel {
    * @returns {boolean|string} false | true | "auto" | "exclusive" | "inclusive"
    */
   canWebSearch() {
-    return "inclusive";
+    return true;
   }
 
   /**

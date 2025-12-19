@@ -76,7 +76,7 @@ class ChatGLM extends AIModel {
    * @returns {boolean} 智谱清言支持生成图片（自动）
    */
   canGenImage() {
-    return "auto";
+    return true;
   }
 
   /**

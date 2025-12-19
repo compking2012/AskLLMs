@@ -64,15 +64,15 @@ class Doubao extends AIModel {
    * @returns {boolean} 豆包支持网络搜索
    */
   canWebSearch() {
-    return "auto";
+    return false;
   }
 
   /**
    * 判断是否可生成图片
-   * @returns {boolean} 豆包支持生成图片（自动）
+   * @returns {boolean} 豆包支持生成图片
    */
   canGenImage() {
-    return "auto";
+    return false; //FIXME: 豆包支持生成图片, 但目前有bug暂不启用
   }
 
   /**

@@ -65,7 +65,7 @@ class Wenxin extends AIModel {
 
   /**
    * 判断是否可进行网络搜索
-   * @returns {boolean}
+   * @returns {boolean} 文心一言不支持网络搜索
    */
   canWebSearch() {
     return false;
@@ -73,10 +73,10 @@ class Wenxin extends AIModel {
 
   /**
    * 判断是否可生成图片
-   * @returns {boolean} 文心一言支持生成图片（自动）
+   * @returns {boolean} 文心一言不支持生成图片
    */
   canGenImage() {
-    return "auto";
+    return false;
   }
 
   /**

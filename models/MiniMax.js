@@ -63,7 +63,7 @@ class MiniMax extends AIModel {
 
   /**
    * 判断是否可进行网络搜索
-   * @returns {boolean} MiniMax 支持网络搜索
+   * @returns {boolean} MiniMax 不支持网络搜索
    */
   canWebSearch() {
     return false;
@@ -71,10 +71,10 @@ class MiniMax extends AIModel {
 
   /**
    * 判断是否可生成图片
-   * @returns {boolean} MiniMax 不支持生成图片
+   * @returns {boolean} MiniMax 支持生成图片
    */
   canGenImage() {
-    return false;
+    return false; // FIXME: MiniMax 支持生成图片, 但目前有bug暂不启用
   }
 
   /**

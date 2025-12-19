@@ -42,6 +42,22 @@ class DeepSeek extends AIModel {
   }
 
   /**
+   * 获取网络搜索按钮选择器
+   * @returns {string}
+   */
+  getWebSearchButtonSelector() {
+    return 'button.ds-toggle-button:nth-of-type(2)';
+  }
+
+  /**
+   * 获取生成图片按钮选择器
+   * @returns {string}
+   */
+  getGenImageButtonSelector() {
+    return ''; // TODO: 实现选择器
+  }
+
+  /**
    * 判断是否可进行深度思考
    * @returns {boolean} DeepSeek 支持深度思考
    */
@@ -55,6 +71,74 @@ class DeepSeek extends AIModel {
    */
   canWebSearch() {
     return true;
+  }
+
+  /**
+   * 判断是否可生成图片
+   * @returns {boolean} DeepSeek 不支持生成图片
+   */
+  canGenImage() {
+    return false;
+  }
+
+  /**
+   * 开启新对话
+   * @returns {Promise<boolean>}
+   */
+  async startNewChat() {
+    try {
+      console.log(`[MultiAI] ${this.name} - starting new chat...`);
+      
+      // 由于 CSS 选择器无法直接匹配文本，我们需要通过 JavaScript 查找
+      // 查找所有包含 "开启新对话" 或 "New Chat" 文本的 span，然后找到其父 div
+      const maxWaitTime = 10000;
+      const startTime = Date.now();
+      let newChatBtn = null;
+      
+      while (!newChatBtn && (Date.now() - startTime) < maxWaitTime) {
+        // 查找所有 span 元素
+        const allSpans = document.querySelectorAll('span');
+        
+        for (const span of allSpans) {
+          const text = span.textContent.trim();
+          if (text === '开启新对话' || text === 'New Chat' || text.includes('新对话')) {
+            // 找到包含该文本的 span，向上查找可点击的父元素
+            let parent = span.parentElement;
+            while (parent && parent !== document.body) {
+              // 检查父元素是否可点击（有 cursor-pointer 或可点击的样式）
+              if (parent.tagName === 'DIV' || parent.tagName === 'BUTTON' || parent.tagName === 'A') {
+                newChatBtn = parent;
+                break;
+              }
+              parent = parent.parentElement;
+            }
+            if (newChatBtn) break;
+          }
+        }
+        
+        if (!newChatBtn) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+      
+      if (!newChatBtn) {
+        console.log(`[MultiAI] ${this.name} new chat button not found, skipping...`);
+        return true; // 如果找不到按钮，继续执行（可能已经在新对话中）
+      }
+      
+      console.log(`[MultiAI] ${this.name} new chat button found, clicking...`);
+      newChatBtn.click();
+      
+      // 等待新对话页面加载
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      console.log(`[MultiAI] ${this.name} new chat started ✓`);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to start new chat:`, error);
+      // 即使失败也继续执行，不阻塞后续流程
+      return true;
+    }
   }
 
   /**
@@ -156,106 +240,6 @@ class DeepSeek extends AIModel {
   }
 
   /**
-   * 获取网络搜索按钮选择器
-   * @returns {string}
-   */
-  getWebSearchButtonSelector() {
-    return 'button.ds-toggle-button:nth-of-type(2)';
-  }
-
-  /**
-   * 获取生成图片按钮选择器
-   * @returns {string}
-   */
-  getGenImageButtonSelector() {
-    return ''; // TODO: 实现选择器
-  }
-
-  /**
-   * 判断是否可生成图片
-   * @returns {boolean} DeepSeek 不支持生成图片
-   */
-  canGenImage() {
-    return false;
-  }
-
-  /**
-   * 开启新对话
-   * @returns {Promise<boolean>}
-   */
-  async startNewChat() {
-    try {
-      console.log(`[MultiAI] ${this.name} - starting new chat...`);
-      
-      // 由于 CSS 选择器无法直接匹配文本，我们需要通过 JavaScript 查找
-      // 查找所有包含 "开启新对话" 或 "New Chat" 文本的 span，然后找到其父 div
-      const maxWaitTime = 10000;
-      const startTime = Date.now();
-      let newChatBtn = null;
-      
-      while (!newChatBtn && (Date.now() - startTime) < maxWaitTime) {
-        // 查找所有 span 元素
-        const allSpans = document.querySelectorAll('span');
-        
-        for (const span of allSpans) {
-          const text = span.textContent.trim();
-          if (text === '开启新对话' || text === 'New Chat' || text.includes('新对话')) {
-            // 找到包含该文本的 span，向上查找可点击的父元素
-            let parent = span.parentElement;
-            while (parent && parent !== document.body) {
-              // 检查父元素是否可点击（有 cursor-pointer 或可点击的样式）
-              if (parent.tagName === 'DIV' || parent.tagName === 'BUTTON' || parent.tagName === 'A') {
-                newChatBtn = parent;
-                break;
-              }
-              parent = parent.parentElement;
-            }
-            if (newChatBtn) break;
-          }
-        }
-        
-        if (!newChatBtn) {
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
-      }
-      
-      if (!newChatBtn) {
-        console.log(`[MultiAI] ${this.name} new chat button not found, skipping...`);
-        return true; // 如果找不到按钮，继续执行（可能已经在新对话中）
-      }
-      
-      console.log(`[MultiAI] ${this.name} new chat button found, clicking...`);
-      newChatBtn.click();
-      
-      // 等待新对话页面加载
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      console.log(`[MultiAI] ${this.name} new chat started ✓`);
-      return true;
-    } catch (error) {
-      console.error(`[MultiAI] ${this.name} failed to start new chat:`, error);
-      // 即使失败也继续执行，不阻塞后续流程
-      return true;
-    }
-  }
-
-  /**
-   * 启用生成图片（DeepSeek 特殊实现）
-   * @returns {Promise<boolean>}
-   */
-  async enableGenImage() {
-    return false;
-  }
-
-  /**
-   * 禁用生成图片（DeepSeek 特殊实现）
-   * @returns {Promise<boolean>}
-   */
-  async disableGenImage() {
-    return false;
-  }
-
-  /**
    * 启用网络搜索（DeepSeek 特殊实现）
    * @returns {Promise<boolean>}
    */
@@ -353,6 +337,22 @@ class DeepSeek extends AIModel {
     }
   }
 
+  /**
+   * 启用生成图片（DeepSeek 特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async enableGenImage() {
+    return false;
+  }
+
+  /**
+   * 禁用生成图片（DeepSeek 特殊实现）
+   * @returns {Promise<boolean>}
+   */
+  async disableGenImage() {
+    return false;
+  }
+
   async sendQuery(query, startNewChat = false, deepThink = false, webSearch = false, genImage = false) {
     console.log(`[MultiAI] ${this.name} - startNewChat:`, startNewChat);
     console.log(`[MultiAI] ${this.name} - deepThink:`, deepThink);
@@ -437,7 +437,6 @@ class DeepSeek extends AIModel {
     return true;
   }
 
-
   /**
    * 静态回退方法（当模型类未正确加载时使用）
    * @param {string} query - 查询文本
@@ -448,4 +447,3 @@ class DeepSeek extends AIModel {
     return await instance.sendQuery(query);
   }
 }
-

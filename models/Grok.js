@@ -78,7 +78,7 @@ class Grok extends AIModel {
    * @returns {boolean} Grok 支持生成图片
    */
   canGenImage() {
-    return true;
+    return false;  // FIXME: Grok 支持生成图片, 但目前有bug暂不启用
   }
 
   /**

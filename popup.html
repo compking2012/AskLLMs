@@ -993,6 +993,67 @@
       transform: translateY(-2px);
     }
     
+    /* 禁用状态样式 */
+    .platform-btn.disabled {
+      cursor: not-allowed !important;
+    }
+    
+    /* 未选中且禁用状态 - 与未选中状态一致 */
+    .platform-btn.disabled:not(.active) {
+      background: #ffffff;
+    }
+    
+    .platform-btn.disabled:not(.active) .icon img {
+      filter: grayscale(100%) opacity(0.3);
+    }
+    
+    .platform-btn.disabled:not(.active):hover {
+      background: #ffffff;
+      transform: none;
+    }
+    
+    .platform-btn.disabled:not(.active):hover .icon img {
+      filter: grayscale(100%) opacity(0.3);
+    }
+    
+    /* 选中但禁用状态 - 保持选中样式但降低透明度 */
+    .platform-btn.disabled.active {
+      background: transparent;
+      opacity: 0.5;
+    }
+    
+    .platform-btn.disabled.active .icon img {
+      filter: grayscale(0%) opacity(0.5);
+    }
+    
+    .platform-btn.disabled.active:hover {
+      background: transparent;
+      transform: none;
+      opacity: 0.5;
+    }
+    
+    .platform-btn.disabled.active:hover .icon img {
+      filter: grayscale(0%) opacity(0.5);
+    }
+    
+    body.dark-theme .platform-btn.disabled:not(.active) {
+      background: #374151;
+    }
+    
+    body.dark-theme .platform-btn.disabled:not(.active):hover {
+      background: #374151;
+    }
+    
+    body.dark-theme .platform-btn.disabled.active {
+      background: transparent;
+      opacity: 0.5;
+    }
+    
+    body.dark-theme .platform-btn.disabled.active:hover {
+      background: transparent;
+      opacity: 0.5;
+    }
+    
     /* 拖拽选择模式样式 */
     body.drag-select-mode {
       user-select: none;
