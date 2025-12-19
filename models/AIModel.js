@@ -161,6 +161,22 @@ class AIModel {
   }
 
   /**
+   * 获取文件上传按钮选择器（由子类实现）
+   * @returns {string} 返回文件上传按钮的选择器
+   */
+  getFileUploadButtonSelector() {
+    return ''; // 默认返回空字符串，表示未实现
+  }
+
+  /**
+   * 获取文件上传 input 选择器（由子类实现）
+   * @returns {string} 返回隐藏的 input[type="file"] 选择器
+   */
+  getFileUploadInputSelector() {
+    return ''; // 默认返回空字符串，表示未实现
+  }
+
+  /**
    * 判断是否可进行深度思考
    * @returns {boolean} 返回true表示支持深度思考，false表示不支持
    */
@@ -185,6 +201,14 @@ class AIModel {
   }
 
   /**
+   * 判断是否可上传文件
+   * @returns {boolean} 返回true表示支持上传文件，false表示不支持
+   */
+  canUploadFile() {
+    return false; // 默认返回false，子类可以重写此方法
+  }
+
+  /**
    * 开启新对话（可选方法，由子类实现）
    * @returns {Promise<boolean>} 返回true表示成功，false表示失败或不需要
    */
@@ -194,213 +218,60 @@ class AIModel {
   }
 
   /**
-   * 启用深度思考（可选方法，由子类实现）
+   * 启用深度思考（由子类实现）
    * @returns {Promise<boolean>} 返回true表示成功，false表示失败或不需要
    */
   async enableDeepThink() {
-    try {
-      const selector = this.getDeepThinkButtonSelector();
-      if (!selector) {
-        return true; // 如果未实现，返回true表示跳过
-      }
-      
-      const btn = await this.waitForElement(selector, 5000);
-      if (!btn) {
-        console.log(`[MultiAI] ${this.name} deep think button not found, skipping...`);
-        return true;
-      }
-      
-      // 检查按钮是否已经激活
-      const isActive = btn.checked || btn.classList.contains('active') || 
-                       btn.getAttribute('aria-pressed') === 'true' ||
-                       btn.getAttribute('data-active') === 'true';
-      
-      if (!isActive) {
-        btn.click();
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-      
-      console.log(`[MultiAI] ${this.name} deep think enabled ✓`);
-      return true;
-    } catch (error) {
-      console.error(`[MultiAI] ${this.name} failed to enable deep think:`, error);
-      return true; // 即使失败也继续执行
-    }
+    throw new Error('enableDeepThink must be implemented by subclass');
   }
 
   /**
-   * 禁用深度思考（可选方法，由子类实现）
+   * 禁用深度思考（由子类实现）
    * @returns {Promise<boolean>} 返回true表示成功，false表示失败或不需要
    */
   async disableDeepThink() {
-    try {
-      const selector = this.getDeepThinkButtonSelector();
-      if (!selector) {
-        return true; // 如果未实现，返回true表示跳过
-      }
-      
-      const btn = await this.waitForElement(selector, 5000);
-      if (!btn) {
-        console.log(`[MultiAI] ${this.name} deep think button not found, skipping...`);
-        return true;
-      }
-      
-      // 检查按钮是否已经激活
-      const isActive = btn.checked || btn.classList.contains('active') || 
-                       btn.getAttribute('aria-pressed') === 'true' ||
-                       btn.getAttribute('data-active') === 'true';
-      
-      if (isActive) {
-        btn.click();
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-      
-      console.log(`[MultiAI] ${this.name} deep think disabled ✓`);
-      return true;
-    } catch (error) {
-      console.error(`[MultiAI] ${this.name} failed to disable deep think:`, error);
-      return true; // 即使失败也继续执行
-    }
+    throw new Error('disableDeepThink must be implemented by subclass');
   }
 
   /**
-   * 启用网络搜索（可选方法，由子类实现）
+   * 启用网络搜索（由子类实现）
    * @returns {Promise<boolean>} 返回true表示成功，false表示失败或不需要
    */
   async enableWebSearch() {
-    try {
-      const selector = this.getWebSearchButtonSelector();
-      if (!selector) {
-        return true; // 如果未实现，返回true表示跳过
-      }
-      
-      const btn = await this.waitForElement(selector, 5000);
-      if (!btn) {
-        console.log(`[MultiAI] ${this.name} web search button not found, skipping...`);
-        return true;
-      }
-      
-      // 检查按钮是否已经激活
-      const isActive = btn.checked || btn.classList.contains('active') || 
-                       btn.getAttribute('aria-pressed') === 'true' ||
-                       btn.getAttribute('data-active') === 'true';
-      
-      if (!isActive) {
-        btn.click();
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-      
-      console.log(`[MultiAI] ${this.name} web search enabled ✓`);
-      return true;
-    } catch (error) {
-      console.error(`[MultiAI] ${this.name} failed to enable web search:`, error);
-      return true; // 即使失败也继续执行
-    }
+    throw new Error('enableWebSearch must be implemented by subclass');
   }
 
   /**
-   * 禁用网络搜索（可选方法，由子类实现）
+   * 禁用网络搜索（由子类实现）
    * @returns {Promise<boolean>} 返回true表示成功，false表示失败或不需要
    */
   async disableWebSearch() {
-    try {
-      const selector = this.getWebSearchButtonSelector();
-      if (!selector) {
-        return true; // 如果未实现，返回true表示跳过
-      }
-      
-      const btn = await this.waitForElement(selector, 5000);
-      if (!btn) {
-        console.log(`[MultiAI] ${this.name} web search button not found, skipping...`);
-        return true;
-      }
-      
-      // 检查按钮是否已经激活
-      const isActive = btn.checked || btn.classList.contains('active') || 
-                       btn.getAttribute('aria-pressed') === 'true' ||
-                       btn.getAttribute('data-active') === 'true';
-      
-      if (isActive) {
-        btn.click();
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-      
-      console.log(`[MultiAI] ${this.name} web search disabled ✓`);
-      return true;
-    } catch (error) {
-      console.error(`[MultiAI] ${this.name} failed to disable web search:`, error);
-      return true; // 即使失败也继续执行
-    }
+    throw new Error('disableWebSearch must be implemented by subclass');
   }
 
   /**
-   * 启用生成图片（可选方法，由子类实现）
+   * 启用生成图片（由子类实现）
    * @returns {Promise<boolean>} 返回true表示成功，false表示失败或不需要
    */
   async enableGenImage() {
-    try {
-      const selector = this.getGenImageButtonSelector();
-      if (!selector) {
-        return true; // 如果未实现，返回true表示跳过
-      }
-      
-      const btn = await this.waitForElement(selector, 5000);
-      if (!btn) {
-        console.log(`[MultiAI] ${this.name} gen image button not found, skipping...`);
-        return true;
-      }
-      
-      // 检查按钮是否已经激活
-      const isActive = btn.checked || btn.classList.contains('active') || 
-                       btn.getAttribute('aria-pressed') === 'true' ||
-                       btn.getAttribute('data-active') === 'true';
-      
-      if (!isActive) {
-        btn.click();
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-      
-      console.log(`[MultiAI] ${this.name} gen image enabled ✓`);
-      return true;
-    } catch (error) {
-      console.error(`[MultiAI] ${this.name} failed to enable gen image:`, error);
-      return true; // 即使失败也继续执行
-    }
+    throw new Error('enableGenImage must be implemented by subclass');
   }
 
   /**
-   * 禁用生成图片（可选方法，由子类实现）
+   * 禁用生成图片（由子类实现）
    * @returns {Promise<boolean>} 返回true表示成功，false表示失败或不需要
    */
   async disableGenImage() {
-    try {
-      const selector = this.getGenImageButtonSelector();
-      if (!selector) {
-        return true; // 如果未实现，返回true表示跳过
-      }
-      
-      const btn = await this.waitForElement(selector, 5000);
-      if (!btn) {
-        console.log(`[MultiAI] ${this.name} gen image button not found, skipping...`);
-        return true;
-      }
-      
-      // 检查按钮是否已经激活
-      const isActive = btn.checked || btn.classList.contains('active') || 
-                       btn.getAttribute('aria-pressed') === 'true' ||
-                       btn.getAttribute('data-active') === 'true';
-      
-      if (isActive) {
-        btn.click();
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-      
-      console.log(`[MultiAI] ${this.name} gen image disabled ✓`);
-      return true;
-    } catch (error) {
-      console.error(`[MultiAI] ${this.name} failed to disable gen image:`, error);
-      return true; // 即使失败也继续执行
-    }
+    throw new Error('disableGenImage must be implemented by subclass');
+  }
+
+  /**
+   * 上传文件（由子类实现）
+   * @param {File} file - 要上传的文件对象
+   * @returns {Promise<boolean>} 返回true表示成功，false表示失败
+   */
+  async uploadFile(file) {
+    throw new Error('uploadFile must be implemented by subclass');
   }
 
   /**
@@ -410,9 +281,10 @@ class AIModel {
    * @param {boolean} deepThink - 是否启用深度思考
    * @param {boolean} webSearch - 是否启用网络搜索
    * @param {boolean} genImage - 是否启用生成图片
+   * @param {File|null} file - 要上传的文件（可选）
    * @returns {Promise<boolean>}
    */
-  async sendQuery(query, startNewChat = false, deepThink = false, webSearch = false, genImage = false) {
+  async sendQuery(query, startNewChat = false, deepThink = false, webSearch = false, genImage = false, file = null) {
     throw new Error('sendQuery must be implemented by subclass');
   }
 

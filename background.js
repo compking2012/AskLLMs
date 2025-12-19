@@ -336,10 +336,10 @@ async function getDefaultSettings() {
   }
   
   // 打开或复用 AI 标签页并发送
-  async function openAndSend(url, query, progressTracker, siteName, startNewChat = false, deepThink = false, webSearch = false, genImage = false) {
+  async function openAndSend(url, query, progressTracker, siteName, startNewChat = false, deepThink = false, webSearch = false, genImage = false, fileData = null) {
     console.log('[Background] ===== openAndSend START =====');
     console.log('[Background] Site:', siteName, 'URL:', url, 'Query:', query.substring(0, 50) + '...');
-    console.log('[Background] openAndSend - startNewChat:', startNewChat, 'deepThink:', deepThink, 'webSearch:', webSearch, 'genImage:', genImage);
+    console.log('[Background] openAndSend - startNewChat:', startNewChat, 'deepThink:', deepThink, 'webSearch:', webSearch, 'genImage:', genImage, 'file:', fileData ? fileData.name : null);
 
     console.log('[Background] Opening:', url, 'for site:', siteName);
     
@@ -416,14 +416,31 @@ async function getDefaultSettings() {
         // 直接执行查询（内联 sendQueryToPage 逻辑）
         await chrome.scripting.executeScript({
           target: { tabId: tab.id },
-          func: async (query, startNewChat, deepThink, webSearch, genImage) => {
+          func: async (query, startNewChat, deepThink, webSearch, genImage, fileData) => {
             console.log('[MultiAI] ===== Inline execution START =====');
             console.log('[MultiAI] Query:', query.substring(0, 50) + '...');
-            console.log('[MultiAI] StartNewChat:', startNewChat, 'DeepThink:', deepThink, 'WebSearch:', webSearch, 'GenImage:', genImage);
+            console.log('[MultiAI] StartNewChat:', startNewChat, 'DeepThink:', deepThink, 'WebSearch:', webSearch, 'GenImage:', genImage, 'File:', fileData ? fileData.name : null);
             const host = window.location.hostname;
             console.log('[MultiAI] Hostname:', host);
             console.log('[MultiAI] getModelByHostname available:', typeof getModelByHostname === 'function');
             console.log('[MultiAI] getFallbackActions available:', typeof getFallbackActions === 'function');
+            
+            // 将文件数据转换回 File 对象（如果有）
+            let file = null;
+            if (fileData) {
+              try {
+                // 将数组转换回 Uint8Array，然后创建 Blob，最后创建 File
+                const uint8Array = new Uint8Array(fileData.data);
+                const blob = new Blob([uint8Array], { type: fileData.type });
+                file = new File([blob], fileData.name, { 
+                  type: fileData.type,
+                  lastModified: fileData.lastModified || Date.now()
+                });
+                console.log('[MultiAI] File object created:', file.name, file.size, file.type);
+              } catch (error) {
+                console.error('[MultiAI] Failed to create File object:', error);
+              }
+            }
             
             try {
               // 尝试使用模型类（通过 models/index.js 中的注册表）
@@ -431,7 +448,7 @@ async function getDefaultSettings() {
                 const model = getModelByHostname(host);
                 if (model) {
                   console.log('[MultiAI] Detected:', host, 'using model:', model.name);
-                  const result = await model.sendQuery(query, startNewChat, deepThink, webSearch, genImage);
+                  const result = await model.sendQuery(query, startNewChat, deepThink, webSearch, genImage, file);
                   console.log('[MultiAI] Query execution result:', result);
                   return result;
                 }
@@ -469,7 +486,7 @@ async function getDefaultSettings() {
             console.error('[MultiAI] Unknown domain or all methods failed:', host);
             throw new Error(`No model handler found for domain: ${host}`);
           },
-          args: [query, startNewChat, deepThink, webSearch, genImage]
+          args: [query, startNewChat, deepThink, webSearch, genImage, fileData]
         });
         
         // 等待一小段时间确保执行完成
@@ -924,12 +941,13 @@ async function getDefaultSettings() {
           const deepThink = request.deepThink || false;
           const webSearch = request.webSearch || false;
           const genImage = request.genImage || false;
-          console.log('[Background] StartNewChat:', startNewChat, 'DeepThink:', deepThink, 'WebSearch:', webSearch, 'GenImage:', genImage);
+          const fileData = request.file || null;
+          console.log('[Background] StartNewChat:', startNewChat, 'DeepThink:', deepThink, 'WebSearch:', webSearch, 'GenImage:', genImage, 'File:', fileData ? fileData.name : null);
           
           for (const site of sitesToOpen) {
             console.log('[Background] Processing:', site.name, site.url);
             // 直接传递 progressTracker、siteName 和所有选项
-            const promise = openAndSend(site.url, query, progressTracker, site.name, startNewChat, deepThink, webSearch, genImage).then(id => {
+            const promise = openAndSend(site.url, query, progressTracker, site.name, startNewChat, deepThink, webSearch, genImage, fileData).then(id => {
               console.log('[Background] Completed:', site.name, 'tab id:', id);
               return id;
             }).catch(async (err) => {

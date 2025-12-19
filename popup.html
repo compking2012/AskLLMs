@@ -522,6 +522,64 @@
       border-color: #6366f1;
     }
     
+    /* 文件上传相关样式 */
+    .file-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: #f3f4f6;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      margin-top: 8px;
+      font-size: 12px;
+      color: #4b5563;
+    }
+    
+    .file-info #file-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    
+    .file-remove-btn {
+      background: transparent;
+      border: none;
+      color: #6b7280;
+      cursor: pointer;
+      font-size: 18px;
+      line-height: 1;
+      padding: 0;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+    
+    .file-remove-btn:hover {
+      background: #e5e7eb;
+      color: #dc2626;
+    }
+    
+    body.dark-theme .file-info {
+      background: #374151;
+      border-color: #4b5563;
+      color: #d1d5db;
+    }
+    
+    body.dark-theme .file-remove-btn {
+      color: #9ca3af;
+    }
+    
+    body.dark-theme .file-remove-btn:hover {
+      background: #4b5563;
+      color: #dc2626;
+    }
+    
     .history-dropdown-wrapper {
       position: relative;
     }
@@ -1273,6 +1331,15 @@
       <span class="new-chat-toggle-icon">🎨</span>
       <span data-i18n="genImageLabel">生成图片</span>
     </button>
+    <button id="file-upload-btn" class="new-chat-toggle" title="上传文件" data-i18n-title="fileUploadToggle">
+      <span class="new-chat-toggle-icon">📎</span>
+      <span data-i18n="fileUploadLabel">上传文件</span>
+    </button>
+    <input type="file" id="file-input" style="display: none;" />
+    <div id="file-info" class="file-info" style="display: none;">
+      <span id="file-name"></span>
+      <button id="file-remove-btn" class="file-remove-btn" title="移除文件">×</button>
+    </div>
   </div>
   
   <div class="platforms-section">

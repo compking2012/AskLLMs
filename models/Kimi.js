@@ -90,6 +90,89 @@ class Kimi extends AIModel {
   }
 
   /**
+   * 判断是否可上传文件
+   * @returns {boolean} Kimi 支持上传文件
+   */
+  canUploadFile() {
+    return true;
+  }
+
+  /**
+   * 上传文件（Kimi 特殊实现）
+   * @param {File} file - 要上传的文件对象
+   * @returns {Promise<boolean>} 返回true表示成功，false表示失败
+   */
+  async uploadFile(file) {
+    try {
+      if (!file) {
+        console.log(`[MultiAI] ${this.name} no file provided for upload`);
+        return false;
+      }
+
+      // 方法1: 尝试通过文件上传按钮找到 input
+      const uploadButtonSelector = this.getFileUploadButtonSelector();
+      const uploadInputSelector = this.getFileUploadInputSelector();
+      
+      let fileInput = null;
+      
+      // 如果提供了 input 选择器，直接查找
+      if (uploadInputSelector) {
+        fileInput = await this.waitForElement(uploadInputSelector, 5000);
+      }
+      
+      // 如果没找到，尝试通过按钮找到关联的 input
+      if (!fileInput && uploadButtonSelector) {
+        const uploadButton = await this.waitForElement(uploadButtonSelector, 5000);
+        if (uploadButton) {
+          // 查找按钮附近或关联的 input[type="file"]
+          const nearbyInput = uploadButton.closest('form')?.querySelector('input[type="file"]') ||
+                             uploadButton.parentElement?.querySelector('input[type="file"]') ||
+                             uploadButton.nextElementSibling?.querySelector('input[type="file"]') ||
+                             uploadButton.previousElementSibling?.querySelector('input[type="file"]');
+          fileInput = nearbyInput;
+        }
+      }
+      
+      // 如果还是没找到，尝试查找页面上所有的 input[type="file"]
+      if (!fileInput) {
+        const allFileInputs = document.querySelectorAll('input[type="file"]');
+        if (allFileInputs.length > 0) {
+          fileInput = allFileInputs[0]; // 使用第一个找到的
+        }
+      }
+      
+      if (!fileInput) {
+        console.log(`[MultiAI] ${this.name} file upload input not found`);
+        return false;
+      }
+      
+      console.log(`[MultiAI] ${this.name} file upload input found, uploading file:`, file.name);
+      
+      // 使用 DataTransfer API 设置文件
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(file);
+      
+      // 设置 input 的 files
+      fileInput.files = dataTransfer.files;
+      
+      // 触发 change 事件（这是关键！）
+      fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+      
+      // 有些应用可能需要 input 事件
+      fileInput.dispatchEvent(new Event('input', { bubbles: true }));
+      
+      // 有些应用可能需要自定义事件
+      fileInput.dispatchEvent(new Event('file-selected', { bubbles: true }));
+      
+      console.log(`[MultiAI] ${this.name} file uploaded ✓`);
+      return true;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} failed to upload file:`, error);
+      return false;
+    }
+  }
+
+  /**
    * 开启新对话
    * @returns {Promise<boolean>}
    */
@@ -319,7 +402,7 @@ class Kimi extends AIModel {
     return false;
   }
 
-  async sendQuery(query, startNewChat = false, deepThink = false, webSearch = false, genImage = false) {
+  async sendQuery(query, startNewChat = false, deepThink = false, webSearch = false, genImage = false, file = null) {
     console.log(`[MultiAI] ${this.name} - startNewChat:`, startNewChat);
     console.log(`[MultiAI] ${this.name} - deepThink:`, deepThink);
     console.log(`[MultiAI] ${this.name} - webSearch:`, webSearch);
@@ -328,6 +411,13 @@ class Kimi extends AIModel {
     // 如果启用了新对话，先开启新对话
     if (startNewChat) {
       await this.startNewChat();
+    }
+    
+    // 如果有文件，先上传文件
+    if (file && this.canUploadFile()) {
+      await this.uploadFile(file);
+      // 等待文件上传处理完成
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
     
     // 如果启用了深度思考，先启用深度思考，否则禁用

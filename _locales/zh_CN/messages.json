@@ -315,6 +315,18 @@
     "message": "生成图片",
     "description": "生成图片标签文本"
   },
+  "fileUploadToggle": {
+    "message": "上传文件",
+    "description": "上传文件切换按钮"
+  },
+  "fileUploadLabel": {
+    "message": "上传文件",
+    "description": "上传文件标签文本"
+  },
+  "errorFileRead": {
+    "message": "读取文件失败",
+    "description": "文件读取错误提示"
+  },
   "settingsHistory": {
     "message": "历史记录",
     "description": "历史记录设置标题"

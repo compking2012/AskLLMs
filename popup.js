@@ -1047,6 +1047,13 @@ function startProgressListening() {
               sendBtn.disabled = false;
               sendBtn.textContent = i18n('sendButton');
               
+              // 清除文件选择
+              selectedFile = null;
+              if (fileInput) {
+                fileInput.value = '';
+              }
+              updateFileInfo();
+              
               // 清除进度数据
               chrome.storage.local.remove(['progressUpdate', 'progressUpdateTime', 'progressComplete']);
               
@@ -1526,6 +1533,14 @@ let deepThinkEnabled = false;
 let webSearchEnabled = false;
 let genImageEnabled = false;
 
+// 文件上传管理
+let selectedFile = null;
+const fileInput = document.getElementById('file-input');
+const fileUploadBtn = document.getElementById('file-upload-btn');
+const fileInfo = document.getElementById('file-info');
+const fileName = document.getElementById('file-name');
+const fileRemoveBtn = document.getElementById('file-remove-btn');
+
 // 加载新对话 toggle 状态
 async function loadNewChatToggleState() {
   try {
@@ -1767,6 +1782,50 @@ function initNewChatToggle() {
     });
     loadToggleUI('genImage');
   }
+  
+  // 初始化文件上传
+  if (fileUploadBtn && fileInput) {
+    fileUploadBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      fileInput.click();
+    });
+    
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        selectedFile = file;
+        updateFileInfo();
+        console.log('[Popup] File selected:', file.name, file.size, file.type);
+      }
+    });
+  }
+  
+  // 初始化文件移除按钮
+  if (fileRemoveBtn) {
+    fileRemoveBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      selectedFile = null;
+      if (fileInput) {
+        fileInput.value = '';
+      }
+      updateFileInfo();
+      console.log('[Popup] File removed');
+    });
+  }
+}
+
+// 更新文件信息显示
+function updateFileInfo() {
+  if (fileInfo && fileName) {
+    if (selectedFile) {
+      fileName.textContent = selectedFile.name;
+      fileInfo.style.display = 'flex';
+    } else {
+      fileInfo.style.display = 'none';
+    }
+  }
 }
 
 
@@ -1852,6 +1911,36 @@ async function sendQuery() {
   // 保存历史记录
   saveQueryHistory(query);
   
+  // 处理文件上传（如果有文件）
+  let fileData = null;
+  if (selectedFile) {
+    try {
+      // 将文件转换为 ArrayBuffer（用于传递）
+      fileData = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          // 将 ArrayBuffer 转换为可传递的格式（使用 Uint8Array）
+          const arrayBuffer = e.target.result;
+          const uint8Array = new Uint8Array(arrayBuffer);
+          resolve({
+            name: selectedFile.name,
+            type: selectedFile.type,
+            size: selectedFile.size,
+            lastModified: selectedFile.lastModified,
+            data: Array.from(uint8Array) // 转换为普通数组以便 JSON 序列化
+          });
+        };
+        reader.onerror = reject;
+        reader.readAsArrayBuffer(selectedFile);
+      });
+      console.log('[Popup] File converted to transferable format:', fileData.name, fileData.size);
+    } catch (error) {
+      console.error('[Popup] Failed to read file:', error);
+      showStatus(i18n('errorFileRead') || 'Failed to read file', 'error');
+      return;
+    }
+  }
+  
   // 禁用输入框和按钮
   textarea.disabled = true;
   sendBtn.disabled = true;
@@ -1876,12 +1965,13 @@ async function sendQuery() {
   startProgressListening();
   
   // 发送消息到 background，包含选中的平台和新对话状态
-  console.log('[Popup] Sending query with startNewChat:', startNewChatEnabled, 'deepThink:', deepThinkEnabled, 'webSearch:', webSearchEnabled, 'genImage:', genImageEnabled);
+  console.log('[Popup] Sending query with startNewChat:', startNewChatEnabled, 'deepThink:', deepThinkEnabled, 'webSearch:', webSearchEnabled, 'genImage:', genImageEnabled, 'file:', fileData ? fileData.name : null);
   chrome.runtime.sendMessage({ 
     action: 'sendToAllAIs', 
     query,
     platforms: selectedPlatforms,
     startNewChat: startNewChatEnabled,
+    file: fileData,
     deepThink: deepThinkEnabled,
     webSearch: webSearchEnabled,
     genImage: genImageEnabled
@@ -1893,6 +1983,12 @@ async function sendQuery() {
       textarea.disabled = false;
       sendBtn.disabled = false;
       sendBtn.textContent = i18n('sendButton');
+      // 清除文件选择
+      selectedFile = null;
+      if (fileInput) {
+        fileInput.value = '';
+      }
+      updateFileInfo();
       chrome.storage.local.remove(['progressUpdate', 'progressUpdateTime', 'progressComplete']);
     }
     // 注意：成功的情况由进度监听器处理

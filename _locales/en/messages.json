@@ -315,6 +315,18 @@
     "message": "Generate Image",
     "description": "Generate image label text"
   },
+  "fileUploadToggle": {
+    "message": "Upload File",
+    "description": "Upload file toggle button"
+  },
+  "fileUploadLabel": {
+    "message": "Upload File",
+    "description": "Upload file label text"
+  },
+  "errorFileRead": {
+    "message": "Failed to read file",
+    "description": "File read error message"
+  },
   "settingsHistory": {
     "message": "History",
     "description": "History settings title"
