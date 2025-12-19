@@ -99,10 +99,10 @@ class Grok extends AIModel {
 
   /**
    * 判断是否可上传文件
-   * @returns {boolean} Grok 支持上传文件
+   * @returns {boolean} Grok 不支持上传文件
    */
   canUploadFile() {
-    return true;
+    return false;
   }
 
   /**

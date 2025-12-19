@@ -95,10 +95,10 @@ class Yuanbao extends AIModel {
 
   /**
    * 判断是否可上传文件
-   * @returns {boolean} 腾讯元宝支持上传文件
+   * @returns {boolean} 腾讯元宝不支持上传文件
    */
   canUploadFile() {
-    return true;
+    return false;
   }
 
   /**

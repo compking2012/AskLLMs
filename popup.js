@@ -417,6 +417,7 @@ function updateAllPlatformCapabilityIcons() {
  * 根据 toggle 状态更新平台按钮的禁用状态
  * 检查所有三个 toggle 的状态（DeepThink、WebSearch、GenImage）
  * 如果某个 toggle 被选中，但平台不支持该功能，则禁用该平台按钮
+ * 如果文件被选中，但平台不支持上传文件，则禁用该平台按钮
  */
 function updatePlatformButtonsDisabledState() {
   const modelCapabilities = window._platformData?.modelCapabilities || {};
@@ -450,6 +451,11 @@ function updatePlatformButtonsDisabledState() {
     
     // 如果 GenImage 启用，但平台不支持，则禁用
     if (genImageEnabled && !capabilities.canGenImage) {
+      shouldDisable = true;
+    }
+    
+    // 如果文件被选中，但平台不支持上传文件，则禁用
+    if (selectedFile && !capabilities.canUploadFile) {
       shouldDisable = true;
     }
     
@@ -1797,6 +1803,10 @@ function initNewChatToggle() {
         selectedFile = file;
         updateFileInfo();
         console.log('[Popup] File selected:', file.name, file.size, file.type);
+        // 更新所有平台按钮的能力图标
+        updateAllPlatformCapabilityIcons();
+        // 更新平台按钮的禁用状态
+        updatePlatformButtonsDisabledState();
       }
     });
   }
@@ -1812,6 +1822,10 @@ function initNewChatToggle() {
       }
       updateFileInfo();
       console.log('[Popup] File removed');
+      // 更新所有平台按钮的能力图标
+      updateAllPlatformCapabilityIcons();
+      // 更新平台按钮的禁用状态
+      updatePlatformButtonsDisabledState();
     });
   }
 }

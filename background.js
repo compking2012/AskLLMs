@@ -78,22 +78,26 @@ async function loadModelsData() {
               const canDeepThink = instance.canDeepThink ? instance.canDeepThink() : false;
               const canWebSearch = instance.canWebSearch ? instance.canWebSearch() : false;
               const canGenImage = instance.canGenImage ? instance.canGenImage() : false;
+              const canUploadFile = instance.canUploadFile ? instance.canUploadFile() : false;
               modelCapabilities[ModelClass.NAME] = {
                 canDeepThink: canDeepThink,
                 canWebSearch: canWebSearch,
-                canGenImage: canGenImage
+                canGenImage: canGenImage,
+                canUploadFile: canUploadFile
               };
               console.log('[Background] Capabilities for', ModelClass.NAME, ':', {
                 canDeepThink,
                 canWebSearch,
-                canGenImage
+                canGenImage,
+                canUploadFile
               });
             } catch (e) {
               console.warn('[Background] Failed to get capabilities for', ModelClass.NAME, e);
               modelCapabilities[ModelClass.NAME] = {
                 canDeepThink: false,
                 canWebSearch: false,
-                canGenImage: false
+                canGenImage: false,
+                canUploadFile: false
               };
             }
           }

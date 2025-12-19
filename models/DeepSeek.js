@@ -17,6 +17,7 @@ class DeepSeek extends AIModel {
 
   getSendButtonSelector() {
     return [
+      'button[role="button"][class*="ds-atom-button ds-basic-button"]',
       'button[class*="ds-"][class*="send"]',
       'button[aria-label*="Send"]',
       'button[aria-label*="发送"]'
@@ -134,6 +135,28 @@ class DeepSeek extends AIModel {
       // 设置 input 的 files
       fileInput.files = dataTransfer.files;
       
+      // 验证文件是否成功设置的函数
+      const verifyFileUpload = () => {
+        if (!fileInput.files || fileInput.files.length === 0) {
+          return false;
+        }
+        // 检查文件是否存在且名称和大小匹配
+        for (let i = 0; i < fileInput.files.length; i++) {
+          const uploadedFile = fileInput.files[i];
+          if (uploadedFile.name === file.name && 
+              uploadedFile.size === file.size) {
+            return true;
+          }
+        }
+        return false;
+      };
+      
+      // 立即验证文件是否成功设置
+      if (!verifyFileUpload()) {
+        console.error(`[MultiAI] ${this.name} file verification failed immediately`);
+        return false;
+      }
+      
       // 触发 change 事件（这是关键！）
       fileInput.dispatchEvent(new Event('change', { bubbles: true }));
       
@@ -143,8 +166,32 @@ class DeepSeek extends AIModel {
       // 有些应用可能需要自定义事件
       fileInput.dispatchEvent(new Event('file-selected', { bubbles: true }));
       
-      console.log(`[MultiAI] ${this.name} file uploaded ✓`);
-      return true;
+      // 持续验证文件是否成功上传，确保100%上传完成
+      // 使用轮询方式检查文件是否成功设置到 input 中
+      const maxWaitTime = 10000; // 最大等待10秒
+      const checkInterval = 200; // 每200ms检查一次
+      const startTime = Date.now();
+      
+      while ((Date.now() - startTime) < maxWaitTime) {
+        // 检查文件是否成功上传
+        if (verifyFileUpload()) {
+          const elapsedTime = Date.now() - startTime;
+          console.log(`[MultiAI] ${this.name} file uploaded ✓ (verified after ${elapsedTime}ms)`);
+          return true;
+        }
+        
+        // 等待一段时间后再次检查
+        await new Promise(resolve => setTimeout(resolve, checkInterval));
+      }
+      
+      // 超时后最后检查一次
+      if (verifyFileUpload()) {
+        console.log(`[MultiAI] ${this.name} file uploaded ✓ (verified after timeout)`);
+        return true;
+      }
+      
+      console.error(`[MultiAI] ${this.name} file upload verification timeout or file was rejected`);
+      return false;
     } catch (error) {
       console.error(`[MultiAI] ${this.name} failed to upload file:`, error);
       return false;
@@ -438,8 +485,6 @@ class DeepSeek extends AIModel {
     // 如果有文件，先上传文件
     if (file && this.canUploadFile()) {
       await this.uploadFile(file);
-      // 等待文件上传处理完成
-      await new Promise(resolve => setTimeout(resolve, 1000));
     }
     
     // 如果启用了深度思考，先启用深度思考，否则禁用

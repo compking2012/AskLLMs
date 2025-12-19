@@ -95,10 +95,10 @@ class MiniMax extends AIModel {
 
   /**
    * 判断是否可上传文件
-   * @returns {boolean} MiniMax 支持上传文件
+   * @returns {boolean} MiniMax 不支持上传文件
    */
   canUploadFile() {
-    return true;
+    return false;
   }
 
   /**

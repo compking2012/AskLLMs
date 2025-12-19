@@ -97,10 +97,10 @@ class ChatGLM extends AIModel {
 
   /**
    * 判断是否可上传文件
-   * @returns {boolean} 智谱清言支持上传文件
+   * @returns {boolean} 智谱清言不支持上传文件
    */
   canUploadFile() {
-    return true;
+    return false;
   }
 
   /**

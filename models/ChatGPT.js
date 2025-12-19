@@ -120,10 +120,10 @@ class ChatGPT extends AIModel {
 
   /**
    * 判断是否可上传文件
-   * @returns {boolean} ChatGPT 支持上传文件
+   * @returns {boolean} ChatGPT 不支持上传文件
    */
   canUploadFile() {
-    return true;
+    return false;
   }
 
   /**

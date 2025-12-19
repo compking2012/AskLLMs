@@ -93,10 +93,10 @@ class Doubao extends AIModel {
 
   /**
    * 判断是否可上传文件
-   * @returns {boolean} 豆包支持上传文件
+   * @returns {boolean} 豆包不支持上传文件
    */
   canUploadFile() {
-    return true;
+    return false;
   }
 
   /**

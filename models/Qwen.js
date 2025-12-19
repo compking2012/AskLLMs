@@ -98,10 +98,10 @@ class Qwen extends AIModel {
 
   /**
    * 判断是否可上传文件
-   * @returns {boolean} 千问支持上传文件
+   * @returns {boolean} 千问不支持上传文件
    */
   canUploadFile() {
-    return true;
+    return false;
   }
 
   /**

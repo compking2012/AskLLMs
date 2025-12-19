@@ -107,10 +107,10 @@ class Kimi extends AIModel {
 
   /**
    * 判断是否可上传文件
-   * @returns {boolean} Kimi 支持上传文件
+   * @returns {boolean} Kimi 不支持上传文件
    */
   canUploadFile() {
-    return true;
+    return false;
   }
 
   /**

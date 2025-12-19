@@ -112,10 +112,10 @@ class Claude extends AIModel {
 
   /**
    * 判断是否可上传文件
-   * @returns {boolean} Claude 支持上传文件
+   * @returns {boolean} Claude 不支持上传文件
    */
   canUploadFile() {
-    return true;
+    return false;
   }
 
   /**

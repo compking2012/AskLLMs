@@ -97,10 +97,10 @@ class Wenxin extends AIModel {
 
   /**
    * 判断是否可上传文件
-   * @returns {boolean} 文心一言支持上传文件
+   * @returns {boolean} 文心一言不支持上传文件
    */
   canUploadFile() {
-    return true;
+    return false;
   }
 
   /**

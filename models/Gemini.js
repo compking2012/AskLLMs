@@ -104,10 +104,10 @@ class Gemini extends AIModel {
 
   /**
    * 判断是否可上传文件
-   * @returns {boolean} Gemini 支持上传文件
+   * @returns {boolean} Gemini 不支持上传文件
    */
   canUploadFile() {
-    return true;
+    return false;
   }
 
   /**
