@@ -58,6 +58,22 @@ class DeepSeek extends AIModel {
   }
 
   /**
+   * 获取文件上传按钮选择器
+   * @returns {string}
+   */
+  getFileUploadButtonSelector() {
+    return 'div[role="button"][tabindex="0"].ds-icon-button.ds-icon-button--l.ds-icon-button--sizing-container';
+  }
+
+  /**
+   * 获取文件上传 input 选择器
+   * @returns {string}
+   */
+  getFileUploadInputSelector() {
+    return 'div input[type="file"][multiple]';
+  }
+
+  /**
    * 判断是否可进行深度思考
    * @returns {boolean} DeepSeek 支持深度思考
    */
@@ -102,37 +118,8 @@ class DeepSeek extends AIModel {
       }
 
       // 方法1: 尝试通过文件上传按钮找到 input
-      const uploadButtonSelector = this.getFileUploadButtonSelector();
-      const uploadInputSelector = this.getFileUploadInputSelector();
-      
-      let fileInput = null;
-      
       // 如果提供了 input 选择器，直接查找
-      if (uploadInputSelector) {
-        fileInput = await this.waitForElement(uploadInputSelector, 5000);
-      }
-      
-      // 如果没找到，尝试通过按钮找到关联的 input
-      if (!fileInput && uploadButtonSelector) {
-        const uploadButton = await this.waitForElement(uploadButtonSelector, 5000);
-        if (uploadButton) {
-          // 查找按钮附近或关联的 input[type="file"]
-          const nearbyInput = uploadButton.closest('form')?.querySelector('input[type="file"]') ||
-                             uploadButton.parentElement?.querySelector('input[type="file"]') ||
-                             uploadButton.nextElementSibling?.querySelector('input[type="file"]') ||
-                             uploadButton.previousElementSibling?.querySelector('input[type="file"]');
-          fileInput = nearbyInput;
-        }
-      }
-      
-      // 如果还是没找到，尝试查找页面上所有的 input[type="file"]
-      if (!fileInput) {
-        const allFileInputs = document.querySelectorAll('input[type="file"]');
-        if (allFileInputs.length > 0) {
-          fileInput = allFileInputs[0]; // 使用第一个找到的
-        }
-      }
-      
+      let fileInput = await this.waitForElement(this.getFileUploadInputSelector(), 5000);
       if (!fileInput) {
         console.log(`[MultiAI] ${this.name} file upload input not found`);
         return false;

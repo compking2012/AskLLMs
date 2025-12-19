@@ -54,6 +54,22 @@ class MiniMax extends AIModel {
   }
 
   /**
+   * 获取文件上传按钮选择器
+   * @returns {string}
+   */
+  getFileUploadButtonSelector() {
+    return ''; // TODO: 实现选择器
+  }
+
+  /**
+   * 获取文件上传 input 选择器
+   * @returns {string}
+   */
+  getFileUploadInputSelector() {
+    return ''; // TODO: 实现选择器
+  }
+
+  /**
    * 判断是否可进行深度思考
    * @returns {boolean} MiniMax 不支持深度思考
    */

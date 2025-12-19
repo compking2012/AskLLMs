@@ -75,6 +75,22 @@ class ChatGPT extends AIModel {
   }
 
   /**
+   * 获取文件上传按钮选择器
+   * @returns {string}
+   */
+  getFileUploadButtonSelector() {
+    return 'div[data-side="top"] div[role="group"] div[role="menuitem"]:nth-of-type(1)';
+  }
+
+  /**
+   * 获取文件上传 input 选择器
+   * @returns {string}
+   */
+  getFileUploadInputSelector() {
+    return 'form[data-type="unified-composer"] input[type="file"][multiple]';
+  }
+
+  /**
    * 判断是否可进行深度思考
    *
    * 说明：ChatGPT 的"深度思考/思考"通过点击输入框左侧"+"菜单开启。
