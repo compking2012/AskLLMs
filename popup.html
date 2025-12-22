@@ -584,6 +584,64 @@
       position: relative;
     }
     
+    .voice-input-btn {
+      background: transparent;
+      border: 1px solid #d1d5db;
+      color: #6b7280;
+      padding: 0;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 16px;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    
+    .voice-input-btn:hover {
+      background: #f3f4f6;
+      border-color: #6366f1;
+      color: #6366f1;
+    }
+    
+    .voice-input-btn.recording {
+      background: #fee2e2;
+      border-color: #ef4444;
+      color: #ef4444;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.7;
+      }
+    }
+    
+    body.dark-theme .voice-input-btn {
+      border-color: #4b5563;
+      color: #9ca3af;
+      background: #374151;
+    }
+    
+    body.dark-theme .voice-input-btn:hover {
+      background: #4b5563;
+      border-color: #6366f1;
+      color: #6366f1;
+    }
+    
+    body.dark-theme .voice-input-btn.recording {
+      background: #7f1d1d;
+      border-color: #dc2626;
+      color: #fca5a5;
+    }
+    
     .history-btn {
       background: transparent;
       border: 1px solid #d1d5db;
@@ -1305,6 +1363,7 @@
   
   <div class="input-wrapper">
     <textarea id="query-input" data-i18n-placeholder="inputPlaceholder" rows="1" autofocus></textarea>
+    <button id="voice-input-btn" class="voice-input-btn" title="语音输入" data-i18n-title="voiceInputTitle">🎤</button>
     <div class="history-dropdown-wrapper">
       <button id="history-btn" class="history-btn" title="历史记录" data-i18n-title="historyTitle"></button>
       <div id="history-dropdown" class="history-dropdown">

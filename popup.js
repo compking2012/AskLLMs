@@ -149,6 +149,7 @@ const progressCount = document.getElementById('progress-count');
 const progressDetail = document.getElementById('progress-detail');
 const historyBtn = document.getElementById('history-btn');
 const historyDropdown = document.getElementById('history-dropdown');
+const voiceInputBtn = document.getElementById('voice-input-btn');
 let newChatToggle = null; // 延迟初始化
 
 // 页面元素
@@ -634,6 +635,9 @@ async function initializeApp() {
   
   // 初始化新对话 toggle（需要在更新图标之前，因为需要加载toggle状态）
   initNewChatToggle();
+  
+  // 初始化语音输入
+  initVoiceInput();
   
   // 确保能力图标已显示（延迟一下，确保DOM和toggle状态已更新）
   setTimeout(() => {
@@ -2034,4 +2038,146 @@ textarea.addEventListener('keydown', (e) => {
 
 // 自动聚焦
 textarea.focus();
+
+// 语音输入功能
+let recognition = null;
+let isRecording = false;
+
+// 初始化语音识别
+function initVoiceInput() {
+  // 检查浏览器是否支持Web Speech API
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  
+  if (!SpeechRecognition) {
+    console.warn('[Popup] Web Speech API not supported');
+    if (voiceInputBtn) {
+      voiceInputBtn.style.display = 'none';
+    }
+    return;
+  }
+  
+  // 创建语音识别实例
+  recognition = new SpeechRecognition();
+  recognition.continuous = false; // 单次识别
+  recognition.interimResults = false; // 不返回临时结果
+  recognition.lang = 'zh-CN'; // 设置为中文
+  
+  // 识别开始
+  recognition.onstart = () => {
+    isRecording = true;
+    if (voiceInputBtn) {
+      voiceInputBtn.classList.add('recording');
+      voiceInputBtn.title = i18n('voiceInputRecording') || '正在录音...';
+    }
+    console.log('[Popup] Voice recognition started');
+  };
+  
+  // 识别结果
+  recognition.onresult = (event) => {
+    const transcript = event.results[0][0].transcript;
+    console.log('[Popup] Voice recognition result:', transcript);
+    
+    // 将识别结果添加到输入框（追加到现有内容）
+    const currentText = textarea.value.trim();
+    if (currentText) {
+      textarea.value = currentText + ' ' + transcript;
+    } else {
+      textarea.value = transcript;
+    }
+    
+    // 自动调整输入框高度
+    textarea.style.height = 'auto';
+    textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
+    
+    // 聚焦到输入框
+    textarea.focus();
+  };
+  
+  // 识别结束
+  recognition.onend = () => {
+    isRecording = false;
+    if (voiceInputBtn) {
+      voiceInputBtn.classList.remove('recording');
+      voiceInputBtn.title = i18n('voiceInputTitle') || '语音输入';
+    }
+    console.log('[Popup] Voice recognition ended');
+  };
+  
+  // 识别错误
+  recognition.onerror = (event) => {
+    isRecording = false;
+    if (voiceInputBtn) {
+      voiceInputBtn.classList.remove('recording');
+      voiceInputBtn.title = i18n('voiceInputTitle') || '语音输入';
+    }
+    
+    let errorMessage = i18n('voiceInputError') || '语音识别错误';
+    if (event.error === 'no-speech') {
+      errorMessage = i18n('voiceInputNoSpeech') || '未检测到语音';
+    } else if (event.error === 'not-allowed') {
+      // 权限被拒绝，提供更详细的提示
+      const isZh = getCurrentLanguageSync() === 'zh_CN';
+      errorMessage = isZh 
+        ? '未授权使用麦克风。请点击地址栏左侧的锁图标，允许麦克风权限，然后重试。'
+        : 'Microphone permission denied. Please click the lock icon in the address bar, allow microphone access, and try again.';
+    } else if (event.error === 'network') {
+      errorMessage = i18n('voiceInputNetworkError') || '网络错误';
+    } else if (event.error === 'aborted') {
+      // 用户主动停止，不需要显示错误
+      return;
+    }
+    
+    console.error('[Popup] Voice recognition error:', event.error);
+    showStatus(errorMessage, 'error');
+  };
+  
+  // 绑定按钮点击事件
+  if (voiceInputBtn) {
+    voiceInputBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      if (isRecording) {
+        // 如果正在录音，停止录音
+        recognition.stop();
+      } else {
+        // 开始录音前，先检查并请求麦克风权限
+        try {
+          // 尝试请求麦克风权限（通过 navigator.mediaDevices.getUserMedia）
+          // 这样可以提前知道是否有权限，并给用户更友好的提示
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            // 如果成功获取权限，立即停止流（我们只需要权限，不需要实际的音频流）
+            stream.getTracks().forEach(track => track.stop());
+            
+            // 权限已获取，开始语音识别
+            recognition.start();
+          } catch (mediaError) {
+            // 权限被拒绝
+            const isZh = getCurrentLanguageSync() === 'zh_CN';
+            let errorMsg = isZh
+              ? '需要麦克风权限才能使用语音输入。请点击地址栏左侧的锁图标，允许麦克风权限。'
+              : 'Microphone permission is required for voice input. Please click the lock icon in the address bar to allow microphone access.';
+            showStatus(errorMsg, 'error');
+            console.error('[Popup] Microphone permission denied:', mediaError);
+          }
+        } catch (error) {
+          // 如果 getUserMedia 不支持，直接尝试启动语音识别
+          // 某些浏览器可能不支持 getUserMedia，但支持 Web Speech API
+          try {
+            recognition.start();
+          } catch (recognitionError) {
+            console.error('[Popup] Failed to start voice recognition:', recognitionError);
+            const isZh = getCurrentLanguageSync() === 'zh_CN';
+            let errorMsg = isZh
+              ? '无法启动语音识别。请确保已授权麦克风权限。'
+              : 'Failed to start voice recognition. Please ensure microphone permission is granted.';
+            showStatus(errorMsg, 'error');
+          }
+        }
+      }
+    });
+  }
+}
+
 

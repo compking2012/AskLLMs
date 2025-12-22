@@ -358,6 +358,34 @@
   "aboutCopyright": {
     "message": "© 2024 版权所有。",
     "description": "关于版权"
+  },
+  "voiceInputTitle": {
+    "message": "语音输入",
+    "description": "语音输入按钮标题"
+  },
+  "voiceInputRecording": {
+    "message": "正在录音...",
+    "description": "语音输入录音中状态"
+  },
+  "voiceInputError": {
+    "message": "语音识别错误",
+    "description": "语音识别错误提示"
+  },
+  "voiceInputNoSpeech": {
+    "message": "未检测到语音",
+    "description": "未检测到语音错误提示"
+  },
+  "voiceInputNotAllowed": {
+    "message": "未授权使用麦克风",
+    "description": "未授权使用麦克风错误提示"
+  },
+  "voiceInputNetworkError": {
+    "message": "网络错误",
+    "description": "语音识别网络错误提示"
+  },
+  "voiceInputStartError": {
+    "message": "无法启动语音识别",
+    "description": "无法启动语音识别错误提示"
   }
 }
 

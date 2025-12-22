@@ -358,6 +358,34 @@
   "aboutCopyright": {
     "message": "© 2024 All rights reserved.",
     "description": "About copyright"
+  },
+  "voiceInputTitle": {
+    "message": "Voice Input",
+    "description": "Voice input button title"
+  },
+  "voiceInputRecording": {
+    "message": "Recording...",
+    "description": "Voice input recording status"
+  },
+  "voiceInputError": {
+    "message": "Voice recognition error",
+    "description": "Voice recognition error message"
+  },
+  "voiceInputNoSpeech": {
+    "message": "No speech detected",
+    "description": "No speech detected error message"
+  },
+  "voiceInputNotAllowed": {
+    "message": "Microphone permission denied",
+    "description": "Microphone permission denied error message"
+  },
+  "voiceInputNetworkError": {
+    "message": "Network error",
+    "description": "Voice recognition network error message"
+  },
+  "voiceInputStartError": {
+    "message": "Failed to start voice recognition",
+    "description": "Failed to start voice recognition error message"
   }
 }
 
