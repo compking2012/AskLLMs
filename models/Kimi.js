@@ -256,6 +256,9 @@ class Kimi extends AIModel {
       } else {
         console.log(`[MultiAI] ${this.name} deep think already enabled ✓`);
       }
+ 
+      triggerBtn.click();
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       return true;
     } catch (error) {
@@ -283,26 +286,7 @@ class Kimi extends AIModel {
       triggerBtn.click();
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // 步骤2: 等待菜单出现，找到第二个 div.toolkit-item div.search-switch
-      const switchDiv = await this.waitForElement('div.toolkit-item:nth-of-type(2) div.search-switch', 3000);
-      if (!switchDiv) {
-        console.log(`[MultiAI] ${this.name} second toolkit-item switch not found, skipping...`);
-        return true;
-      }
-      
-      // 步骤3: 检查开关状态
-      const checkbox = switchDiv.querySelector('input[type="checkbox"]');
-      const isActive = checkbox && checkbox.checked === true;
-      
-      if (isActive) {
-        // 如果已激活，点击开关禁用
-        switchDiv.click();
-        await new Promise(resolve => setTimeout(resolve, 500));
-        console.log(`[MultiAI] ${this.name} deep think disabled ✓`);
-      } else {
-        console.log(`[MultiAI] ${this.name} deep think already disabled ✓`);
-      }
-      
+      console.log(`[MultiAI] ${this.name} deep think disabled ✓`);      
       return true;
     } catch (error) {
       console.error(`[MultiAI] ${this.name} failed to disable deep think:`, error);

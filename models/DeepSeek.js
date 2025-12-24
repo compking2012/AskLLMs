@@ -16,12 +16,7 @@ class DeepSeek extends AIModel {
   }
 
   getSendButtonSelector() {
-    return [
-      'button[role="button"][class*="ds-atom-button ds-basic-button"]',
-      'button[class*="ds-"][class*="send"]',
-      'button[aria-label*="Send"]',
-      'button[aria-label*="发送"]'
-    ];
+    return 'input[type="file"][multiple]~div div[role="button"]';
   }
 
   /**
@@ -39,7 +34,7 @@ class DeepSeek extends AIModel {
    * @returns {string}
    */
   getDeepThinkButtonSelector() {
-    return 'button.ds-toggle-button:first-of-type';
+    return 'div[role="button"].ds-toggle-button:first-of-type';
   }
 
   /**
@@ -47,7 +42,7 @@ class DeepSeek extends AIModel {
    * @returns {string}
    */
   getWebSearchButtonSelector() {
-    return 'button.ds-toggle-button:nth-of-type(2)';
+    return 'div[role="button"].ds-toggle-button:nth-of-type(2)';
   }
 
   /**
@@ -556,19 +551,12 @@ class DeepSeek extends AIModel {
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     // 尝试多种方式查找按钮
-    let btn = this.findSendButton(this.getSendButtonSelector());
-    
-    if (!btn) {
-      btn = this.findSendButtonByKeywords(['send', 'submit', '发送']);
-    }
-    
-    if (btn && !btn.disabled) {
+    let btn = await this.waitForElement(this.getSendButtonSelector());    
+    if (btn) {
       btn.click();
       console.log(`[MultiAI] ${this.name} sent via button ✓`);
     } else {
-      console.log(`[MultiAI] ${this.name} button not found or disabled, trying Enter key`);
-      this.simulateEnterKey(el);
-      console.log(`[MultiAI] ${this.name} sent via Enter ✓`);
+      console.log(`[MultiAI] ${this.name} button not found.`);
     }
     
     return true;

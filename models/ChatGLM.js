@@ -36,7 +36,7 @@ class ChatGLM extends AIModel {
    * @returns {string}
    */
   getDeepThinkButtonSelector() {
-    return 'div.mode-button'; // 需要通过文本内容进一步筛选
+    return 'div.session-button-container div.mode-button:first-of-type';
   }
 
   /**
@@ -84,7 +84,7 @@ class ChatGLM extends AIModel {
    * @returns {boolean} 智谱清言支持网络搜索
    */
   canWebSearch() {
-    return true;
+    return false;
   }
 
   /**
@@ -92,7 +92,7 @@ class ChatGLM extends AIModel {
    * @returns {boolean} 智谱清言支持生成图片（自动）
    */
   canGenImage() {
-    return true;
+    return false;
   }
 
   /**
@@ -247,41 +247,39 @@ class ChatGLM extends AIModel {
     try {
       console.log(`[MultiAI] ${this.name} - enabling deep think...`);
       
-      // 等待模式按钮出现
-      const maxWaitTime = 5000;
-      const startTime = Date.now();
-      let btn = null;
-      
-      while (!btn && (Date.now() - startTime) < maxWaitTime) {
-        // 查找所有模式按钮
-        const modeButtons = document.querySelectorAll('div.mode-button');
-        
-        for (const button of modeButtons) {
-          // 查找包含"推理"文本的span
-          const spans = button.querySelectorAll('span');
-          for (const span of spans) {
-            if (span.textContent.trim() === '推理') {
-              btn = button;
-              break;
-            }
-          }
-          if (btn) break;
-        }
-        
-        if (!btn) {
-          await new Promise(resolve => setTimeout(resolve, 200));
-        }
-      }
+      // 先尝试通过选择器查找
+      let btn = await this.waitForElement(this.getDeepThinkButtonSelector(), 5000);
       
       if (!btn) {
         console.log(`[MultiAI] ${this.name} deep think button not found, skipping...`);
         return true;
       }
       
-      // ChatGLM 的深度思考按钮点击即可切换
-      btn.click();
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // 检查按钮是否已经激活（通过 aria-pressed 或 class 判断）
+      let isActive = btn.classList.contains('selected')
       
+      if (!isActive) {       
+        // 尝试多种方式点击
+        // 方法1: 滚动到元素位置
+        btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // 方法2: 触发完整的鼠标事件序列
+        const mouseEvents = ['mousedown', 'mouseup', 'click'];
+        for (const eventType of mouseEvents) {
+          const event = new MouseEvent(eventType, {
+            view: window,
+            bubbles: true,
+            cancelable: true,
+            buttons: 1
+          });
+          btn.dispatchEvent(event);
+        }
+        
+        // 方法3: 直接点击
+        btn.click();
+      }
+
       console.log(`[MultiAI] ${this.name} deep think enabled ✓`);
       return true;
     } catch (error) {
@@ -298,40 +296,38 @@ class ChatGLM extends AIModel {
     try {
       console.log(`[MultiAI] ${this.name} - disabling deep think...`);
       
-      // 等待模式按钮出现
-      const maxWaitTime = 5000;
-      const startTime = Date.now();
-      let btn = null;
-      
-      while (!btn && (Date.now() - startTime) < maxWaitTime) {
-        // 查找所有模式按钮
-        const modeButtons = document.querySelectorAll('div.mode-button');
-        
-        for (const button of modeButtons) {
-          // 查找包含"推理"文本的span
-          const spans = button.querySelectorAll('span');
-          for (const span of spans) {
-            if (span.textContent.trim() === '推理') {
-              btn = button;
-              break;
-            }
-          }
-          if (btn) break;
-        }
-        
-        if (!btn) {
-          await new Promise(resolve => setTimeout(resolve, 200));
-        }
-      }
+      // 先尝试通过选择器查找
+      let btn = await this.waitForElement(this.getDeepThinkButtonSelector(), 5000);
       
       if (!btn) {
         console.log(`[MultiAI] ${this.name} deep think button not found, skipping...`);
         return true;
       }
       
-      // ChatGLM 的深度思考按钮点击即可切换
-      btn.click();
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // 检查按钮是否已经激活（通过 aria-pressed 或 class 判断）
+      let isActive = btn.classList.contains('selected');
+      
+      if (isActive) {
+        // 尝试多种方式点击
+        // 方法1: 滚动到元素位置
+        btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // 方法2: 触发完整的鼠标事件序列
+        const mouseEvents = ['mousedown', 'mouseup', 'click'];
+        for (const eventType of mouseEvents) {
+          const event = new MouseEvent(eventType, {
+            view: window,
+            bubbles: true,
+            cancelable: true,
+            buttons: 1
+          });
+          btn.dispatchEvent(event);
+        }
+        
+        // 方法3: 直接点击
+        btn.click();
+      }
       
       console.log(`[MultiAI] ${this.name} deep think disabled ✓`);
       return true;
