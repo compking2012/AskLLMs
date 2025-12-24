@@ -76,7 +76,7 @@ class ChatGLM extends AIModel {
    * @returns {boolean} 智谱清言支持深度思考
    */
   canDeepThink() {
-    return true;
+    return false; // FIXME: 智谱清言支持深度思考, 但目前有bug暂不启用
   }
 
   /**

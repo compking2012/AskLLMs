@@ -76,7 +76,7 @@ class Wenxin extends AIModel {
    * @returns {boolean}
    */
   canDeepThink() {
-    return true;
+    return false; // FIXME: 文心一言支持深度思考, 但目前有bug暂不启用
   }
 
   /**

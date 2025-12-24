@@ -74,7 +74,7 @@ class Yuanbao extends AIModel {
    * @returns {boolean} 腾讯元宝支持深度思考
    */
   canDeepThink() {
-    return true;
+    return false; // FIXME: 腾讯元宝支持深度思考, 但目前有bug暂不启用
   }
 
   /**
