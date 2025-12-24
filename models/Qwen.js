@@ -32,7 +32,7 @@ class Qwen extends AIModel {
    * @returns {string}
    */
   getDeepThinkButtonSelector() {
-    return 'div[data-log-name="tool_bar"][data-log-params*="deepThink"]';
+    return 'div:not([aria-hidden="true"])>button[data-log-name="tool_bar"][data-log-params*="deepThink"]';
   }
 
   /**
@@ -85,7 +85,7 @@ class Qwen extends AIModel {
    * @returns {boolean|string} false | true | "auto" | "exclusive" | "inclusive"
    */
   canWebSearch() {
-    return true;
+    return false; //  FIXME: 千问支持网络搜索, 但目前有bug暂不启用
   }
 
   /**
@@ -93,7 +93,7 @@ class Qwen extends AIModel {
    * @returns {boolean} 千问支持生成图片
    */
   canGenImage() {
-    return true;
+    return false; // FIXME: 千问支持生成图片, 但目前有bug暂不启用
   }
 
   /**
