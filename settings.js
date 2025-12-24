@@ -68,6 +68,9 @@ async function initSettingsPage(platformBtns, PLATFORM_ICONS, getPlatformDisplay
   // 加载设置并填充表单
   loadSettingsToForm(DEFAULT_SETTINGS, loadAndApplySettings, initI18n);
   
+  // 加载快捷键设置
+  loadShortcutSettings();
+  
   // 只初始化一次事件监听器（避免重复添加）
   if (!settingsEventListenersInitialized) {
     // 颜色模式切换
@@ -157,6 +160,14 @@ async function initSettingsPage(platformBtns, PLATFORM_ICONS, getPlatformDisplay
       });
     }
     
+    // 打开快捷键设置页面按钮
+    const openShortcutsPageBtn = document.getElementById('open-shortcuts-page-btn');
+    if (openShortcutsPageBtn) {
+      openShortcutsPageBtn.addEventListener('click', () => {
+        chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });
+      });
+    }
+    
     settingsEventListenersInitialized = true;
   }
 }
@@ -231,6 +242,61 @@ async function loadSettingsToForm(DEFAULT_SETTINGS, loadAndApplySettings, initI1
       // 立即保存
       await saveSettings(loadAndApplySettings, initI18n);
     });
+  });
+  
+  // 加载快捷键设置
+  loadShortcutSettings();
+}
+
+/**
+ * 加载并显示快捷键设置
+ */
+function loadShortcutSettings() {
+  const shortcutWindowsValue = document.getElementById('shortcut-windows-value');
+  const shortcutMacValue = document.getElementById('shortcut-mac-value');
+  
+  if (!shortcutWindowsValue || !shortcutMacValue) {
+    return;
+  }
+  
+  // 获取 i18n 函数
+  const i18nFunc = window.i18n;
+  const noShortcutText = i18nFunc ? i18nFunc('noShortcut') : 'Not set';
+  
+  // 默认值
+  const defaultWindowsShortcut = 'Ctrl+Shift+Y';
+  const defaultMacShortcut = 'Command+Shift+Y';
+  
+  // 获取所有命令
+  chrome.commands.getAll((commands) => {
+    const executeAction = commands.find(cmd => cmd.name === '_execute_action');
+    
+    if (executeAction && executeAction.shortcut) {
+      // 有快捷键设置，显示它
+      const shortcut = executeAction.shortcut;
+      
+      // Chrome API 返回的快捷键格式通常是 "Ctrl+Shift+Y" 或 "Command+Shift+Y"
+      // 根据当前平台显示对应的快捷键
+      if (shortcut.includes('Command')) {
+        // Mac 快捷键
+        shortcutMacValue.textContent = shortcut;
+        // Windows/Linux 显示默认值（因为用户可能只在Mac上设置了）
+        shortcutWindowsValue.textContent = defaultWindowsShortcut;
+      } else if (shortcut.includes('Ctrl')) {
+        // Windows/Linux 快捷键
+        shortcutWindowsValue.textContent = shortcut;
+        // Mac 显示默认值
+        shortcutMacValue.textContent = defaultMacShortcut;
+      } else {
+        // 其他格式，都显示
+        shortcutWindowsValue.textContent = shortcut;
+        shortcutMacValue.textContent = shortcut;
+      }
+    } else {
+      // 没有设置快捷键，显示默认值
+      shortcutWindowsValue.textContent = defaultWindowsShortcut;
+      shortcutMacValue.textContent = defaultMacShortcut;
+    }
   });
 }
 
@@ -376,4 +442,5 @@ async function savePlatformOrder(order, loadAndApplySettings, initI18n) {
 window.initSettingsPageFromSettings = initSettingsPage;
 window.loadSettingsToFormFromSettings = loadSettingsToForm;
 window.saveSettingsFromSettings = saveSettings;
+window.loadShortcutSettings = loadShortcutSettings;
 

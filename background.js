@@ -343,7 +343,8 @@ async function getDefaultSettings() {
   async function openAndSend(url, query, progressTracker, siteName, startNewChat = false, deepThink = false, webSearch = false, genImage = false, fileData = null) {
     console.log('[Background] ===== openAndSend START =====');
     console.log('[Background] Site:', siteName, 'URL:', url, 'Query:', query.substring(0, 50) + '...');
-    console.log('[Background] openAndSend - startNewChat:', startNewChat, 'deepThink:', deepThink, 'webSearch:', webSearch, 'genImage:', genImage, 'file:', fileData ? fileData.name : null);
+    const fileInfo = fileData ? (Array.isArray(fileData) ? `${fileData.length} file(s)` : fileData.name) : null;
+    console.log('[Background] openAndSend - startNewChat:', startNewChat, 'deepThink:', deepThink, 'webSearch:', webSearch, 'genImage:', genImage, 'file:', fileInfo);
 
     console.log('[Background] Opening:', url, 'for site:', siteName);
     
@@ -423,26 +424,38 @@ async function getDefaultSettings() {
           func: async (query, startNewChat, deepThink, webSearch, genImage, fileData) => {
             console.log('[MultiAI] ===== Inline execution START =====');
             console.log('[MultiAI] Query:', query.substring(0, 50) + '...');
-            console.log('[MultiAI] StartNewChat:', startNewChat, 'DeepThink:', deepThink, 'WebSearch:', webSearch, 'GenImage:', genImage, 'File:', fileData ? fileData.name : null);
+            const fileInfo = fileData ? (Array.isArray(fileData) ? `${fileData.length} file(s)` : fileData.name) : null;
+            console.log('[MultiAI] StartNewChat:', startNewChat, 'DeepThink:', deepThink, 'WebSearch:', webSearch, 'GenImage:', genImage, 'File:', fileInfo);
             const host = window.location.hostname;
             console.log('[MultiAI] Hostname:', host);
             console.log('[MultiAI] getModelByHostname available:', typeof getModelByHostname === 'function');
             console.log('[MultiAI] getFallbackActions available:', typeof getFallbackActions === 'function');
             
-            // 将文件数据转换回 File 对象（如果有）
-            let file = null;
+            // 将文件数据转换回 File 对象（支持单个文件或文件数组）
+            let files = null;
             if (fileData) {
               try {
-                // 将数组转换回 Uint8Array，然后创建 Blob，最后创建 File
-                const uint8Array = new Uint8Array(fileData.data);
-                const blob = new Blob([uint8Array], { type: fileData.type });
-                file = new File([blob], fileData.name, { 
-                  type: fileData.type,
-                  lastModified: fileData.lastModified || Date.now()
+                // 支持单个文件对象或文件数组
+                const fileDataArray = Array.isArray(fileData) ? fileData : [fileData];
+                
+                files = fileDataArray.map(fileDataItem => {
+                  // 将数组转换回 Uint8Array，然后创建 Blob，最后创建 File
+                  const uint8Array = new Uint8Array(fileDataItem.data);
+                  const blob = new Blob([uint8Array], { type: fileDataItem.type });
+                  return new File([blob], fileDataItem.name, { 
+                    type: fileDataItem.type,
+                    lastModified: fileDataItem.lastModified || Date.now()
+                  });
                 });
-                console.log('[MultiAI] File object created:', file.name, file.size, file.type);
+                
+                // 如果只有一个文件，保持向后兼容（单个对象）
+                // 如果有多个文件，使用数组
+                files = files.length === 1 ? files[0] : files;
+                
+                const fileNames = Array.isArray(files) ? files.map(f => f.name).join(', ') : files.name;
+                console.log(`[MultiAI] ${Array.isArray(files) ? files.length : 1} file object(s) created:`, fileNames);
               } catch (error) {
-                console.error('[MultiAI] Failed to create File object:', error);
+                console.error('[MultiAI] Failed to create File object(s):', error);
               }
             }
             
@@ -452,7 +465,7 @@ async function getDefaultSettings() {
                 const model = getModelByHostname(host);
                 if (model) {
                   console.log('[MultiAI] Detected:', host, 'using model:', model.name);
-                  const result = await model.sendQuery(query, startNewChat, deepThink, webSearch, genImage, file);
+                  const result = await model.sendQuery(query, startNewChat, deepThink, webSearch, genImage, files);
                   console.log('[MultiAI] Query execution result:', result);
                   return result;
                 }
@@ -946,7 +959,8 @@ async function getDefaultSettings() {
           const webSearch = request.webSearch || false;
           const genImage = request.genImage || false;
           const fileData = request.file || null;
-          console.log('[Background] StartNewChat:', startNewChat, 'DeepThink:', deepThink, 'WebSearch:', webSearch, 'GenImage:', genImage, 'File:', fileData ? fileData.name : null);
+          const fileInfo = fileData ? (Array.isArray(fileData) ? `${fileData.length} file(s)` : fileData.name) : null;
+          console.log('[Background] StartNewChat:', startNewChat, 'DeepThink:', deepThink, 'WebSearch:', webSearch, 'GenImage:', genImage, 'File:', fileInfo);
           
           for (const site of sitesToOpen) {
             console.log('[Background] Processing:', site.name, site.url);

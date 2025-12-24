@@ -386,6 +386,34 @@
   "voiceInputStartError": {
     "message": "无法启动语音识别",
     "description": "无法启动语音识别错误提示"
+  },
+  "settingsShortcut": {
+    "message": "快捷键",
+    "description": "快捷键设置标题"
+  },
+  "shortcutDescription": {
+    "message": "当前快捷键：",
+    "description": "当前快捷键描述"
+  },
+  "shortcutHint": {
+    "message": "点击下方按钮打开Chrome扩展快捷键设置页面，您可以在那里自定义快捷键。",
+    "description": "快捷键提示文本"
+  },
+  "openShortcutsPage": {
+    "message": "打开快捷键设置",
+    "description": "打开Chrome快捷键设置页面的按钮"
+  },
+  "shortcutWindows": {
+    "message": "Windows/Linux：",
+    "description": "Windows/Linux快捷键标签"
+  },
+  "shortcutMac": {
+    "message": "Mac：",
+    "description": "Mac快捷键标签"
+  },
+  "noShortcut": {
+    "message": "未设置",
+    "description": "快捷键未设置时的文本"
   }
 }
 

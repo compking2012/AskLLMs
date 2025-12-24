@@ -456,7 +456,7 @@ function updatePlatformButtonsDisabledState() {
     }
     
     // 如果文件被选中，但平台不支持上传文件，则禁用
-    if (selectedFile && !capabilities.canUploadFile) {
+    if (selectedFiles.length > 0 && !capabilities.canUploadFile) {
       shouldDisable = true;
     }
     
@@ -556,7 +556,12 @@ async function showSettingsPage() {
   // 重新初始化设置页面（确保数据是最新的）
   initSettingsPage();
   // 重新初始化i18n（设置页面可能刚显示）
-  initI18n();
+  await initI18n();
+  
+  // 重新加载快捷键设置（用户可能从快捷键设置页面返回）
+  if (typeof window.loadShortcutSettings === 'function') {
+    window.loadShortcutSettings();
+  }
 }
 
 // 事件监听
@@ -1058,7 +1063,7 @@ function startProgressListening() {
               sendBtn.textContent = i18n('sendButton');
               
               // 清除文件选择
-              selectedFile = null;
+              selectedFiles = [];
               if (fileInput) {
                 fileInput.value = '';
               }
@@ -1544,12 +1549,14 @@ let webSearchEnabled = false;
 let genImageEnabled = false;
 
 // 文件上传管理
-let selectedFile = null;
+let selectedFiles = []; // 改为数组，支持多个文件
+// 兼容性：保留 selectedFile 变量（指向第一个文件），用于向后兼容
+let selectedFile = null; // 这个变量会在 updateFileList 中自动更新
 const fileInput = document.getElementById('file-input');
-const fileUploadBtn = document.getElementById('file-upload-btn');
-const fileInfo = document.getElementById('file-info');
-const fileName = document.getElementById('file-name');
-const fileRemoveBtn = document.getElementById('file-remove-btn');
+const fileUploadIconBtn = document.getElementById('file-upload-icon-btn');
+const fileUploadDropdownBtn = document.getElementById('file-upload-dropdown-btn');
+const fileDropdown = document.getElementById('file-dropdown');
+const fileList = document.getElementById('file-list');
 
 // 加载新对话 toggle 状态
 async function loadNewChatToggleState() {
@@ -1794,61 +1801,185 @@ function initNewChatToggle() {
   }
   
   // 初始化文件上传
-  if (fileUploadBtn && fileInput) {
-    fileUploadBtn.addEventListener('click', (e) => {
+  if (fileUploadIconBtn && fileInput) {
+    // 点击图标按钮选择文件
+    fileUploadIconBtn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
       fileInput.click();
     });
     
+    // 文件选择处理
     fileInput.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        selectedFile = file;
-        updateFileInfo();
-        console.log('[Popup] File selected:', file.name, file.size, file.type);
+      const files = Array.from(e.target.files || []);
+      if (files.length > 0) {
+        // 添加新文件到列表（避免重复）
+        files.forEach(file => {
+          const exists = selectedFiles.some(f => f.name === file.name && f.size === file.size);
+          if (!exists) {
+            selectedFiles.push(file);
+            console.log('[Popup] File added:', file.name, file.size, file.type);
+          }
+        });
+        updateFileList();
         // 更新所有平台按钮的能力图标
         updateAllPlatformCapabilityIcons();
         // 更新平台按钮的禁用状态
         updatePlatformButtonsDisabledState();
       }
+      // 清空input，允许重复选择同一文件
+      fileInput.value = '';
     });
   }
   
-  // 初始化文件移除按钮
-  if (fileRemoveBtn) {
-    fileRemoveBtn.addEventListener('click', (e) => {
+  // 初始化下拉按钮
+  if (fileUploadDropdownBtn) {
+    fileUploadDropdownBtn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      selectedFile = null;
-      if (fileInput) {
-        fileInput.value = '';
-      }
-      updateFileInfo();
-      console.log('[Popup] File removed');
-      // 更新所有平台按钮的能力图标
-      updateAllPlatformCapabilityIcons();
-      // 更新平台按钮的禁用状态
-      updatePlatformButtonsDisabledState();
+      toggleFileDropdown();
+    });
+  }
+  
+  // 点击外部关闭下拉列表
+  document.addEventListener('click', (e) => {
+    if (fileDropdown && fileUploadDropdownBtn && 
+        !fileDropdown.contains(e.target) && 
+        !fileUploadIconBtn.contains(e.target) &&
+        !fileUploadDropdownBtn.contains(e.target)) {
+      closeFileDropdown();
+    }
+  });
+}
+
+// 切换文件下拉列表显示/隐藏
+function toggleFileDropdown() {
+  if (!fileDropdown || !fileUploadDropdownBtn) return;
+  
+  const isOpen = fileDropdown.style.display !== 'none';
+  if (isOpen) {
+    closeFileDropdown();
+  } else {
+    openFileDropdown();
+  }
+}
+
+// 打开文件下拉列表
+function openFileDropdown() {
+  if (!fileDropdown || !fileUploadDropdownBtn) return;
+  fileDropdown.style.display = 'flex';
+  fileUploadDropdownBtn.classList.add('active');
+}
+
+// 关闭文件下拉列表
+function closeFileDropdown() {
+  if (!fileDropdown || !fileUploadDropdownBtn) return;
+  fileDropdown.style.display = 'none';
+  fileUploadDropdownBtn.classList.remove('active');
+}
+
+// 更新文件列表显示
+function updateFileList() {
+  if (!fileList || !fileUploadDropdownBtn) return;
+  
+  // 更新兼容性变量（指向第一个文件）
+  selectedFile = selectedFiles.length > 0 ? selectedFiles[0] : null;
+  
+  // 显示/隐藏下拉按钮
+  if (selectedFiles.length > 0) {
+    fileUploadDropdownBtn.style.display = 'flex';
+  } else {
+    fileUploadDropdownBtn.style.display = 'none';
+    closeFileDropdown();
+  }
+  
+  // 清空列表
+  fileList.innerHTML = '';
+  
+  if (selectedFiles.length === 0) {
+    const emptyDiv = document.createElement('div');
+    emptyDiv.className = 'file-dropdown-empty';
+    emptyDiv.textContent = i18n('noFiles') || '暂无文件';
+    fileList.appendChild(emptyDiv);
+  } else {
+    // 添加文件项
+    selectedFiles.forEach((file, index) => {
+      const fileItem = document.createElement('div');
+      fileItem.className = 'file-item';
+      
+      const fileName = document.createElement('span');
+      fileName.className = 'file-item-name';
+      fileName.textContent = file.name;
+      fileName.title = file.name;
+      
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'file-item-remove';
+      removeBtn.textContent = '×';
+      removeBtn.title = '删除文件';
+      removeBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        removeFile(index);
+      });
+      
+      fileItem.appendChild(fileName);
+      fileItem.appendChild(removeBtn);
+      fileList.appendChild(fileItem);
     });
   }
 }
 
-// 更新文件信息显示
-function updateFileInfo() {
-  if (fileInfo && fileName) {
-    if (selectedFile) {
-      fileName.textContent = selectedFile.name;
-      fileInfo.style.display = 'flex';
-    } else {
-      fileInfo.style.display = 'none';
-    }
+// 删除文件
+function removeFile(index) {
+  if (index >= 0 && index < selectedFiles.length) {
+    const removedFile = selectedFiles[index];
+    selectedFiles.splice(index, 1);
+    console.log('[Popup] File removed:', removedFile.name);
+    updateFileList();
+    // 更新所有平台按钮的能力图标
+    updateAllPlatformCapabilityIcons();
+    // 更新平台按钮的禁用状态
+    updatePlatformButtonsDisabledState();
   }
+}
+
+// 更新文件信息显示（保留兼容性）
+function updateFileInfo() {
+  // 为了兼容旧代码，保留 selectedFile 变量（使用第一个文件）
+  // 但实际应该使用 selectedFiles 数组
+  updateFileList();
 }
 
 
 // 发送函数
 async function sendQuery() {
+  // 如果正在录音，停止录音并处理待处理的临时结果
+  if (isRecording && recognition) {
+    isUserStopped = true;
+    
+    // 停止录音
+    recognition.stop();
+    
+    // 等待一小段时间，让 onend 事件处理完成（包括处理临时结果）
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // 如果还有待处理的临时结果，添加到输入框
+    if (pendingTranscript.trim()) {
+      console.log('[Popup] Adding pending transcript after stop:', pendingTranscript);
+      const currentText = textarea.value.trim();
+      if (currentText) {
+        textarea.value = currentText + ' ' + pendingTranscript;
+      } else {
+        textarea.value = pendingTranscript;
+      }
+      pendingTranscript = '';
+      
+      // 自动调整输入框高度
+      textarea.style.height = 'auto';
+      textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
+    }
+  }
+  
   const query = textarea.value.trim();
   
   if (!query) {
@@ -1929,31 +2060,42 @@ async function sendQuery() {
   // 保存历史记录
   saveQueryHistory(query);
   
-  // 处理文件上传（如果有文件）
+  // 处理文件上传（支持多个文件）
   let fileData = null;
-  if (selectedFile) {
+  if (selectedFiles.length > 0) {
     try {
-      // 将文件转换为 ArrayBuffer（用于传递）
-      fileData = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          // 将 ArrayBuffer 转换为可传递的格式（使用 Uint8Array）
-          const arrayBuffer = e.target.result;
-          const uint8Array = new Uint8Array(arrayBuffer);
-          resolve({
-            name: selectedFile.name,
-            type: selectedFile.type,
-            size: selectedFile.size,
-            lastModified: selectedFile.lastModified,
-            data: Array.from(uint8Array) // 转换为普通数组以便 JSON 序列化
-          });
-        };
-        reader.onerror = reject;
-        reader.readAsArrayBuffer(selectedFile);
+      // 将所有文件转换为可传递的格式
+      const fileDataPromises = selectedFiles.map(async (file) => {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            // 将 ArrayBuffer 转换为可传递的格式（使用 Uint8Array）
+            const arrayBuffer = e.target.result;
+            const uint8Array = new Uint8Array(arrayBuffer);
+            resolve({
+              name: file.name,
+              type: file.type,
+              size: file.size,
+              lastModified: file.lastModified,
+              data: Array.from(uint8Array) // 转换为普通数组以便 JSON 序列化
+            });
+          };
+          reader.onerror = reject;
+          reader.readAsArrayBuffer(file);
+        });
       });
-      console.log('[Popup] File converted to transferable format:', fileData.name, fileData.size);
+      
+      // 等待所有文件读取完成
+      const fileDataArray = await Promise.all(fileDataPromises);
+      
+      // 如果只有一个文件，保持向后兼容（单个对象）
+      // 如果有多个文件，使用数组
+      fileData = fileDataArray.length === 1 ? fileDataArray[0] : fileDataArray;
+      
+      console.log(`[Popup] ${fileDataArray.length} file(s) converted to transferable format:`, 
+        fileDataArray.map(f => `${f.name} (${f.size} bytes)`).join(', '));
     } catch (error) {
-      console.error('[Popup] Failed to read file:', error);
+      console.error('[Popup] Failed to read file(s):', error);
       showStatus(i18n('errorFileRead') || 'Failed to read file', 'error');
       return;
     }
@@ -1983,7 +2125,8 @@ async function sendQuery() {
   startProgressListening();
   
   // 发送消息到 background，包含选中的平台和新对话状态
-  console.log('[Popup] Sending query with startNewChat:', startNewChatEnabled, 'deepThink:', deepThinkEnabled, 'webSearch:', webSearchEnabled, 'genImage:', genImageEnabled, 'file:', fileData ? fileData.name : null);
+  const fileInfo = fileData ? (Array.isArray(fileData) ? `${fileData.length} file(s)` : fileData.name) : null;
+  console.log('[Popup] Sending query with startNewChat:', startNewChatEnabled, 'deepThink:', deepThinkEnabled, 'webSearch:', webSearchEnabled, 'genImage:', genImageEnabled, 'file:', fileInfo);
   chrome.runtime.sendMessage({ 
     action: 'sendToAllAIs', 
     query,
@@ -2002,7 +2145,7 @@ async function sendQuery() {
       sendBtn.disabled = false;
       sendBtn.textContent = i18n('sendButton');
       // 清除文件选择
-      selectedFile = null;
+      selectedFiles = [];
       if (fileInput) {
         fileInput.value = '';
       }
@@ -2042,6 +2185,8 @@ textarea.focus();
 // 语音输入功能
 let recognition = null;
 let isRecording = false;
+let isUserStopped = false; // 标记用户是否主动停止录音
+let pendingTranscript = ''; // 保存待处理的临时识别结果
 
 // 初始化语音识别
 function initVoiceInput() {
@@ -2058,13 +2203,15 @@ function initVoiceInput() {
   
   // 创建语音识别实例
   recognition = new SpeechRecognition();
-  recognition.continuous = false; // 单次识别
-  recognition.interimResults = false; // 不返回临时结果
+  recognition.continuous = true; // 持续识别
+  recognition.interimResults = true; // 返回临时结果
   recognition.lang = 'zh-CN'; // 设置为中文
   
   // 识别开始
   recognition.onstart = () => {
     isRecording = true;
+    isUserStopped = false;
+    pendingTranscript = ''; // 清空待处理结果
     if (voiceInputBtn) {
       voiceInputBtn.classList.add('recording');
       voiceInputBtn.title = i18n('voiceInputRecording') || '正在录音...';
@@ -2074,38 +2221,128 @@ function initVoiceInput() {
   
   // 识别结果
   recognition.onresult = (event) => {
-    const transcript = event.results[0][0].transcript;
-    console.log('[Popup] Voice recognition result:', transcript);
+    // 在持续模式下，event.results 是一个数组，包含所有识别结果
+    // 需要遍历所有结果，处理最终结果和临时结果
+    let finalTranscript = '';
+    let interimTranscript = '';
     
-    // 将识别结果添加到输入框（追加到现有内容）
-    const currentText = textarea.value.trim();
-    if (currentText) {
-      textarea.value = currentText + ' ' + transcript;
-    } else {
-      textarea.value = transcript;
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const result = event.results[i];
+      const transcript = result[0].transcript;
+      
+      if (result.isFinal) {
+        // 最终结果
+        finalTranscript += transcript;
+      } else {
+        // 临时结果
+        interimTranscript += transcript;
+      }
     }
     
-    // 自动调整输入框高度
-    textarea.style.height = 'auto';
-    textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
+    // 保存临时结果，供停止时使用
+    if (interimTranscript.trim()) {
+      pendingTranscript = interimTranscript.trim();
+    }
     
-    // 聚焦到输入框
-    textarea.focus();
+    // 如果有最终结果，添加到输入框
+    if (finalTranscript.trim()) {
+      console.log('[Popup] Voice recognition result:', finalTranscript);
+      
+      // 将识别结果添加到输入框（追加到现有内容）
+      const currentText = textarea.value.trim();
+      if (currentText) {
+        textarea.value = currentText + ' ' + finalTranscript;
+      } else {
+        textarea.value = finalTranscript;
+      }
+      
+      // 清空临时结果（因为已经有最终结果了）
+      pendingTranscript = '';
+      
+      // 自动调整输入框高度
+      textarea.style.height = 'auto';
+      textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
+      
+      // 聚焦到输入框
+      textarea.focus();
+    }
   };
   
   // 识别结束
   recognition.onend = () => {
-    isRecording = false;
-    if (voiceInputBtn) {
-      voiceInputBtn.classList.remove('recording');
-      voiceInputBtn.title = i18n('voiceInputTitle') || '语音输入';
+    // 如果用户主动停止，处理待处理的临时结果
+    if (isUserStopped && pendingTranscript.trim()) {
+      console.log('[Popup] Adding pending transcript:', pendingTranscript);
+      
+      // 将临时结果添加到输入框
+      const currentText = textarea.value.trim();
+      if (currentText) {
+        textarea.value = currentText + ' ' + pendingTranscript;
+      } else {
+        textarea.value = pendingTranscript;
+      }
+      
+      // 清空待处理结果
+      pendingTranscript = '';
+      
+      // 自动调整输入框高度
+      textarea.style.height = 'auto';
+      textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
     }
-    console.log('[Popup] Voice recognition ended');
+    
+    // 如果用户没有主动停止，自动重启识别（持续模式）
+    if (!isUserStopped && isRecording) {
+      console.log('[Popup] Voice recognition ended, restarting...');
+      try {
+        recognition.start();
+      } catch (error) {
+        // 如果启动失败（可能已经在运行），忽略错误
+        console.log('[Popup] Recognition already running or failed to restart:', error);
+      }
+    } else {
+      // 用户主动停止，重置状态
+      isRecording = false;
+      if (voiceInputBtn) {
+        voiceInputBtn.classList.remove('recording');
+        voiceInputBtn.title = i18n('voiceInputTitle') || '语音输入';
+      }
+      console.log('[Popup] Voice recognition stopped by user');
+    }
   };
   
   // 识别错误
   recognition.onerror = (event) => {
+    // 如果是用户主动停止（aborted），不显示错误，但需要重置状态并处理临时结果
+    if (event.error === 'aborted') {
+      isRecording = false;
+      isUserStopped = true;
+      
+      // 处理待处理的临时结果
+      if (pendingTranscript.trim()) {
+        console.log('[Popup] Adding pending transcript on abort:', pendingTranscript);
+        const currentText = textarea.value.trim();
+        if (currentText) {
+          textarea.value = currentText + ' ' + pendingTranscript;
+        } else {
+          textarea.value = pendingTranscript;
+        }
+        pendingTranscript = '';
+        
+        // 自动调整输入框高度
+        textarea.style.height = 'auto';
+        textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
+      }
+      
+      if (voiceInputBtn) {
+        voiceInputBtn.classList.remove('recording');
+        voiceInputBtn.title = i18n('voiceInputTitle') || '语音输入';
+      }
+      return;
+    }
+    
+    // 其他错误需要停止识别并显示错误
     isRecording = false;
+    isUserStopped = true;
     if (voiceInputBtn) {
       voiceInputBtn.classList.remove('recording');
       voiceInputBtn.title = i18n('voiceInputTitle') || '语音输入';
@@ -2113,6 +2350,11 @@ function initVoiceInput() {
     
     let errorMessage = i18n('voiceInputError') || '语音识别错误';
     if (event.error === 'no-speech') {
+      // 在持续模式下，no-speech 可能是暂时的，不一定要停止
+      // 但如果用户已经停止，则不再重启
+      if (isUserStopped) {
+        return;
+      }
       errorMessage = i18n('voiceInputNoSpeech') || '未检测到语音';
     } else if (event.error === 'not-allowed') {
       // 权限被拒绝，提供更详细的提示
@@ -2122,9 +2364,6 @@ function initVoiceInput() {
         : 'Microphone permission denied. Please click the lock icon in the address bar, allow microphone access, and try again.';
     } else if (event.error === 'network') {
       errorMessage = i18n('voiceInputNetworkError') || '网络错误';
-    } else if (event.error === 'aborted') {
-      // 用户主动停止，不需要显示错误
-      return;
     }
     
     console.error('[Popup] Voice recognition error:', event.error);
@@ -2138,8 +2377,28 @@ function initVoiceInput() {
       e.stopPropagation();
       
       if (isRecording) {
-        // 如果正在录音，停止录音
+        // 如果正在录音，停止录音（用户主动停止）
+        isUserStopped = true;
         recognition.stop();
+        
+        // 等待一小段时间，让 onend 事件处理完成（包括处理临时结果）
+        setTimeout(() => {
+          // 如果还有待处理的临时结果，添加到输入框
+          if (pendingTranscript.trim()) {
+            console.log('[Popup] Adding pending transcript after button stop:', pendingTranscript);
+            const currentText = textarea.value.trim();
+            if (currentText) {
+              textarea.value = currentText + ' ' + pendingTranscript;
+            } else {
+              textarea.value = pendingTranscript;
+            }
+            pendingTranscript = '';
+            
+            // 自动调整输入框高度
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
+          }
+        }, 100);
       } else {
         // 开始录音前，先检查并请求麦克风权限
         try {
@@ -2150,7 +2409,8 @@ function initVoiceInput() {
             // 如果成功获取权限，立即停止流（我们只需要权限，不需要实际的音频流）
             stream.getTracks().forEach(track => track.stop());
             
-            // 权限已获取，开始语音识别
+            // 权限已获取，重置停止标志并开始语音识别
+            isUserStopped = false;
             recognition.start();
           } catch (mediaError) {
             // 权限被拒绝
@@ -2165,6 +2425,7 @@ function initVoiceInput() {
           // 如果 getUserMedia 不支持，直接尝试启动语音识别
           // 某些浏览器可能不支持 getUserMedia，但支持 Web Speech API
           try {
+            isUserStopped = false;
             recognition.start();
           } catch (recognitionError) {
             console.error('[Popup] Failed to start voice recognition:', recognitionError);

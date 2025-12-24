@@ -386,6 +386,34 @@
   "voiceInputStartError": {
     "message": "Failed to start voice recognition",
     "description": "Failed to start voice recognition error message"
+  },
+  "settingsShortcut": {
+    "message": "Keyboard Shortcut",
+    "description": "Keyboard shortcut settings title"
+  },
+  "shortcutDescription": {
+    "message": "Current shortcut:",
+    "description": "Current shortcut description"
+  },
+  "shortcutHint": {
+    "message": "Click the button below to open Chrome's extension shortcuts page where you can customize the shortcut.",
+    "description": "Shortcut hint text"
+  },
+  "openShortcutsPage": {
+    "message": "Open Shortcuts Settings",
+    "description": "Button to open Chrome shortcuts page"
+  },
+  "shortcutWindows": {
+    "message": "Windows/Linux:",
+    "description": "Windows/Linux shortcut label"
+  },
+  "shortcutMac": {
+    "message": "Mac:",
+    "description": "Mac shortcut label"
+  },
+  "noShortcut": {
+    "message": "Not set",
+    "description": "Text when shortcut is not set"
   }
 }
 

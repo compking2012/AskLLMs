@@ -103,18 +103,21 @@ class DeepSeek extends AIModel {
    * @returns {boolean} DeepSeek 支持上传文件
    */
   canUploadFile() {
-    return true;
+    return false;
   }
 
   /**
    * 上传文件（DeepSeek 特殊实现）
-   * @param {File} file - 要上传的文件对象
+   * @param {File|File[]} files - 要上传的文件对象或文件数组
    * @returns {Promise<boolean>} 返回true表示成功，false表示失败
    */
-  async uploadFile(file) {
+  async uploadFile(files) {
     try {
-      if (!file) {
-        console.log(`[MultiAI] ${this.name} no file provided for upload`);
+      // 支持单个文件或文件数组
+      const fileArray = Array.isArray(files) ? files : (files ? [files] : []);
+      
+      if (fileArray.length === 0) {
+        console.log(`[MultiAI] ${this.name} no files provided for upload`);
         return false;
       }
 
@@ -126,11 +129,13 @@ class DeepSeek extends AIModel {
         return false;
       }
       
-      console.log(`[MultiAI] ${this.name} file upload input found, uploading file:`, file.name);
+      console.log(`[MultiAI] ${this.name} file upload input found, uploading ${fileArray.length} file(s):`, fileArray.map(f => f.name).join(', '));
       
       // 使用 DataTransfer API 设置文件
       const dataTransfer = new DataTransfer();
-      dataTransfer.items.add(file);
+      fileArray.forEach(file => {
+        dataTransfer.items.add(file);
+      });
       
       // 设置 input 的 files
       fileInput.files = dataTransfer.files;
@@ -140,15 +145,24 @@ class DeepSeek extends AIModel {
         if (!fileInput.files || fileInput.files.length === 0) {
           return false;
         }
-        // 检查文件是否存在且名称和大小匹配
-        for (let i = 0; i < fileInput.files.length; i++) {
-          const uploadedFile = fileInput.files[i];
-          if (uploadedFile.name === file.name && 
-              uploadedFile.size === file.size) {
-            return true;
+        
+        // 检查所有文件是否都存在且名称和大小匹配
+        const uploadedFiles = Array.from(fileInput.files);
+        const expectedFiles = fileArray.map(f => ({ name: f.name, size: f.size }));
+        
+        // 检查每个期望的文件是否都在上传的文件列表中
+        for (const expectedFile of expectedFiles) {
+          const found = uploadedFiles.some(uploadedFile => 
+            uploadedFile.name === expectedFile.name && 
+            uploadedFile.size === expectedFile.size
+          );
+          if (!found) {
+            return false;
           }
         }
-        return false;
+        
+        // 确保上传的文件数量至少等于期望的文件数量
+        return uploadedFiles.length >= expectedFiles.length;
       };
       
       // 立即验证文件是否成功设置
@@ -176,7 +190,7 @@ class DeepSeek extends AIModel {
         // 检查文件是否成功上传
         if (verifyFileUpload()) {
           const elapsedTime = Date.now() - startTime;
-          console.log(`[MultiAI] ${this.name} file uploaded ✓ (verified after ${elapsedTime}ms)`);
+          console.log(`[MultiAI] ${this.name} ${fileArray.length} file(s) uploaded ✓ (verified after ${elapsedTime}ms)`);
           return true;
         }
         
@@ -186,14 +200,14 @@ class DeepSeek extends AIModel {
       
       // 超时后最后检查一次
       if (verifyFileUpload()) {
-        console.log(`[MultiAI] ${this.name} file uploaded ✓ (verified after timeout)`);
+        console.log(`[MultiAI] ${this.name} ${fileArray.length} file(s) uploaded ✓ (verified after timeout)`);
         return true;
       }
       
-      console.error(`[MultiAI] ${this.name} file upload verification timeout or file was rejected`);
+      console.error(`[MultiAI] ${this.name} file upload verification timeout or files were rejected`);
       return false;
     } catch (error) {
-      console.error(`[MultiAI] ${this.name} failed to upload file:`, error);
+      console.error(`[MultiAI] ${this.name} failed to upload files:`, error);
       return false;
     }
   }

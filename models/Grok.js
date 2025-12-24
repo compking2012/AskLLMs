@@ -42,6 +42,15 @@ class Grok extends AIModel {
   }
 
   /**
+   * 获取样式按钮选择器（第5个button.group）
+   * @returns {string}
+   */
+  getModeButtonSelector() {
+    // 返回选择器，用于查找第5个button.group
+    return 'div[role="menu"] > div[role="menuitem"]';
+  }
+
+  /**
    * 获取网络搜索按钮选择器
    * @returns {string}
    */
@@ -226,46 +235,23 @@ class Grok extends AIModel {
       }
       console.log(`[MultiAI] ${this.name} model select button found, clicking...`);
 
-      const div = modelSelectBtn.parentNode;
-      
-      div.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      modelSelectBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
       await new Promise(resolve => setTimeout(resolve, 3000));
       
-      // 方法2: 在 button 上触发完整的鼠标事件
-      const mouseEvents = ['mousedown', 'mouseup', 'click'];
-      for (const eventType of mouseEvents) {
-        const event = new MouseEvent(eventType, {
-          view: window,
-          bubbles: true,
-          cancelable: true,
-          buttons: 1
-        });
-        modelSelectBtn.dispatchEvent(event);
-      }
-      
-      // 方法3: 也在 div 上点击
-      modelSelectBtn.click();
-    // 等待菜单出现
+      // 步骤2: 在 button 上触发完整的鼠标事件
+      this.simulateClick(modelSelectBtn);
+      // 等待菜单出现
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // 步骤2: 找到菜单中的第3个menuitem（专家模式）
-      const firstMenuItem = await this.waitForElement('div[role="menuitem"]', 3000);
-      if (!firstMenuItem) {
+      // 步骤3: 找到菜单中的第3个menuitem（专家模式）
+      const allMenuItems = await this.waitForElement(this.getModeButtonSelector(), 3000);
+      if (allMenuItems.length < 3) {
         console.log(`[MultiAI] ${this.name} menu items not found, skipping...`);
         return true;
       }
-      
-      // 查找所有菜单项
-      const allMenuItems = document.querySelectorAll('div[role="menuitem"]');
-      if (allMenuItems.length < 3) {
-        console.log(`[MultiAI] ${this.name} not enough menu items found (found ${allMenuItems.length}), skipping...`);
-        return true;
-      }
-      
       // 第3个菜单项是"专家模式"（enableDeepThink）
-      const expertModeItem = allMenuItems[2];
       console.log(`[MultiAI] ${this.name} expert mode menu item found, clicking...`);
-      expertModeItem.click();
+      allMenuItems[2].click();
       
       // 等待菜单关闭
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -294,33 +280,24 @@ class Grok extends AIModel {
       }
       
       console.log(`[MultiAI] ${this.name} model select button found, clicking...`);
-      modelSelectBtn.click();
-      
+      // 步骤2: 在 button 上触发完整的鼠标事件
+      this.simulateClick(modelSelectBtn);
       // 等待菜单出现
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // 步骤2: 找到菜单中的第2个menuitem（快速模式）
-      const firstMenuItem = await this.waitForElement('div[role="menuitem"]', 3000);
-      if (!firstMenuItem) {
-        console.log(`[MultiAI] ${this.name} menu items not found, may already be disabled`);
-        return true;
-      }
-      
-      // 查找所有菜单项
-      const allMenuItems = document.querySelectorAll('div[role="menuitem"]');
+      // 步骤3: 找到菜单中的第1个menuitem（快速模式）
+      const allMenuItems = await this.waitForElement(this.getModeButtonSelector(), 3000);
       if (allMenuItems.length < 2) {
-        console.log(`[MultiAI] ${this.name} not enough menu items found (found ${allMenuItems.length}), may already be disabled`);
+        console.log(`[MultiAI] ${this.name} menu items not found, skipping...`);
         return true;
       }
-      
-      // 第2个菜单项是"快速模式"（disableDeepThink）
-      const fastModeItem = allMenuItems[1];
-      console.log(`[MultiAI] ${this.name} fast mode menu item found, clicking...`);
-      fastModeItem.click();
+      // 第1个菜单项是"快速模式"（disableDeepThink）
+      console.log(`[MultiAI] ${this.name} quick mode menu item found, clicking...`);
+      allMenuItems[1].click();
       
       // 等待菜单关闭
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       console.log(`[MultiAI] ${this.name} deep think disabled ✓`);
       return true;
     } catch (error) {
@@ -558,6 +535,21 @@ class Grok extends AIModel {
     return true;
   }
 
+  /**
+   * 模拟点击元素（兼容 React 合成事件）
+   * @param {HTMLElement} element
+   */
+  simulateClick(element) {
+    const events = ['pointerdown', 'pointerup', 'click'];
+    events.forEach(eventType => {
+      const event = new PointerEvent(eventType, {
+        bubbles: true,
+        cancelable: true,
+        view: window
+      });
+      element.dispatchEvent(event);
+    });
+  }
 
   /**
    * 静态回退方法（当模型类未正确加载时使用）

@@ -523,6 +523,247 @@
     }
     
     /* 文件上传相关样式 */
+    .file-upload-wrapper {
+      display: flex;
+      align-items: center;
+      position: relative;
+      height: 48px;
+    }
+    
+    .file-upload-icon-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 48px;
+      height: 48px;
+      background: #f3f4f6;
+      border: 1px solid #d1d5db;
+      border-radius: 10px 0 0 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+      outline: none;
+      padding: 0;
+      margin: 0;
+    }
+    
+    .file-upload-icon-btn:hover {
+      background: #e5e7eb;
+      border-color: #9ca3af;
+    }
+    
+    .file-upload-icon-btn:active {
+      transform: scale(0.98);
+    }
+    
+    .file-upload-icon {
+      font-size: 18px;
+      line-height: 1;
+    }
+    
+    .file-upload-dropdown-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 48px;
+      background: #f3f4f6;
+      border: 1px solid #d1d5db;
+      border-left: none;
+      border-radius: 0 10px 10px 0;
+      cursor: pointer;
+      transition: all 0.2s;
+      outline: none;
+      padding: 0;
+      margin: 0;
+    }
+    
+    .file-upload-dropdown-btn:hover {
+      background: #e5e7eb;
+      border-color: #9ca3af;
+    }
+    
+    .file-upload-dropdown-btn:active {
+      transform: scale(0.98);
+    }
+    
+    .file-upload-dropdown-icon {
+      font-size: 10px;
+      line-height: 1;
+      color: #6b7280;
+      transition: transform 0.2s;
+    }
+    
+    .file-upload-dropdown-btn.active .file-upload-dropdown-icon {
+      transform: rotate(180deg);
+    }
+    
+    .file-dropdown {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      min-width: 280px;
+      max-width: 400px;
+      background: #ffffff;
+      border: 1px solid #d1d5db;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      z-index: 1000;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .file-dropdown-list {
+      max-height: calc(3 * 40px + 8px); /* 3行文件项：每行40px（padding 10px*2 + 内容20px）+ 上下padding 4px*2 */
+      overflow-y: auto;
+      padding: 4px;
+    }
+    
+    .file-dropdown-list::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    .file-dropdown-list::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 3px;
+    }
+    
+    .file-dropdown-list::-webkit-scrollbar-thumb {
+      background: #c1c1c1;
+      border-radius: 3px;
+    }
+    
+    .file-dropdown-list::-webkit-scrollbar-thumb:hover {
+      background: #a8a8a8;
+    }
+    
+    body.dark-theme .file-dropdown-list::-webkit-scrollbar-track {
+      background: #374151;
+    }
+    
+    body.dark-theme .file-dropdown-list::-webkit-scrollbar-thumb {
+      background: #6b7280;
+    }
+    
+    body.dark-theme .file-dropdown-list::-webkit-scrollbar-thumb:hover {
+      background: #9ca3af;
+    }
+    
+    .file-dropdown-empty {
+      padding: 24px 16px;
+      text-align: center;
+      color: #9ca3af;
+      font-size: 13px;
+    }
+    
+    .file-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      margin: 2px 0;
+      border-radius: 8px;
+      transition: background 0.2s;
+      cursor: default;
+      min-height: 40px;
+      box-sizing: border-box;
+    }
+    
+    .file-item:hover {
+      background: #f3f4f6;
+    }
+    
+    .file-item-name {
+      flex: 1;
+      font-size: 13px;
+      color: #374151;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin-right: 8px;
+    }
+    
+    .file-item-remove {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      background: transparent;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      color: #9ca3af;
+      font-size: 16px;
+      line-height: 1;
+      padding: 0;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    
+    .file-item-remove:hover {
+      background: #fee2e2;
+      color: #ef4444;
+    }
+    
+    .file-item-remove:active {
+      transform: scale(0.9);
+    }
+    
+    body.dark-theme .file-upload-icon-btn {
+      background: #374151;
+      border-color: #4b5563;
+    }
+    
+    body.dark-theme .file-upload-icon-btn:hover {
+      background: #4b5563;
+      border-color: #6b7280;
+    }
+    
+    body.dark-theme .file-upload-dropdown-btn {
+      background: #374151;
+      border-color: #4b5563;
+    }
+    
+    body.dark-theme .file-upload-dropdown-btn:hover {
+      background: #4b5563;
+      border-color: #6b7280;
+    }
+    
+    body.dark-theme .file-upload-dropdown-icon {
+      color: #d1d5db;
+    }
+    
+    body.dark-theme .file-dropdown {
+      background: #1f2937;
+      border-color: #374151;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+    
+    body.dark-theme .file-dropdown-empty {
+      color: #6b7280;
+    }
+    
+    body.dark-theme .file-item:hover {
+      background: #374151;
+    }
+    
+    body.dark-theme .file-item-name {
+      color: #f3f4f6;
+    }
+    
+    body.dark-theme .file-item-remove:hover {
+      background: #7f1d1d;
+      color: #fca5a5;
+    }
+    
+    body.dark-theme #shortcut-display {
+      background: #374151;
+      border-color: #4b5563;
+      color: #f3f4f6;
+    }
+    
+    /* 旧的文件信息样式（保留以防需要） */
     .file-info {
       display: flex;
       align-items: center;
@@ -1362,6 +1603,21 @@
     </div>
   
   <div class="input-wrapper">
+    <!-- 文件上传组件 -->
+    <div class="file-upload-wrapper">
+      <button id="file-upload-icon-btn" class="file-upload-icon-btn" title="上传文件" data-i18n-title="fileUploadToggle">
+        <span class="file-upload-icon">📎</span>
+      </button>
+      <button id="file-upload-dropdown-btn" class="file-upload-dropdown-btn" style="display: none;" title="查看文件列表">
+        <span class="file-upload-dropdown-icon">▼</span>
+      </button>
+      <input type="file" id="file-input" multiple style="display: none;" />
+      <div id="file-dropdown" class="file-dropdown" style="display: none;">
+        <div class="file-dropdown-list" id="file-list">
+          <div class="file-dropdown-empty" data-i18n="noFiles">暂无文件</div>
+        </div>
+      </div>
+    </div>
     <textarea id="query-input" data-i18n-placeholder="inputPlaceholder" rows="1" autofocus></textarea>
     <button id="voice-input-btn" class="voice-input-btn" title="语音输入" data-i18n-title="voiceInputTitle">🎤</button>
     <div class="history-dropdown-wrapper">
@@ -1390,15 +1646,6 @@
       <span class="new-chat-toggle-icon">🎨</span>
       <span data-i18n="genImageLabel">生成图片</span>
     </button>
-    <button id="file-upload-btn" class="new-chat-toggle" title="上传文件" data-i18n-title="fileUploadToggle">
-      <span class="new-chat-toggle-icon">📎</span>
-      <span data-i18n="fileUploadLabel">上传文件</span>
-    </button>
-    <input type="file" id="file-input" style="display: none;" />
-    <div id="file-info" class="file-info" style="display: none;">
-      <span id="file-name"></span>
-      <button id="file-remove-btn" class="file-remove-btn" title="移除文件">×</button>
-    </div>
   </div>
   
   <div class="platforms-section">
@@ -1653,6 +1900,23 @@
             <span data-i18n="colorCyan">Cyan</span>
           </label>
         </div>
+      </div>
+    </div>
+    
+    <div class="settings-section">
+      <div class="settings-section-title" data-i18n="settingsShortcut">Keyboard Shortcut</div>
+      <div class="settings-option">
+        <div class="settings-option-label" data-i18n="shortcutDescription">Current shortcut:</div>
+        <div id="shortcut-display" style="padding: 8px 12px; background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 6px; font-family: monospace; font-size: 13px; color: #374151; margin-bottom: 8px;">
+          <div id="shortcut-windows" style="margin-bottom: 4px;">
+            <span data-i18n="shortcutWindows">Windows/Linux:</span> <span id="shortcut-windows-value">Ctrl+Shift+Y</span>
+          </div>
+          <div id="shortcut-mac">
+            <span data-i18n="shortcutMac">Mac:</span> <span id="shortcut-mac-value">Command+Shift+Y</span>
+          </div>
+        </div>
+        <div style="font-size: 11px; color: #9ca3af; margin-bottom: 8px;" data-i18n="shortcutHint">Click the button below to open Chrome's extension shortcuts page where you can customize the shortcut.</div>
+        <button id="open-shortcuts-page-btn" class="settings-btn-secondary" style="flex: 0 0 auto; width: auto;" data-i18n="openShortcutsPage">Open Shortcuts Settings</button>
       </div>
     </div>
     
