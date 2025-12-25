@@ -74,7 +74,7 @@ class Yuanbao extends AIModel {
    * @returns {boolean} 腾讯元宝支持深度思考
    */
   canDeepThink() {
-    return false; // FIXME: 腾讯元宝支持深度思考, 但目前有bug暂不启用
+    return true;
   }
 
   /**
@@ -82,7 +82,7 @@ class Yuanbao extends AIModel {
    * @returns {boolean} 腾讯元宝支持网络搜索
    */
   canWebSearch() {
-    return true;
+    return false;
   }
 
   /**
@@ -222,9 +222,10 @@ class Yuanbao extends AIModel {
         return true;
       }
       
-      // 检查 dt-model-id 属性，判断是否已启用深度思考
-      const modelId = btn.getAttribute('dt-model-id');
-      const isActive = modelId === 'deep_seek_v3' || modelId === 'hunyuan_t1';
+      // 检查按钮是否已经激活（通过 aria-pressed 或 class 判断）
+      // 使用 classList 检查，因为 CSS 模块化类名可能包含哈希后缀（如 ThinkSelector_selected__AH6R5）
+      // 检查是否有以 'ThinkSelector_selected' 开头的类名
+      let isActive = Array.from(btn.classList).some(className => className.startsWith('ThinkSelector_selected'));
       
       if (!isActive) {
         // 如果未启用，点击按钮启用
@@ -258,11 +259,12 @@ class Yuanbao extends AIModel {
         return true;
       }
       
-      // 检查 dt-model-id 属性，判断是否已启用深度思考
-      const modelId = btn.getAttribute('dt-model-id');
-      const isActive = modelId === 'deep_seek' || modelId === 'hunyuan_gpt_175B_0404';
+      // 检查按钮是否已经激活（通过 aria-pressed 或 class 判断）
+      // 使用 classList 检查，因为 CSS 模块化类名可能包含哈希后缀（如 ThinkSelector_selected__AH6R5）
+      // 检查是否有以 'ThinkSelector_selected' 开头的类名
+      let isActive = Array.from(btn.classList).some(className => className.startsWith('ThinkSelector_selected'));
       
-      if (!isActive) {
+      if (isActive) {
         // 如果已启用，点击按钮禁用
         btn.click();
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -287,16 +289,14 @@ class Yuanbao extends AIModel {
       console.log(`[MultiAI] ${this.name} - enabling web search...`);
       
       // 先尝试通过选择器查找
-      let btn = await this.waitForElement(this.getDeepThinkButtonSelector(), 5000);
+      let btn = await this.waitForElement(this.getWebSearchButtonSelector(), 5000);
            
       if (!btn) {
         console.log(`[MultiAI] ${this.name} web search button not found, skipping...`);
         return true;
       }
       
-      // 检查 dt-model-id 属性，判断是否已启用网络搜索
-      const modelId = btn.getAttribute('dt-model-id');
-      const isActive = modelId === 'deep_seek_v3' || modelId === 'hunyuan_t1';
+      let isActive = Array.from(btn.classList).some(className => className.startsWith('ThinkSelector_selected'));
       
       if (!isActive) {
         // 如果未启用，点击按钮启用
@@ -323,18 +323,16 @@ class Yuanbao extends AIModel {
       console.log(`[MultiAI] ${this.name} - disabling web search...`);
       
       // 先尝试通过选择器查找
-      let btn = await this.waitForElement(this.getDeepThinkButtonSelector(), 5000);
+      let btn = await this.waitForElement(this.getWebSearchButtonSelector(), 5000);
             
       if (!btn) {
         console.log(`[MultiAI] ${this.name} web search button not found, skipping...`);
         return true;
       }
       
-      // 检查 dt-model-id 属性，判断是否已启用网络搜索
-      const modelId = btn.getAttribute('dt-model-id');
-      const isActive = modelId === 'deep_seek' || modelId === 'hunyuan_gpt_175B_0404';
+      let isActive = Array.from(btn.classList).some(className => className.startsWith('ThinkSelector_selected'));
       
-      if (!isActive) {
+      if (isActive) {
         // 如果已启用，点击按钮禁用
         btn.click();
         await new Promise(resolve => setTimeout(resolve, 500));
