@@ -76,7 +76,7 @@ class ChatGLM extends AIModel {
    * @returns {boolean} 智谱清言支持深度思考
    */
   canDeepThink() {
-    return false; // FIXME: 智谱清言支持深度思考, 但目前有bug暂不启用
+    return true;
   }
 
   /**
@@ -259,24 +259,6 @@ class ChatGLM extends AIModel {
       let isActive = btn.classList.contains('selected')
       
       if (!isActive) {       
-        // 尝试多种方式点击
-        // 方法1: 滚动到元素位置
-        btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        await new Promise(resolve => setTimeout(resolve, 300));
-        
-        // 方法2: 触发完整的鼠标事件序列
-        const mouseEvents = ['mousedown', 'mouseup', 'click'];
-        for (const eventType of mouseEvents) {
-          const event = new MouseEvent(eventType, {
-            view: window,
-            bubbles: true,
-            cancelable: true,
-            buttons: 1
-          });
-          btn.dispatchEvent(event);
-        }
-        
-        // 方法3: 直接点击
         btn.click();
       }
 
@@ -308,24 +290,6 @@ class ChatGLM extends AIModel {
       let isActive = btn.classList.contains('selected');
       
       if (isActive) {
-        // 尝试多种方式点击
-        // 方法1: 滚动到元素位置
-        btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        await new Promise(resolve => setTimeout(resolve, 300));
-        
-        // 方法2: 触发完整的鼠标事件序列
-        const mouseEvents = ['mousedown', 'mouseup', 'click'];
-        for (const eventType of mouseEvents) {
-          const event = new MouseEvent(eventType, {
-            view: window,
-            bubbles: true,
-            cancelable: true,
-            buttons: 1
-          });
-          btn.dispatchEvent(event);
-        }
-        
-        // 方法3: 直接点击
         btn.click();
       }
       
