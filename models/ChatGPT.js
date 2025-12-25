@@ -115,7 +115,7 @@ class ChatGPT extends AIModel {
    * @returns {boolean}
    */
   canGenImage() {
-    return true;
+    return false; // FIXME: ChatGPT 支持生成图片, 但目前有bug无法启用
   }
 
   /**
