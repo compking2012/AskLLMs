@@ -613,6 +613,128 @@ class Doubao extends AIModel {
 
 
   /**
+   * 获取响应区域选择器（Doubao 特殊实现）
+   * @returns {string} 返回响应区域的选择器
+   */
+  getResponseSelector() {
+    return 'div[class*="message-content"], div[class*="response"]';
+  }
+
+  /**
+   * 获取模型输出的 DOM 结果（Doubao 特殊实现）
+   * @param {Function|null} onUpdate - 可选的回调函数，用于流式返回更新
+   * @param {number} timeout - 超时时间（毫秒）
+   * @returns {Promise<string>} 返回完整的响应文本内容
+   */
+  async fetchResponse(onUpdate = null, timeout = 60000) {
+    return new Promise((resolve, reject) => {
+      const startTime = Date.now();
+      let lastContent = '';
+      let isComplete = false;
+      
+      const responseSelector = this.getResponseSelector();
+      
+      const checkForResponse = () => {
+        const responseElements = document.querySelectorAll(responseSelector);
+        if (responseElements.length > 0) {
+          return Array.from(responseElements).pop();
+        }
+        return null;
+      };
+      
+      const extractText = (element) => {
+        if (!element) return '';
+        return element.innerText || element.textContent || '';
+      };
+      
+      const checkCompletion = () => {
+        const isStreaming = document.querySelector('div[class*="loading"], div[class*="streaming"]') !== null;
+        return !isStreaming;
+      };
+      
+      const pollInterval = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        
+        if (elapsed > timeout) {
+          clearInterval(pollInterval);
+          if (observer) observer.disconnect();
+          resolve(lastContent || '');
+          return;
+        }
+        
+        const responseElement = checkForResponse();
+        if (responseElement) {
+          const currentContent = extractText(responseElement);
+          
+          if (currentContent !== lastContent && onUpdate) {
+            onUpdate(currentContent);
+          }
+          
+          lastContent = currentContent;
+          
+          if (checkCompletion() && !isComplete) {
+            setTimeout(() => {
+              const finalContent = extractText(responseElement);
+              if (finalContent === lastContent) {
+                isComplete = true;
+                clearInterval(pollInterval);
+                if (observer) observer.disconnect();
+                resolve(finalContent);
+              }
+            }, 2000);
+          }
+        }
+      }, 500);
+      
+      let observer = null;
+      if (document.body) {
+        observer = new MutationObserver(() => {
+          const responseElement = checkForResponse();
+          if (responseElement) {
+            const currentContent = extractText(responseElement);
+            
+            if (currentContent !== lastContent) {
+              lastContent = currentContent;
+              if (onUpdate) {
+                onUpdate(currentContent);
+              }
+              
+              if (checkCompletion() && !isComplete) {
+                setTimeout(() => {
+                  const finalContent = extractText(responseElement);
+                  if (finalContent === lastContent) {
+                    isComplete = true;
+                    clearInterval(pollInterval);
+                    observer.disconnect();
+                    resolve(finalContent);
+                  }
+                }, 2000);
+              }
+            }
+          }
+        });
+        
+        observer.observe(document.body, {
+          childList: true,
+          subtree: true,
+          characterData: true
+        });
+      }
+      
+      setTimeout(() => {
+        const responseElement = checkForResponse();
+        if (responseElement) {
+          const currentContent = extractText(responseElement);
+          lastContent = currentContent;
+          if (onUpdate) {
+            onUpdate(currentContent);
+          }
+        }
+      }, 1000);
+    });
+  }
+
+  /**
    * 静态回退方法（当模型类未正确加载时使用）
    * @param {string} query - 查询文本
    * @returns {Promise<boolean>}

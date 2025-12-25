@@ -275,6 +275,19 @@ class AIModel {
   }
 
   /**
+   * 获取模型输出的 DOM 结果（由子类实现）
+   * 注意：每个大模型 sendQuery 执行之后，response 都是流式返回的
+   * 所以要么可以支持不停的流式返回，要么在所有 response 输出完之后一次性返回
+   * 
+   * @param {Function|null} onUpdate - 可选的回调函数，用于流式返回更新。如果提供，每次内容更新时调用 onUpdate(content)
+   * @param {number} timeout - 超时时间（毫秒），默认 60000（60秒）
+   * @returns {Promise<string>} 返回完整的响应文本内容。如果提供了 onUpdate，也会在每次更新时调用回调
+   */
+  async fetchResponse(onUpdate = null, timeout = 60000) {
+    throw new Error('fetchResponse must be implemented by subclass');
+  }
+
+  /**
    * 发送查询（抽象方法，由子类实现）
    * @param {string} query - 查询文本
    * @param {boolean} startNewChat - 是否开启新对话

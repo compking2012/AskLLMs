@@ -607,6 +607,145 @@ class ChatGPT extends AIModel {
   }
 
   /**
+   * 获取响应区域选择器（ChatGPT 特殊实现）
+   * @returns {string} 返回响应区域的选择器
+   */
+  getResponseSelector() {
+    // ChatGPT 的响应区域通常在对话消息中
+    return 'div[data-message-author-role="assistant"] div.markdown';
+  }
+
+  /**
+   * 获取模型输出的 DOM 结果（ChatGPT 特殊实现）
+   * @param {Function|null} onUpdate - 可选的回调函数，用于流式返回更新
+   * @param {number} timeout - 超时时间（毫秒）
+   * @returns {Promise<string>} 返回完整的响应文本内容
+   */
+  async fetchResponse(onUpdate = null, timeout = 60000) {
+    return new Promise((resolve, reject) => {
+      const startTime = Date.now();
+      let lastContent = '';
+      let isComplete = false;
+      
+      // 获取响应区域选择器
+      const responseSelector = this.getResponseSelector();
+      
+      // 等待响应区域出现
+      const checkForResponse = () => {
+        const responseElements = document.querySelectorAll(responseSelector);
+        if (responseElements.length > 0) {
+          // 找到最新的响应元素（通常是最后一个）
+          const latestResponse = Array.from(responseElements).pop();
+          return latestResponse;
+        }
+        return null;
+      };
+      
+      // 提取文本内容
+      const extractText = (element) => {
+        if (!element) return '';
+        // 移除代码块中的特殊标记，保留文本内容
+        return element.innerText || element.textContent || '';
+      };
+      
+      // 检查是否完成（通过检查是否有停止按钮或响应不再变化）
+      const checkCompletion = () => {
+        // ChatGPT 通常会在响应完成时移除加载状态
+        const stopButton = document.querySelector('button[aria-label*="Stop"]');
+        const isStreaming = stopButton !== null;
+        return !isStreaming;
+      };
+      
+      // 轮询检查响应
+      const pollInterval = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        
+        if (elapsed > timeout) {
+          clearInterval(pollInterval);
+          if (observer) observer.disconnect();
+          resolve(lastContent || '');
+          return;
+        }
+        
+        const responseElement = checkForResponse();
+        if (responseElement) {
+          const currentContent = extractText(responseElement);
+          
+          // 如果内容有更新，调用回调
+          if (currentContent !== lastContent && onUpdate) {
+            onUpdate(currentContent);
+          }
+          
+          lastContent = currentContent;
+          
+          // 检查是否完成
+          if (checkCompletion() && !isComplete) {
+            // 等待一段时间确保内容稳定
+            setTimeout(() => {
+              const finalContent = extractText(responseElement);
+              if (finalContent === lastContent) {
+                isComplete = true;
+                clearInterval(pollInterval);
+                if (observer) observer.disconnect();
+                resolve(finalContent);
+              }
+            }, 2000);
+          }
+        }
+      }, 500);
+      
+      // 使用 MutationObserver 监听 DOM 变化（更高效）
+      let observer = null;
+      if (document.body) {
+        observer = new MutationObserver(() => {
+          const responseElement = checkForResponse();
+          if (responseElement) {
+            const currentContent = extractText(responseElement);
+            
+            if (currentContent !== lastContent) {
+              lastContent = currentContent;
+              if (onUpdate) {
+                onUpdate(currentContent);
+              }
+              
+              // 检查是否完成
+              if (checkCompletion() && !isComplete) {
+                setTimeout(() => {
+                  const finalContent = extractText(responseElement);
+                  if (finalContent === lastContent) {
+                    isComplete = true;
+                    clearInterval(pollInterval);
+                    observer.disconnect();
+                    resolve(finalContent);
+                  }
+                }, 2000);
+              }
+            }
+          }
+        });
+        
+        observer.observe(document.body, {
+          childList: true,
+          subtree: true,
+          characterData: true
+        });
+      }
+      
+      // 立即检查一次
+      setTimeout(() => {
+        const responseElement = checkForResponse();
+        if (responseElement) {
+          const currentContent = extractText(responseElement);
+          lastContent = currentContent;
+          if (onUpdate) {
+            onUpdate(currentContent);
+          }
+        }
+      }, 1000);
+    });
+  }
+
+  /**
    * 静态回退方法（当模型类未正确加载时使用）
    * @param {string} query - 查询文本
    * @returns {Promise<boolean>}
