@@ -155,6 +155,7 @@ let newChatToggle = null; // 延迟初始化
 // 页面元素
 const mainPage = document.getElementById('main-page');
 const settingsBtn = document.getElementById('settings-btn');
+const monitorBtn = document.getElementById('monitor-btn');
 const settingsPage = document.getElementById('settings-page');
 const backBtn = document.getElementById('back-btn');
 
@@ -566,6 +567,18 @@ async function showSettingsPage() {
 
 // 事件监听
 settingsBtn.addEventListener('click', showSettingsPage);
+
+// 打开响应监控窗口
+if (monitorBtn) {
+  monitorBtn.addEventListener('click', () => {
+    chrome.windows.create({
+      url: chrome.runtime.getURL('response-monitor.html'),
+      type: 'popup',
+      width: 1200,
+      height: 800
+    });
+  });
+}
 
 // 绑定返回按钮事件
 if (backBtn) {

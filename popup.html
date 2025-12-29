@@ -175,14 +175,21 @@
     }
     
     .header.with-settings-btn .header-content {
-      margin-right: 40px; /* 为设置按钮留出空间 */
+      margin-right: 80px; /* 为两个按钮留出空间 */
     }
     
-    .settings-btn {
+    .header-buttons {
       position: absolute;
       right: 0;
       top: 50%;
       transform: translateY(-50%);
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      z-index: 1;
+    }
+    
+    .settings-btn {
       background: transparent;
       border: none;
       cursor: pointer;
@@ -191,7 +198,6 @@
       border-radius: 6px;
       transition: all 0.2s;
       color: #6b7280;
-      z-index: 1;
     }
     
     .settings-btn:hover {
@@ -1599,7 +1605,10 @@
         <span class="emoji">💬</span>
         <div class="title" data-i18n="title">AI Multi-Model Query</div>
       </div>
-      <button id="settings-btn" class="settings-btn" title="Settings">⚙️</button>
+      <div class="header-buttons">
+        <button id="monitor-btn" class="settings-btn" title="响应监控" style="font-size: 16px;">📊</button>
+        <button id="settings-btn" class="settings-btn" title="Settings">⚙️</button>
+      </div>
     </div>
   
   <div class="input-wrapper">

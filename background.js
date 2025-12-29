@@ -17,6 +17,9 @@
 let modelsDataCache = null;
 let modelsLoadingPromise = null;
 
+// 响应数据存储（用于监控窗口）
+let responseData = new Map();
+
 // 需要加载/注入的模型脚本清单（顺序很重要：`models/index.js` 依赖前面的类定义）
 const MODEL_SCRIPT_FILES = [
   'models/AIModel.js',
@@ -421,7 +424,7 @@ async function getDefaultSettings() {
         // 直接执行查询（内联 sendQueryToPage 逻辑）
         await chrome.scripting.executeScript({
           target: { tabId: tab.id },
-          func: async (query, startNewChat, deepThink, webSearch, genImage, fileData) => {
+          func: async (query, startNewChat, deepThink, webSearch, genImage, fileData, siteName) => {
             console.log('[MultiAI] ===== Inline execution START =====');
             console.log('[MultiAI] Query:', query.substring(0, 50) + '...');
             const fileInfo = fileData ? (Array.isArray(fileData) ? `${fileData.length} file(s)` : fileData.name) : null;
@@ -459,14 +462,57 @@ async function getDefaultSettings() {
               }
             }
             
+            let model = null;
             try {
               // 尝试使用模型类（通过 models/index.js 中的注册表）
               if (typeof getModelByHostname === 'function') {
-                const model = getModelByHostname(host);
+                model = getModelByHostname(host);
                 if (model) {
                   console.log('[MultiAI] Detected:', host, 'using model:', model.name);
                   const result = await model.sendQuery(query, startNewChat, deepThink, webSearch, genImage, files);
                   console.log('[MultiAI] Query execution result:', result);
+                  
+                  // 发送查询后，开始获取响应
+                  if (result && typeof model.fetchResponse === 'function') {
+                    console.log('[MultiAI] Starting fetchResponse for:', siteName);
+                    try {
+                      // 使用流式回调实时更新响应
+                      await model.fetchResponse((content) => {
+                        // 发送响应更新到 background
+                        chrome.runtime.sendMessage({
+                          action: 'responseUpdate',
+                          platform: siteName,
+                          content: content,
+                          status: 'streaming'
+                        }).catch(() => {
+                          // 忽略错误（background 可能未准备好）
+                        });
+                      }, 60000).then((finalContent) => {
+                        // 响应完成
+                        chrome.runtime.sendMessage({
+                          action: 'responseUpdate',
+                          platform: siteName,
+                          content: finalContent,
+                          status: 'complete'
+                        }).catch(() => {
+                          // 忽略错误
+                        });
+                      }).catch((error) => {
+                        console.error('[MultiAI] fetchResponse error:', error);
+                        chrome.runtime.sendMessage({
+                          action: 'responseUpdate',
+                          platform: siteName,
+                          content: error.message || '获取响应失败',
+                          status: 'error'
+                        }).catch(() => {
+                          // 忽略错误
+                        });
+                      });
+                    } catch (fetchError) {
+                      console.error('[MultiAI] Error calling fetchResponse:', fetchError);
+                    }
+                  }
+                  
                   return result;
                 }
               }
@@ -503,7 +549,7 @@ async function getDefaultSettings() {
             console.error('[MultiAI] Unknown domain or all methods failed:', host);
             throw new Error(`No model handler found for domain: ${host}`);
           },
-          args: [query, startNewChat, deepThink, webSearch, genImage, fileData]
+          args: [query, startNewChat, deepThink, webSearch, genImage, fileData, siteName]
         });
         
         // 等待一小段时间确保执行完成
@@ -905,6 +951,53 @@ async function getDefaultSettings() {
   
   // 监听页面发来的发送请求
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    // 处理响应更新
+    if (request.action === 'responseUpdate') {
+      const { platform, content, status } = request;
+      const responseInfo = { content, status, timestamp: Date.now() };
+      responseData.set(platform, responseInfo);
+      
+      // 存储到 chrome.storage，监控窗口可以通过 chrome.storage.onChanged 监听
+      const storageData = {};
+      responseData.forEach((data, key) => {
+        storageData[`response_${key}`] = data;
+      });
+      chrome.storage.local.set(storageData).catch(() => {
+        // 忽略错误
+      });
+      
+      sendResponse({ success: true });
+      return true;
+    }
+    
+    // 处理获取所有响应的请求
+    if (request.action === 'getAllResponses') {
+      chrome.storage.local.get(null, (items) => {
+        const responses = {};
+        Object.keys(items).forEach(key => {
+          if (key.startsWith('response_')) {
+            const platform = key.replace('response_', '');
+            responses[platform] = items[key];
+          }
+        });
+        sendResponse({ success: true, responses });
+      });
+      return true;
+    }
+    
+    // 处理清空所有响应的请求
+    if (request.action === 'clearAllResponses') {
+      responseData.clear();
+      chrome.storage.local.get(null, (items) => {
+        const keysToRemove = Object.keys(items).filter(key => key.startsWith('response_'));
+        if (keysToRemove.length > 0) {
+          chrome.storage.local.remove(keysToRemove);
+        }
+        sendResponse({ success: true });
+      });
+      return true;
+    }
+    
     // 处理获取平台数据的请求
     if (request.action === 'getPlatformData') {
       (async () => {
