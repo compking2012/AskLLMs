@@ -552,7 +552,7 @@ class ChatGPT extends AIModel {
       return false;
     }
     
-    console.log(`[MultiAI] ${this.name} input found, setting text...`);
+    console.log(`[MultiAnI] ${this.name} input found, setting text...`);
     this.setContentEditable(el, query);
     console.log(`[MultiAI] ${this.name} text set:`, query);
     
