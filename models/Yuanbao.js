@@ -103,7 +103,7 @@ class Yuanbao extends AIModel {
    * @returns {boolean} 腾讯元宝支持上传文件
    */
   canUploadFile() {
-    return true;
+    return false;
   }
 
 
@@ -295,6 +295,31 @@ class Yuanbao extends AIModel {
   async disableGenImage() {
     // 腾讯元宝自动支持生成图片，无需操作
     return true;
+  }
+
+  /**
+   * 等待文件上传处理完成（通常通过检查发送按钮状态来判断）
+   * @param {number} timeout 超时时间（毫秒）
+   * @returns {Promise<boolean>}
+   */
+  async waitForUploadFinished(timeout = 30000) {
+    console.log(`[MultiAI] ${this.name} waiting for upload to finish...`);
+    const startTime = Date.now();
+    
+    while (Date.now() - startTime < timeout) {
+      const selector = this.getSendButtonSelector();
+      const btn = document.querySelector(selector);
+      
+      if (btn && !btn.disabled && btn.getAttribute('aria-disabled') !== 'true') {
+        console.log(`[MultiAI] ${this.name} upload finished ✓`);
+        return true;
+      }
+      
+      await new Promise(r => setTimeout(r, 200));
+    }
+    
+    console.warn(`[MultiAI] ${this.name} waitForUploadFinished timeout`);
+    return false;
   }
 
   async sendQuery(query, startNewChat = false, deepThink = false, webSearch = false, genImage = false, file = null) {

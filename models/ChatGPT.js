@@ -470,6 +470,32 @@ class ChatGPT extends AIModel {
     }
   }
 
+  /**
+   * 等待文件上传处理完成（通常通过检查发送按钮状态来判断）
+   * @param {number} timeout 超时时间（毫秒）
+   * @returns {Promise<boolean>}
+   */
+  async waitForUploadFinished(timeout = 30000) {
+    console.log(`[MultiAI] ${this.name} waiting for upload to finish...`);
+    const startTime = Date.now();
+    
+    while (Date.now() - startTime < timeout) {
+      const selector = this.getSendButtonSelector();
+      const btn = document.querySelector(selector);
+      
+      // 检查按钮是否存在且未被禁用
+      if (btn && !btn.disabled && btn.getAttribute('aria-disabled') !== 'true') {
+        console.log(`[MultiAI] ${this.name} upload finished ✓`);
+        return true;
+      }
+      
+      await new Promise(r => setTimeout(r, 200));
+    }
+    
+    console.warn(`[MultiAI] ${this.name} waitForUploadFinished timeout`);
+    return false;
+  }
+
   async sendQuery(query, startNewChat = false, deepThink = false, webSearch = false, genImage = false, file = null) {
     console.log(`[MultiAI] ${this.name} - starting query...`);
     console.log(`[MultiAI] ${this.name} - startNewChat:`, startNewChat);
@@ -487,8 +513,8 @@ class ChatGPT extends AIModel {
     // 如果有文件，先上传文件
     if (file && this.canUploadFile()) {
       await this.uploadFiles(file);
-      // 等待文件上传处理完成
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // 等待文件上传处理完成（等待发送按钮变亮）
+      await this.waitForUploadFinished(30000);
     }
     
     // 如果启用了深度思考，先启用深度思考，否则禁用

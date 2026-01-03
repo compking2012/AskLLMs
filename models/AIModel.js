@@ -840,6 +840,16 @@ class AIModel {
     }));
   }
 
+
+  /**
+   * 等待文件上传处理完成（抽象方法，由子类实现）
+   * @param {number} timeout 超时时间（毫秒）
+   * @returns {Promise<boolean>}
+   */
+  async waitForUploadFinished(timeout = 30000) {
+    throw new Error('waitForUploadFinished must be implemented by subclass');
+  }
+
   /**
    * 静态方法：创建临时实例用于回退
    * @param {Function} ModelClass - 模型类构造函数
