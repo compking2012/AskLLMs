@@ -641,14 +641,6 @@ class AIModel {
     return anySuccess;
   }
 
-  /**
-   * 上传文件（兼容旧接口，建议使用 uploadFiles）
-   * @param {File|File[]} files - 要上传的文件对象或文件数组
-   * @returns {Promise<boolean>} 返回true表示成功，false表示失败
-   */
-  async uploadFile(files) {
-    return this.uploadFiles(files);
-  }
 
   /**
    * 获取模型输出的 DOM 结果（由子类实现）

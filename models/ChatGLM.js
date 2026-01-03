@@ -104,15 +104,6 @@ class ChatGLM extends AIModel {
     return true;
   }
 
-  /**
-   * 上传文件（智谱清言特殊实现）
-   * @param {File|File[]} files - 要上传的文件对象或文件数组
-   * @returns {Promise<boolean>} 返回true表示成功，false表示失败
-   */
-  async uploadFile(files) {
-    // 兼容旧接口：委托给基类 uploadFiles（支持单个/多个文件）
-    return this.uploadFiles(files);
-  }
 
   /**
    * 开启新对话
@@ -324,7 +315,7 @@ class ChatGLM extends AIModel {
     
     // 如果有文件，先上传文件
     if (file && this.canUploadFile()) {
-      await this.uploadFile(file);
+      await this.uploadFiles(file);
       // 等待文件上传处理完成
       await new Promise(resolve => setTimeout(resolve, 1000));
     }

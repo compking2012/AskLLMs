@@ -106,14 +106,6 @@ class Yuanbao extends AIModel {
     return true;
   }
 
-  /**
-   * 上传文件（兼容旧接口）
-   * @param {File|File[]} files - 要上传的文件对象或文件数组
-   * @returns {Promise<boolean>} 返回true表示成功，false表示失败
-   */
-  async uploadFile(files) {
-    return this.uploadFiles(files);
-  }
 
   /**
    * 开启新对话
@@ -319,7 +311,7 @@ class Yuanbao extends AIModel {
     
     // 如果有文件，先上传文件
     if (file && this.canUploadFile()) {
-      await this.uploadFile(file);
+      await this.uploadFiles(file);
       // 等待文件上传处理完成
       await new Promise(resolve => setTimeout(resolve, 1000));
     }

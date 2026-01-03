@@ -140,7 +140,7 @@ class ChatGPT extends AIModel {
 
       console.log(`[MultiAI] ${this.name} starting file upload...`);
 
-      // 1. 尝试直接查找 input[type="file"]（可能有多个）
+      // 尝试直接查找 input[type="file"]（可能有多个）
       let fileInput = null;
       const nodeList = document.querySelectorAll(this.getFileUploadInputSelector());
       if (nodeList && nodeList.length === 1) {
@@ -149,26 +149,6 @@ class ChatGPT extends AIModel {
         fileInput = Array.from(nodeList);
       }
       
-      // 2. 如果没找到，尝试点击上传/加号按钮来触发 input 创建
-      if (!fileInput) {
-        console.log(`[MultiAI] ${this.name} input not found, trying to open menu...`);
-        const uploadButton = await this.waitForElement(this.getFileUploadButtonSelector(), 2000);
-        if (uploadButton) {
-          uploadButton.click();
-          // 等待 input 出现
-          fileInput = await this.waitForElement(this.getFileUploadInputSelector(), 2000);
-        } else {
-          // 尝试点击加号按钮
-          const plusButton = await this.waitForElement(this.getPlusButtonSelector(), 2000);
-          if (plusButton) {
-            plusButton.click();
-            // 等待菜单出现后再找 input
-            await new Promise(r => setTimeout(r, 500));
-            fileInput = await this.waitForElement(this.getFileUploadInputSelector(), 2000);
-          }
-        }
-      }
-
       if (!fileInput) {
         console.log(`[MultiAI] ${this.name} file upload input not found`);
         return false;
@@ -176,12 +156,12 @@ class ChatGPT extends AIModel {
       
       console.log(`[MultiAI] ${this.name} file upload input found, uploading ${fileArray.length} file(s)`);
       
-      // 3. 使用基类方法上传
+      // 使用基类方法上传
       if (!this.uploadFileToInput(fileInput, fileArray)) {
         return false;
       }
       
-      // 4. 等待前端接收（尽量通用：文件名出现 / DOM 变化）
+      // 等待前端接收（尽量通用：文件名出现 / DOM 变化）
       const usedInput = this._lastUsedFileInput || (Array.isArray(fileInput) ? fileInput[0] : fileInput);
       await this.waitForFileUploadAcknowledged(usedInput, fileArray, 15000);
       
@@ -193,14 +173,6 @@ class ChatGPT extends AIModel {
     }
   }
 
-  /**
-   * 上传文件（兼容旧接口）
-   * @param {File|File[]} files
-   * @returns {Promise<boolean>}
-   */
-  async uploadFile(files) {
-    return this.uploadFiles(files);
-  }
 
   /**
    * 开启新对话
@@ -514,7 +486,7 @@ class ChatGPT extends AIModel {
     
     // 如果有文件，先上传文件
     if (file && this.canUploadFile()) {
-      await this.uploadFile(file);
+      await this.uploadFiles(file);
       // 等待文件上传处理完成
       await new Promise(resolve => setTimeout(resolve, 1000));
     }

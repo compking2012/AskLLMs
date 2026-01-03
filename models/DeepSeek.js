@@ -151,14 +151,6 @@ class DeepSeek extends AIModel {
     }
   }
 
-  /**
-   * 上传文件（兼容旧接口）
-   * @param {File|File[]} files
-   * @returns {Promise<boolean>}
-   */
-  async uploadFile(files) {
-    return this.uploadFiles(files);
-  }
 
   /**
    * 开启新对话
@@ -447,7 +439,7 @@ class DeepSeek extends AIModel {
     
     // 如果有文件，先上传文件
     if (file && this.canUploadFile()) {
-      await this.uploadFile(file);
+      await this.uploadFiles(file);
     }
     
     // 如果启用了深度思考，先启用深度思考，否则禁用

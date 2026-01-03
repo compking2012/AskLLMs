@@ -114,14 +114,6 @@ class Kimi extends AIModel {
     return true;
   }
 
-  /**
-   * 上传文件（兼容旧接口）
-   * @param {File|File[]} files
-   * @returns {Promise<boolean>}
-   */
-  async uploadFile(files) {
-    return this.uploadFiles(files);
-  }
 
   /**
    * 开启新对话
@@ -350,7 +342,7 @@ class Kimi extends AIModel {
     
     // 如果有文件，先上传文件
     if (file && this.canUploadFile()) {
-      await this.uploadFile(file);
+      await this.uploadFiles(file);
       // 等待文件上传处理完成
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
