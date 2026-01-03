@@ -66,7 +66,7 @@ class DeepSeek extends AIModel {
    * @returns {string}
    */
   getFileUploadInputSelector() {
-    return 'div input[type="file"][multiple]';
+    return 'input[type="file"][multiple]';
   }
 
   /**
@@ -98,7 +98,7 @@ class DeepSeek extends AIModel {
    * @returns {boolean} DeepSeek 支持上传文件
    */
   canUploadFile() {
-    return false;
+    return true;
   }
 
   /**
@@ -106,105 +106,58 @@ class DeepSeek extends AIModel {
    * @param {File|File[]} files - 要上传的文件对象或文件数组
    * @returns {Promise<boolean>} 返回true表示成功，false表示失败
    */
-  async uploadFile(files) {
+  async uploadFiles(files) {
     try {
-      // 支持单个文件或文件数组
       const fileArray = Array.isArray(files) ? files : (files ? [files] : []);
+      if (fileArray.length === 0) return false;
+
+      // 1. 尝试找到 input
+      let fileInput = await this.waitForElement(this.getFileUploadInputSelector(), 2000);
       
-      if (fileArray.length === 0) {
-        console.log(`[MultiAI] ${this.name} no files provided for upload`);
-        return false;
+      // 2. 如果没找到，尝试点击上传按钮
+      if (!fileInput) {
+        const btnSelector = this.getFileUploadButtonSelector();
+        if (btnSelector) {
+          const btn = await this.waitForElement(btnSelector, 2000);
+          if (btn) {
+            console.log(`[MultiAI] ${this.name} clicking upload button to reveal input`);
+            btn.click();
+            await new Promise(r => setTimeout(r, 1000));
+            fileInput = await this.waitForElement(this.getFileUploadInputSelector(), 3000);
+          }
+        }
       }
 
-      // 方法1: 尝试通过文件上传按钮找到 input
-      // 如果提供了 input 选择器，直接查找
-      let fileInput = await this.waitForElement(this.getFileUploadInputSelector(), 5000);
       if (!fileInput) {
         console.log(`[MultiAI] ${this.name} file upload input not found`);
         return false;
       }
       
-      console.log(`[MultiAI] ${this.name} file upload input found, uploading ${fileArray.length} file(s):`, fileArray.map(f => f.name).join(', '));
+      console.log(`[MultiAI] ${this.name} file upload input found, uploading ${fileArray.length} file(s)`);
       
-      // 使用 DataTransfer API 设置文件
-      const dataTransfer = new DataTransfer();
-      fileArray.forEach(file => {
-        dataTransfer.items.add(file);
-      });
-      
-      // 设置 input 的 files
-      fileInput.files = dataTransfer.files;
-      
-      // 验证文件是否成功设置的函数
-      const verifyFileUpload = () => {
-        if (!fileInput.files || fileInput.files.length === 0) {
-          return false;
-        }
-        
-        // 检查所有文件是否都存在且名称和大小匹配
-        const uploadedFiles = Array.from(fileInput.files);
-        const expectedFiles = fileArray.map(f => ({ name: f.name, size: f.size }));
-        
-        // 检查每个期望的文件是否都在上传的文件列表中
-        for (const expectedFile of expectedFiles) {
-          const found = uploadedFiles.some(uploadedFile => 
-            uploadedFile.name === expectedFile.name && 
-            uploadedFile.size === expectedFile.size
-          );
-          if (!found) {
-            return false;
-          }
-        }
-        
-        // 确保上传的文件数量至少等于期望的文件数量
-        return uploadedFiles.length >= expectedFiles.length;
-      };
-      
-      // 立即验证文件是否成功设置
-      if (!verifyFileUpload()) {
-        console.error(`[MultiAI] ${this.name} file verification failed immediately`);
+      // 3. 使用基类方法设置文件
+      if (!this.uploadFileToInput(fileInput, fileArray)) {
         return false;
       }
-      
-      // 触发 change 事件（这是关键！）
-      fileInput.dispatchEvent(new Event('change', { bubbles: true }));
-      
-      // 有些应用可能需要 input 事件
-      fileInput.dispatchEvent(new Event('input', { bubbles: true }));
-      
-      // 有些应用可能需要自定义事件
-      fileInput.dispatchEvent(new Event('file-selected', { bubbles: true }));
-      
-      // 持续验证文件是否成功上传，确保100%上传完成
-      // 使用轮询方式检查文件是否成功设置到 input 中
-      const maxWaitTime = 10000; // 最大等待10秒
-      const checkInterval = 200; // 每200ms检查一次
-      const startTime = Date.now();
-      
-      while ((Date.now() - startTime) < maxWaitTime) {
-        // 检查文件是否成功上传
-        if (verifyFileUpload()) {
-          const elapsedTime = Date.now() - startTime;
-          console.log(`[MultiAI] ${this.name} ${fileArray.length} file(s) uploaded ✓ (verified after ${elapsedTime}ms)`);
-          return true;
-        }
-        
-        // 等待一段时间后再次检查
-        await new Promise(resolve => setTimeout(resolve, checkInterval));
-      }
-      
-      // 超时后最后检查一次
-      if (verifyFileUpload()) {
-        console.log(`[MultiAI] ${this.name} ${fileArray.length} file(s) uploaded ✓ (verified after timeout)`);
-        return true;
-      }
-      
-      console.error(`[MultiAI] ${this.name} file upload verification timeout or files were rejected`);
-      return false;
+
+      // 4. 等待前端接收（尽量通用：文件名出现 / DOM 变化）
+      const usedInput = this._lastUsedFileInput || (Array.isArray(fileInput) ? fileInput[0] : fileInput);
+      await this.waitForFileUploadAcknowledged(usedInput, fileArray, 15000);
+
+      return true;
     } catch (error) {
       console.error(`[MultiAI] ${this.name} failed to upload files:`, error);
       return false;
     }
+  }
+
+  /**
+   * 上传文件（兼容旧接口）
+   * @param {File|File[]} files
+   * @returns {Promise<boolean>}
+   */
+  async uploadFile(files) {
+    return this.uploadFiles(files);
   }
 
   /**
@@ -484,7 +437,8 @@ class DeepSeek extends AIModel {
     console.log(`[MultiAI] ${this.name} - deepThink:`, deepThink);
     console.log(`[MultiAI] ${this.name} - webSearch:`, webSearch);
     console.log(`[MultiAI] ${this.name} - genImage:`, genImage);
-    console.log(`[MultiAI] ${this.name} - file:`, file ? file.name : null);
+    const fileInfo = file ? (Array.isArray(file) ? `${file.length} files` : file.name) : 'none';
+    console.log(`[MultiAI] ${this.name} - file:`, fileInfo);
     
     // 如果启用了新对话，先开启新对话
     if (startNewChat) {
@@ -560,6 +514,68 @@ class DeepSeek extends AIModel {
     }
     
     return true;
+  }
+
+  /**
+   * 判断是否处于查询模式
+   * DeepSeek的发送按钮在生成时会变成停止状态
+   * @returns {boolean}
+   */
+  isQueryingMode() {
+    try {
+      // 先尝试通过选择器查找按钮
+      let btn = this.findSendButton(this.getSendButtonSelector());
+      
+      // 如果找不到，尝试通过关键词查找
+      if (!btn) {
+        btn = this.findSendButtonByKeywords(['停止', 'stop', '取消', 'cancel']);
+      }
+      
+      if (!btn) return false;
+      
+      // 检查按钮文本或aria-label是否包含停止相关关键词
+      const ariaLabel = btn.getAttribute('aria-label') || '';
+      const btnText = btn.textContent || '';
+      const combined = (ariaLabel + ' ' + btnText).toLowerCase();
+      
+      if (combined.includes('stop') || combined.includes('停止') || 
+          combined.includes('cancel') || combined.includes('取消')) {
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} isQueryingMode error:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * 停止当前正在进行的查询
+   * DeepSeek的停止按钮就是发送按钮，当正在生成时，按钮会变成停止状态
+   * @returns {Promise<boolean>}
+   */
+  async stopQuery() {
+    try {
+      const btn = await this.waitForElement(this.getSendButtonSelector(), 5000);
+      if (btn && !btn.disabled) {
+        btn.click();
+        console.log(`[MultiAI] ${this.name} stopped query ✓`);
+        return true;
+      }
+      // 尝试通过关键词查找停止按钮
+      const stopBtn = this.findSendButtonByKeywords(['停止', 'stop', '取消', 'cancel']);
+      if (stopBtn && !stopBtn.disabled) {
+        stopBtn.click();
+        console.log(`[MultiAI] ${this.name} stopped query ✓`);
+        return true;
+      }
+      console.log(`[MultiAI] ${this.name} stop button not found or not available`);
+      return false;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} stopQuery error:`, error);
+      return false;
+    }
   }
 
   /**

@@ -66,7 +66,12 @@ class Yuanbao extends AIModel {
    * @returns {string}
    */
   getFileUploadInputSelector() {
-    return ''; // TODO: 实现选择器
+    // Yuanbao：有两个 input[type=file]，分别对应“图片 / 文件”，其 accept 都包含 capture=filesystem
+    // 例：
+    // - accept="capture=filesystem,.jpg,.jpeg,.png,.webp,.bmp,.gif" multiple
+    // - accept="capture=filesystem,,.pdf,.xls,...,.html" multiple
+    // 返回一个能匹配到两者的选择器，让基类按 accept 自动分组并上传
+    return 'input[type="file"][accept*="capture=filesystem"]';
   }
 
   /**
@@ -95,85 +100,19 @@ class Yuanbao extends AIModel {
 
   /**
    * 判断是否可上传文件
-   * @returns {boolean} 腾讯元宝不支持上传文件
+   * @returns {boolean} 腾讯元宝支持上传文件
    */
   canUploadFile() {
-    return false;
+    return true;
   }
 
   /**
-   * 上传文件（腾讯元宝特殊实现）
-   * @param {File} file - 要上传的文件对象
+   * 上传文件（兼容旧接口）
+   * @param {File|File[]} files - 要上传的文件对象或文件数组
    * @returns {Promise<boolean>} 返回true表示成功，false表示失败
    */
-  async uploadFile(file) {
-    try {
-      if (!file) {
-        console.log(`[MultiAI] ${this.name} no file provided for upload`);
-        return false;
-      }
-
-      // 方法1: 尝试通过文件上传按钮找到 input
-      const uploadButtonSelector = this.getFileUploadButtonSelector();
-      const uploadInputSelector = this.getFileUploadInputSelector();
-      
-      let fileInput = null;
-      
-      // 如果提供了 input 选择器，直接查找
-      if (uploadInputSelector) {
-        fileInput = await this.waitForElement(uploadInputSelector, 5000);
-      }
-      
-      // 如果没找到，尝试通过按钮找到关联的 input
-      if (!fileInput && uploadButtonSelector) {
-        const uploadButton = await this.waitForElement(uploadButtonSelector, 5000);
-        if (uploadButton) {
-          // 查找按钮附近或关联的 input[type="file"]
-          const nearbyInput = uploadButton.closest('form')?.querySelector('input[type="file"]') ||
-                             uploadButton.parentElement?.querySelector('input[type="file"]') ||
-                             uploadButton.nextElementSibling?.querySelector('input[type="file"]') ||
-                             uploadButton.previousElementSibling?.querySelector('input[type="file"]');
-          fileInput = nearbyInput;
-        }
-      }
-      
-      // 如果还是没找到，尝试查找页面上所有的 input[type="file"]
-      if (!fileInput) {
-        const allFileInputs = document.querySelectorAll('input[type="file"]');
-        if (allFileInputs.length > 0) {
-          fileInput = allFileInputs[0]; // 使用第一个找到的
-        }
-      }
-      
-      if (!fileInput) {
-        console.log(`[MultiAI] ${this.name} file upload input not found`);
-        return false;
-      }
-      
-      console.log(`[MultiAI] ${this.name} file upload input found, uploading file:`, file.name);
-      
-      // 使用 DataTransfer API 设置文件
-      const dataTransfer = new DataTransfer();
-      dataTransfer.items.add(file);
-      
-      // 设置 input 的 files
-      fileInput.files = dataTransfer.files;
-      
-      // 触发 change 事件（这是关键！）
-      fileInput.dispatchEvent(new Event('change', { bubbles: true }));
-      
-      // 有些应用可能需要 input 事件
-      fileInput.dispatchEvent(new Event('input', { bubbles: true }));
-      
-      // 有些应用可能需要自定义事件
-      fileInput.dispatchEvent(new Event('file-selected', { bubbles: true }));
-      
-      console.log(`[MultiAI] ${this.name} file uploaded ✓`);
-      return true;
-    } catch (error) {
-      console.error(`[MultiAI] ${this.name} failed to upload file:`, error);
-      return false;
-    }
+  async uploadFile(files) {
+    return this.uploadFiles(files);
   }
 
   /**
@@ -457,6 +396,60 @@ class Yuanbao extends AIModel {
     return true;
   }
 
+  /**
+   * 判断是否处于查询模式
+   * 腾讯元宝的发送按钮在生成时会变成停止状态
+   * @returns {boolean}
+   */
+  isQueryingMode() {
+    try {
+      let btn = this.findSendButton(this.getSendButtonSelector());
+      if (!btn) {
+        btn = this.findSendButtonByKeywords(['停止', 'stop', '取消', 'cancel']);
+      }
+      
+      if (!btn) return false;
+      
+      // 检查按钮文本或aria-label是否包含停止相关关键词
+      const ariaLabel = btn.getAttribute('aria-label') || '';
+      const btnText = btn.textContent || '';
+      const combined = (ariaLabel + ' ' + btnText).toLowerCase();
+      
+      if (combined.includes('stop') || combined.includes('停止') || 
+          combined.includes('cancel') || combined.includes('取消')) {
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} isQueryingMode error:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * 停止当前正在进行的查询
+   * 腾讯元宝的停止按钮就是发送按钮，当正在生成时，按钮会变成停止状态
+   * @returns {Promise<boolean>}
+   */
+  async stopQuery() {
+    try {
+      let btn = this.findSendButton(this.getSendButtonSelector());
+      if (!btn) {
+        btn = this.findSendButtonByKeywords(['停止', 'stop', '取消', 'cancel']);
+      }
+      if (btn && !btn.disabled) {
+        btn.click();
+        console.log(`[MultiAI] ${this.name} stopped query ✓`);
+        return true;
+      }
+      console.log(`[MultiAI] ${this.name} stop button not found or not available`);
+      return false;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} stopQuery error:`, error);
+      return false;
+    }
+  }
 
   /**
    * 获取响应区域选择器（Yuanbao 特殊实现）

@@ -138,6 +138,15 @@
       margin-top: 20px;
     }
     
+    body.dark-theme .settings-option > div[style*="color: #4b5563"] {
+      color: #d1d5db !important;
+    }
+    
+    body.dark-theme #version-number {
+      color: #f9fafb;
+      font-weight: 600;
+    }
+    
     
     body.dark-theme .settings-actions {
       border-top-color: #374151;
@@ -1242,6 +1251,14 @@
       cursor: not-allowed;
     }
     
+    #send-btn.sending {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    }
+    
+    #send-btn.sending:hover {
+      background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    }
+    
     .platforms-section {
       margin-top: 20px;
       padding-top: 20px;
@@ -1613,7 +1630,7 @@
   
   <div class="input-wrapper">
     <!-- 文件上传组件 -->
-    <div class="file-upload-wrapper" style="display: none;">
+    <div class="file-upload-wrapper">
       <button id="file-upload-icon-btn" class="file-upload-icon-btn" title="上传文件" data-i18n-title="fileUploadToggle">
         <span class="file-upload-icon">📎</span>
       </button>
@@ -1943,6 +1960,9 @@
           <div data-i18n="aboutDescription">Ask LLMs - A Chrome extension for querying multiple AI platforms simultaneously.</div>
           <div style="margin-top: 12px;">
             <div data-i18n="aboutAuthor">Author: Yang Yang</div>
+            <div style="margin-top: 8px;">
+              <span data-i18n="aboutVersion">Version:</span> <span id="version-number">-</span>
+            </div>
             <div style="margin-top: 8px;" data-i18n="aboutCopyright">© 2024 All rights reserved.</div>
           </div>
         </div>

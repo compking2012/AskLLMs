@@ -349,6 +349,60 @@ class MiniMax extends AIModel {
     return true;
   }
 
+  /**
+   * 判断是否处于查询模式
+   * MiniMax的发送按钮在生成时会变成停止状态
+   * @returns {boolean}
+   */
+  isQueryingMode() {
+    try {
+      let btn = this.findSendButton(this.getSendButtonSelector());
+      if (!btn) {
+        btn = this.findSendButtonByKeywords(['停止', 'stop', '取消', 'cancel']);
+      }
+      
+      if (!btn) return false;
+      
+      // 检查按钮文本或aria-label是否包含停止相关关键词
+      const ariaLabel = btn.getAttribute('aria-label') || '';
+      const btnText = btn.textContent || '';
+      const combined = (ariaLabel + ' ' + btnText).toLowerCase();
+      
+      if (combined.includes('stop') || combined.includes('停止') || 
+          combined.includes('cancel') || combined.includes('取消')) {
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} isQueryingMode error:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * 停止当前正在进行的查询
+   * MiniMax的停止按钮就是发送按钮，当正在生成时，按钮会变成停止状态
+   * @returns {Promise<boolean>}
+   */
+  async stopQuery() {
+    try {
+      let btn = this.findSendButton(this.getSendButtonSelector());
+      if (!btn) {
+        btn = this.findSendButtonByKeywords(['停止', 'stop', '取消', 'cancel']);
+      }
+      if (btn && !btn.disabled) {
+        btn.click();
+        console.log(`[MultiAI] ${this.name} stopped query ✓`);
+        return true;
+      }
+      console.log(`[MultiAI] ${this.name} stop button not found or not available`);
+      return false;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} stopQuery error:`, error);
+      return false;
+    }
+  }
 
   /**
    * 获取响应区域选择器（MiniMax 特殊实现）

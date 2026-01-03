@@ -478,7 +478,28 @@ function updatePlatformButtonsDisabledState() {
 
 // 设置页面相关函数已移至 settings.js
 // 使用 settings.js 中的函数
+// 更新版本号显示
+function updateVersionNumber() {
+  try {
+    const manifest = chrome.runtime.getManifest();
+    const version = manifest.version || 'Unknown';
+    const versionElement = document.getElementById('version-number');
+    if (versionElement) {
+      versionElement.textContent = version;
+    }
+  } catch (error) {
+    console.error('[Popup] Failed to get version:', error);
+    const versionElement = document.getElementById('version-number');
+    if (versionElement) {
+      versionElement.textContent = 'Unknown';
+    }
+  }
+}
+
 async function initSettingsPage() {
+  // 更新版本号
+  updateVersionNumber();
+  
   if (typeof window.initSettingsPageFromSettings === 'function') {
     // 优先使用从 background 获取的数据
     let defaultSettings = null;
@@ -651,6 +672,9 @@ async function initializeApp() {
 // 加载设置
   await loadAndApplySettings();
   
+  // 更新版本号（在设置页面显示时）
+  updateVersionNumber();
+  
   // 初始化新对话 toggle（需要在更新图标之前，因为需要加载toggle状态）
   initNewChatToggle();
   
@@ -684,7 +708,7 @@ if (document.readyState === 'loading') {
 // 检查是否有进行中的进度并恢复
 async function checkAndRestoreProgress() {
   const result = await new Promise(resolve => {
-    chrome.storage.local.get(['progressUpdate', 'progressComplete', 'progressUpdateTime'], resolve);
+    chrome.storage.local.get(['progressUpdate', 'progressComplete', 'progressUpdateTime', 'currentQuery'], resolve);
   });
   
   // 检查是否有进度数据，且不是已完成状态，且时间在最近5分钟内（避免恢复过期的进度）
@@ -695,20 +719,43 @@ async function checkAndRestoreProgress() {
     if (timeDiff < fiveMinutes) {
       console.log('[Popup] Restoring progress:', result.progressUpdate);
       
+      // 恢复查询内容到输入框
+      if (result.currentQuery) {
+        textarea.value = result.currentQuery;
+        textarea.style.height = 'auto';
+        textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
+      }
+      
       // 恢复进度显示
       updateProgress(result.progressUpdate);
       
-      // 禁用输入框和按钮
-      textarea.disabled = true;
-      sendBtn.disabled = true;
-      sendBtn.textContent = i18n('sending');
+      // 恢复 activePlatforms
+      activePlatforms.clear();
+      if (result.progressUpdate.statuses) {
+        Object.entries(result.progressUpdate.statuses).forEach(([platform, status]) => {
+          if (status === 'opening' || status === 'loading') {
+            activePlatforms.add(platform);
+          }
+        });
+      }
+      
+      // 禁用输入框，按钮显示"停止"
+      setInputAndButtonState(false);
+      
+      // 禁用所有平台按钮（发送态时所有平台按钮都禁用选择）
+      platformBtns.forEach(btn => {
+        const platform = btn.dataset.platform;
+        if (!activePlatforms.has(platform)) {
+          btn.disabled = true;
+        }
+      });
       
       // 重新启动进度监听
       startProgressListening();
     } else {
       // 进度过期，清除
       console.log('[Popup] Progress expired, clearing');
-      chrome.storage.local.remove(['progressUpdate', 'progressUpdateTime', 'progressComplete']);
+      chrome.storage.local.remove(['progressUpdate', 'progressUpdateTime', 'progressComplete', 'currentQuery']);
     }
   }
 }
@@ -820,6 +867,17 @@ platformBtns.forEach(btn => {
   });
   
   btn.addEventListener('click', (e) => {
+    // 如果按钮正在loading（发送中），点击时停止该平台的查询
+    if (btn.classList.contains('loading')) {
+      e.preventDefault();
+      e.stopPropagation();
+      const platform = btn.dataset.platform;
+      if (platform) {
+        stopQuery(platform);
+      }
+      return;
+    }
+    
     // 如果按钮被禁用，阻止点击
     if (btn.disabled) {
       e.preventDefault();
@@ -925,6 +983,9 @@ textarea.addEventListener('input', () => {
   textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
 });
 
+// 跟踪正在执行中的平台
+let activePlatforms = new Set();
+
 // 更新平台按钮的进度条
 function updatePlatformProgress(platform, status) {
   const btn = Array.from(platformBtns).find(b => b.dataset.platform === platform);
@@ -940,18 +1001,26 @@ function updatePlatformProgress(platform, status) {
     progress = 25; // 25% - 正在打开
     btn.classList.add('loading');
     btn.classList.remove('completed', 'error');
+    activePlatforms.add(platform);
+    btn.disabled = true; // 禁用按钮，防止选择/取消选择
   } else if (status === 'loading') {
     progress = 75; // 75% - 正在加载
     btn.classList.add('loading');
     btn.classList.remove('completed', 'error');
+    activePlatforms.add(platform);
+    btn.disabled = true; // 禁用按钮，防止选择/取消选择
   } else if (status === 'completed') {
     progress = 100; // 100% - 完成
     btn.classList.remove('loading');
     btn.classList.add('completed');
+    activePlatforms.delete(platform);
+    btn.disabled = false; // 恢复按钮
   } else {
     // 未知状态，隐藏进度条
     btn.classList.remove('loading', 'completed', 'error');
     progress = 0;
+    activePlatforms.delete(platform);
+    btn.disabled = false; // 恢复按钮
   }
   
   // 更新进度条
@@ -965,6 +1034,9 @@ function updatePlatformProgress(platform, status) {
   } else {
     progressRing.style.opacity = '0';
   }
+  
+  // 更新发送按钮状态
+  updateSendButtonState();
 }
 
 // 更新进度条
@@ -1031,7 +1103,115 @@ function resetProgress() {
       progressRing.style.opacity = '0';
       progressCircle.style.strokeDashoffset = '113'; // 重置为0%
     }
+    btn.disabled = false; // 恢复按钮
   });
+  
+  // 清空正在执行中的平台
+  activePlatforms.clear();
+  // 恢复输入框和按钮状态
+  setInputAndButtonState(true);
+}
+
+// 同步设置所有输入控件和按钮状态
+// enabled: true=输入态, false=发送态
+function setInputAndButtonState(enabled) {
+  // 1. 输入框
+  textarea.disabled = !enabled;
+  
+  // 2. 语音输入按钮
+  if (voiceInputBtn) {
+    voiceInputBtn.disabled = !enabled;
+  }
+  
+  // 3. 历史记录按钮
+  if (historyBtn) {
+    historyBtn.disabled = !enabled;
+  }
+  
+  // 4. 工具栏按钮（新对话、深度思考、网络搜索、生成图片）
+  const newChatToggleBtn = document.getElementById('new-chat-toggle');
+  const deepThinkToggleBtn = document.getElementById('deep-think-toggle');
+  const webSearchToggleBtn = document.getElementById('web-search-toggle');
+  const genImageToggleBtn = document.getElementById('gen-image-toggle');
+  const fileUploadIconBtnEl = document.getElementById('file-upload-icon-btn');
+  const fileUploadDropdownBtnEl = document.getElementById('file-upload-dropdown-btn');
+  const fileInputEl = document.getElementById('file-input');
+  
+  if (newChatToggleBtn) {
+    newChatToggleBtn.disabled = !enabled;
+  }
+  if (deepThinkToggleBtn) {
+    deepThinkToggleBtn.disabled = !enabled;
+  }
+  if (webSearchToggleBtn) {
+    webSearchToggleBtn.disabled = !enabled;
+  }
+  if (genImageToggleBtn) {
+    genImageToggleBtn.disabled = !enabled;
+  }
+
+  // 4.1 文件上传按钮（📎 + 下拉按钮）
+  if (fileUploadIconBtnEl) {
+    fileUploadIconBtnEl.disabled = !enabled;
+  }
+  if (fileUploadDropdownBtnEl) {
+    fileUploadDropdownBtnEl.disabled = !enabled;
+  }
+  if (fileInputEl) {
+    fileInputEl.disabled = !enabled;
+  }
+  
+  // 5. AI平台选择按钮
+  // 注意：平台按钮的disabled状态在发送态时由sendQuery统一设置（所有按钮都禁用）
+  // 在输入态时由resetProgress统一恢复（所有按钮都启用）
+  // 这里不做处理，避免与进度更新逻辑冲突
+  
+  // 6. 发送按钮
+  if (enabled) {
+    // 输入态：显示"发送"，蓝色背景
+    sendBtn.disabled = false;
+    sendBtn.textContent = i18n('sendButton');
+    sendBtn.classList.remove('sending');
+    sendBtn.removeAttribute('title');
+  } else {
+    // 发送态：显示"中止"，红色背景，可点击
+    sendBtn.disabled = false; // 允许点击中止
+    sendBtn.textContent = i18n('stopQuery') || '停止';
+    sendBtn.classList.add('sending');
+    sendBtn.setAttribute('title', i18n('stopQuery') || '停止');
+  }
+}
+
+// 更新发送按钮状态（根据activePlatforms，保持向后兼容）
+function updateSendButtonState() {
+  const isSending = activePlatforms.size > 0;
+  setInputAndButtonState(!isSending);
+}
+
+// 停止查询函数
+// 注意：此函数只发送停止请求，不立即恢复状态
+// 状态恢复由进度监听器在检测到所有平台完成后统一处理
+async function stopQuery(platform = null) {
+  try {
+    const response = await new Promise((resolve) => {
+      chrome.runtime.sendMessage({
+        action: 'stopQuery',
+        platform: platform // 如果指定平台，只停止该平台；否则停止所有
+      }, resolve);
+    });
+    
+    if (response && response.success) {
+      console.log('[Popup] Stop query request sent:', response);
+      // 不在这里更新状态，等待background完成所有stopQuery操作后
+      // 通过进度监听器统一处理状态转换
+      // background会在所有平台完成stopQuery后设置progressComplete=true
+      // popup的进度监听器会检测到并触发resetProgress()
+    } else {
+      console.error('[Popup] Stop query failed:', response?.error);
+    }
+  } catch (error) {
+    console.error('[Popup] Error stopping query:', error);
+  }
 }
 
 // 进度监听器
@@ -1071,9 +1251,7 @@ function startProgressListening() {
               resetProgress();
               textarea.value = '';
               textarea.style.height = 'auto';
-              textarea.disabled = false;
-              sendBtn.disabled = false;
-              sendBtn.textContent = i18n('sendButton');
+              setInputAndButtonState(true);
               
               // 清除文件选择
               selectedFiles = [];
@@ -1082,8 +1260,8 @@ function startProgressListening() {
               }
               updateFileInfo();
               
-              // 清除进度数据
-              chrome.storage.local.remove(['progressUpdate', 'progressUpdateTime', 'progressComplete']);
+              // 清除进度数据和查询内容
+              chrome.storage.local.remove(['progressUpdate', 'progressUpdateTime', 'progressComplete', 'currentQuery']);
               
               // 2秒后关闭popup
               setTimeout(() => {
@@ -1114,11 +1292,9 @@ function startProgressListening() {
             resetProgress();
             textarea.value = '';
             textarea.style.height = 'auto';
-            textarea.disabled = false;
-            sendBtn.disabled = false;
-            sendBtn.textContent = i18n('sendButton');
+            setInputAndButtonState(true);
             
-            chrome.storage.local.remove(['progressUpdate', 'progressUpdateTime', 'progressComplete']);
+            chrome.storage.local.remove(['progressUpdate', 'progressUpdateTime', 'progressComplete', 'currentQuery']);
             
             setTimeout(() => {
               window.close();
@@ -2114,13 +2290,46 @@ async function sendQuery() {
     }
   }
   
-  // 禁用输入框和按钮
-  textarea.disabled = true;
-  sendBtn.disabled = true;
-  sendBtn.textContent = i18n('sending');
+  // 禁用输入框，按钮显示"停止"
+  setInputAndButtonState(false);
   
-  // 重置并启动进度条
-  resetProgress();
+  // 重置进度条UI（但不重置按钮状态）
+  progressContainer.classList.remove('active');
+  progressBar.style.width = '0%';
+  progressCount.textContent = '0/0';
+  progressDetail.textContent = '';
+  statusDiv.style.display = '';
+  
+  // 重置所有平台按钮的进度条（但不恢复按钮状态）
+  platformBtns.forEach(btn => {
+    btn.classList.remove('loading', 'completed', 'error');
+    const progressRing = btn.querySelector('.progress-ring');
+    const progressCircle = btn.querySelector('.progress-circle');
+    if (progressRing && progressCircle) {
+      progressRing.style.opacity = '0';
+      progressCircle.style.strokeDashoffset = '113'; // 重置为0%
+    }
+    // 不清除disabled状态，因为后面会根据进度更新
+  });
+  
+  // 将选中的平台添加到activePlatforms中，表示它们正在执行
+  activePlatforms.clear();
+  selectedPlatforms.forEach(platform => {
+    activePlatforms.add(platform);
+  });
+  
+  // 进入发送态：禁用所有输入控件，按钮显示"中止"
+  setInputAndButtonState(false);
+  
+  // 禁用所有未选中的平台按钮（发送态时所有平台按钮都禁用选择）
+  platformBtns.forEach(btn => {
+    const platform = btn.dataset.platform;
+    if (!selectedPlatforms.includes(platform)) {
+      btn.disabled = true;
+    }
+  });
+  
+  // 初始化进度
   const initialProgress = {
     total: selectedPlatforms.length,
     opened: 0,
@@ -2133,7 +2342,8 @@ async function sendQuery() {
   chrome.storage.local.set({
     progressUpdate: initialProgress,
     progressUpdateTime: Date.now(),
-    progressComplete: false
+    progressComplete: false,
+    currentQuery: query // 保存当前查询内容
   }).catch(() => {});
   startProgressListening();
   
@@ -2154,16 +2364,14 @@ async function sendQuery() {
       stopProgressListening();
       showStatus(i18n('errorSendFailed', [chrome.runtime.lastError.message]), 'error');
       resetProgress();
-      textarea.disabled = false;
-      sendBtn.disabled = false;
-      sendBtn.textContent = i18n('sendButton');
+      setInputAndButtonState(true);
       // 清除文件选择
       selectedFiles = [];
       if (fileInput) {
         fileInput.value = '';
       }
       updateFileInfo();
-      chrome.storage.local.remove(['progressUpdate', 'progressUpdateTime', 'progressComplete']);
+      chrome.storage.local.remove(['progressUpdate', 'progressUpdateTime', 'progressComplete', 'currentQuery']);
     }
     // 注意：成功的情况由进度监听器处理
   });
@@ -2182,7 +2390,15 @@ function showStatus(message, type) {
 }
 
 // 点击发送按钮
-sendBtn.addEventListener('click', sendQuery);
+sendBtn.addEventListener('click', (e) => {
+  // 如果正在发送中，点击时停止所有查询
+  if (sendBtn.classList.contains('sending')) {
+    stopQuery(); // 不传platform参数，停止所有
+    return;
+  }
+  // 否则正常发送
+  sendQuery();
+});
 
 // 按 Enter 发送（Shift+Enter 换行）
 textarea.addEventListener('keydown', (e) => {

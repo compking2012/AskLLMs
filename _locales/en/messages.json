@@ -23,6 +23,10 @@
     "message": "Sending...",
     "description": "Sending status"
   },
+  "stopQuery": {
+    "message": "Stop",
+    "description": "Stop query button"
+  },
   "selectPlatforms": {
     "message": "Select AI Platforms",
     "description": "Platform selection label"
@@ -354,6 +358,10 @@
   "aboutAuthor": {
     "message": "Author: Yang Yang",
     "description": "About author"
+  },
+  "aboutVersion": {
+    "message": "Version:",
+    "description": "About version label"
   },
   "aboutCopyright": {
     "message": "© 2024 All rights reserved.",

@@ -83,7 +83,8 @@ class Claude extends AIModel {
    * @returns {string}
    */
   getFileUploadInputSelector() {
-    return ''; // TODO: 实现选择器
+    // Claude: <input id="chat-input-file-upload-onpage" data-testid="file-upload" type="file" multiple ...>
+    return 'input#chat-input-file-upload-onpage[type="file"], input[data-testid="file-upload"][type="file"]';
   }
 
   /**
@@ -112,85 +113,19 @@ class Claude extends AIModel {
 
   /**
    * 判断是否可上传文件
-   * @returns {boolean} Claude 不支持上传文件
+   * @returns {boolean} Claude 支持上传文件
    */
   canUploadFile() {
-    return false;
+    return true;
   }
 
   /**
-   * 上传文件（Claude 特殊实现）
-   * @param {File} file - 要上传的文件对象
-   * @returns {Promise<boolean>} 返回true表示成功，false表示失败
+   * 上传文件（兼容旧接口）
+   * @param {File|File[]} files
+   * @returns {Promise<boolean>}
    */
-  async uploadFile(file) {
-    try {
-      if (!file) {
-        console.log(`[MultiAI] ${this.name} no file provided for upload`);
-        return false;
-      }
-
-      // 方法1: 尝试通过文件上传按钮找到 input
-      const uploadButtonSelector = this.getFileUploadButtonSelector();
-      const uploadInputSelector = this.getFileUploadInputSelector();
-      
-      let fileInput = null;
-      
-      // 如果提供了 input 选择器，直接查找
-      if (uploadInputSelector) {
-        fileInput = await this.waitForElement(uploadInputSelector, 5000);
-      }
-      
-      // 如果没找到，尝试通过按钮找到关联的 input
-      if (!fileInput && uploadButtonSelector) {
-        const uploadButton = await this.waitForElement(uploadButtonSelector, 5000);
-        if (uploadButton) {
-          // 查找按钮附近或关联的 input[type="file"]
-          const nearbyInput = uploadButton.closest('form')?.querySelector('input[type="file"]') ||
-                             uploadButton.parentElement?.querySelector('input[type="file"]') ||
-                             uploadButton.nextElementSibling?.querySelector('input[type="file"]') ||
-                             uploadButton.previousElementSibling?.querySelector('input[type="file"]');
-          fileInput = nearbyInput;
-        }
-      }
-      
-      // 如果还是没找到，尝试查找页面上所有的 input[type="file"]
-      if (!fileInput) {
-        const allFileInputs = document.querySelectorAll('input[type="file"]');
-        if (allFileInputs.length > 0) {
-          fileInput = allFileInputs[0]; // 使用第一个找到的
-        }
-      }
-      
-      if (!fileInput) {
-        console.log(`[MultiAI] ${this.name} file upload input not found`);
-        return false;
-      }
-      
-      console.log(`[MultiAI] ${this.name} file upload input found, uploading file:`, file.name);
-      
-      // 使用 DataTransfer API 设置文件
-      const dataTransfer = new DataTransfer();
-      dataTransfer.items.add(file);
-      
-      // 设置 input 的 files
-      fileInput.files = dataTransfer.files;
-      
-      // 触发 change 事件（这是关键！）
-      fileInput.dispatchEvent(new Event('change', { bubbles: true }));
-      
-      // 有些应用可能需要 input 事件
-      fileInput.dispatchEvent(new Event('input', { bubbles: true }));
-      
-      // 有些应用可能需要自定义事件
-      fileInput.dispatchEvent(new Event('file-selected', { bubbles: true }));
-      
-      console.log(`[MultiAI] ${this.name} file uploaded ✓`);
-      return true;
-    } catch (error) {
-      console.error(`[MultiAI] ${this.name} failed to upload file:`, error);
-      return false;
-    }
+  async uploadFile(files) {
+    return this.uploadFiles(files);
   }
 
   /**
@@ -512,6 +447,47 @@ class Claude extends AIModel {
     return true;
   }
 
+  /**
+   * 判断是否处于查询模式
+   * Claude的发送按钮在生成时会变成停止按钮（aria-label包含"Stop"）
+   * @returns {boolean}
+   */
+  isQueryingMode() {
+    try {
+      const btn = document.querySelector('button[aria-label="Stop response"]');
+      if (btn) return true;
+            
+      return false;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} isQueryingMode error:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * 停止当前正在进行的查询
+   * Claude的停止按钮就是发送按钮，当正在生成时，按钮会变成停止状态
+   * @returns {Promise<boolean>}
+   */
+  async stopQuery() {
+    try {
+      const btn = await this.waitForElement(this.getSendButtonSelector(), 5000);
+      if (btn) {
+        // Claude的发送按钮在生成时会变成停止按钮，直接点击即可
+        // 检查按钮是否可见且可点击
+        if (btn.offsetParent !== null && !btn.disabled) {
+          btn.click();
+          console.log(`[MultiAI] ${this.name} stopped query ✓`);
+          return true;
+        }
+      }
+      console.log(`[MultiAI] ${this.name} stop button not found or not available`);
+      return false;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} stopQuery error:`, error);
+      return false;
+    }
+  }
 
   /**
    * 获取响应区域选择器（Claude 特殊实现）

@@ -23,6 +23,10 @@
     "message": "发送中...",
     "description": "发送中状态"
   },
+  "stopQuery": {
+    "message": "停止",
+    "description": "停止查询按钮"
+  },
   "selectPlatforms": {
     "message": "选择 AI 平台",
     "description": "平台选择标签"
@@ -354,6 +358,10 @@
   "aboutAuthor": {
     "message": "作者：Yang Yang",
     "description": "关于作者"
+  },
+  "aboutVersion": {
+    "message": "版本：",
+    "description": "关于版本号标签"
   },
   "aboutCopyright": {
     "message": "© 2024 版权所有。",

@@ -87,7 +87,9 @@ class ChatGPT extends AIModel {
    * @returns {string}
    */
   getFileUploadInputSelector() {
-    return 'form[data-type="unified-composer"] input[type="file"][multiple]';
+    // ChatGPT 的 file input 通常是隐藏的，并且带有 multiple + tabindex="-1"
+    // 使用更宽泛但相对稳定的选择器，并允许多选择器回退
+    return 'input[type="file"][multiple][tabindex="-1"], input[type="file"][multiple]';
   }
 
   /**
@@ -120,85 +122,84 @@ class ChatGPT extends AIModel {
 
   /**
    * 判断是否可上传文件
-   * @returns {boolean} ChatGPT 不支持上传文件
+   * @returns {boolean} ChatGPT 支持上传文件
    */
   canUploadFile() {
-    return false;
+    return true;
   }
 
   /**
    * 上传文件（ChatGPT 特殊实现）
-   * @param {File} file - 要上传的文件对象
+   * @param {File|File[]} files - 要上传的文件对象或文件数组
    * @returns {Promise<boolean>} 返回true表示成功，false表示失败
    */
-  async uploadFile(file) {
+  async uploadFiles(files) {
     try {
-      if (!file) {
-        console.log(`[MultiAI] ${this.name} no file provided for upload`);
-        return false;
+      const fileArray = Array.isArray(files) ? files : (files ? [files] : []);
+      if (fileArray.length === 0) return false;
+
+      console.log(`[MultiAI] ${this.name} starting file upload...`);
+
+      // 1. 尝试直接查找 input[type="file"]（可能有多个）
+      let fileInput = null;
+      const nodeList = document.querySelectorAll(this.getFileUploadInputSelector());
+      if (nodeList && nodeList.length === 1) {
+        fileInput = nodeList[0];
+      } else if (nodeList && nodeList.length > 1) {
+        fileInput = Array.from(nodeList);
+      }
+      
+      // 2. 如果没找到，尝试点击上传/加号按钮来触发 input 创建
+      if (!fileInput) {
+        console.log(`[MultiAI] ${this.name} input not found, trying to open menu...`);
+        const uploadButton = await this.waitForElement(this.getFileUploadButtonSelector(), 2000);
+        if (uploadButton) {
+          uploadButton.click();
+          // 等待 input 出现
+          fileInput = await this.waitForElement(this.getFileUploadInputSelector(), 2000);
+        } else {
+          // 尝试点击加号按钮
+          const plusButton = await this.waitForElement(this.getPlusButtonSelector(), 2000);
+          if (plusButton) {
+            plusButton.click();
+            // 等待菜单出现后再找 input
+            await new Promise(r => setTimeout(r, 500));
+            fileInput = await this.waitForElement(this.getFileUploadInputSelector(), 2000);
+          }
+        }
       }
 
-      // 方法1: 尝试通过文件上传按钮找到 input
-      const uploadButtonSelector = this.getFileUploadButtonSelector();
-      const uploadInputSelector = this.getFileUploadInputSelector();
-      
-      let fileInput = null;
-      
-      // 如果提供了 input 选择器，直接查找
-      if (uploadInputSelector) {
-        fileInput = await this.waitForElement(uploadInputSelector, 5000);
-      }
-      
-      // 如果没找到，尝试通过按钮找到关联的 input
-      if (!fileInput && uploadButtonSelector) {
-        const uploadButton = await this.waitForElement(uploadButtonSelector, 5000);
-        if (uploadButton) {
-          // 查找按钮附近或关联的 input[type="file"]
-          const nearbyInput = uploadButton.closest('form')?.querySelector('input[type="file"]') ||
-                             uploadButton.parentElement?.querySelector('input[type="file"]') ||
-                             uploadButton.nextElementSibling?.querySelector('input[type="file"]') ||
-                             uploadButton.previousElementSibling?.querySelector('input[type="file"]');
-          fileInput = nearbyInput;
-        }
-      }
-      
-      // 如果还是没找到，尝试查找页面上所有的 input[type="file"]
-      if (!fileInput) {
-        const allFileInputs = document.querySelectorAll('input[type="file"]');
-        if (allFileInputs.length > 0) {
-          fileInput = allFileInputs[0]; // 使用第一个找到的
-        }
-      }
-      
       if (!fileInput) {
         console.log(`[MultiAI] ${this.name} file upload input not found`);
         return false;
       }
       
-      console.log(`[MultiAI] ${this.name} file upload input found, uploading file:`, file.name);
+      console.log(`[MultiAI] ${this.name} file upload input found, uploading ${fileArray.length} file(s)`);
       
-      // 使用 DataTransfer API 设置文件
-      const dataTransfer = new DataTransfer();
-      dataTransfer.items.add(file);
+      // 3. 使用基类方法上传
+      if (!this.uploadFileToInput(fileInput, fileArray)) {
+        return false;
+      }
       
-      // 设置 input 的 files
-      fileInput.files = dataTransfer.files;
+      // 4. 等待前端接收（尽量通用：文件名出现 / DOM 变化）
+      const usedInput = this._lastUsedFileInput || (Array.isArray(fileInput) ? fileInput[0] : fileInput);
+      await this.waitForFileUploadAcknowledged(usedInput, fileArray, 15000);
       
-      // 触发 change 事件（这是关键！）
-      fileInput.dispatchEvent(new Event('change', { bubbles: true }));
-      
-      // 有些应用可能需要 input 事件
-      fileInput.dispatchEvent(new Event('input', { bubbles: true }));
-      
-      // 有些应用可能需要自定义事件
-      fileInput.dispatchEvent(new Event('file-selected', { bubbles: true }));
-      
-      console.log(`[MultiAI] ${this.name} file uploaded ✓`);
+      console.log(`[MultiAI] ${this.name} file upload completed ✓`);
       return true;
     } catch (error) {
       console.error(`[MultiAI] ${this.name} failed to upload file:`, error);
       return false;
     }
+  }
+
+  /**
+   * 上传文件（兼容旧接口）
+   * @param {File|File[]} files
+   * @returns {Promise<boolean>}
+   */
+  async uploadFile(files) {
+    return this.uploadFiles(files);
   }
 
   /**
@@ -503,7 +504,8 @@ class ChatGPT extends AIModel {
     console.log(`[MultiAI] ${this.name} - deepThink:`, deepThink);
     console.log(`[MultiAI] ${this.name} - webSearch:`, webSearch);
     console.log(`[MultiAI] ${this.name} - genImage:`, genImage);
-    console.log(`[MultiAI] ${this.name} - file:`, file ? file.name : null);
+    const fileInfo = file ? (Array.isArray(file) ? `${file.length} files` : file.name) : 'none';
+    console.log(`[MultiAI] ${this.name} - file:`, fileInfo);
     
     // 如果启用了新对话，先开启新对话
     if (startNewChat) {
@@ -552,7 +554,7 @@ class ChatGPT extends AIModel {
       return false;
     }
     
-    console.log(`[MultiAnI] ${this.name} input found, setting text...`);
+    console.log(`[MultiAI] ${this.name} input found, setting text...`);
     this.setContentEditable(el, query);
     console.log(`[MultiAI] ${this.name} text set:`, query);
     
@@ -568,6 +570,60 @@ class ChatGPT extends AIModel {
     }
     
     return true;
+  }
+
+  /**
+   * 判断是否处于查询模式
+   * ChatGPT的发送按钮在生成时会变成停止按钮（aria-label包含"Stop"）
+   * @returns {boolean}
+   */
+  isQueryingMode() {
+    try {
+      const btn = document.querySelector('button#composer-submit-button[data-testid="stop-button"]');
+      if (btn) return true;     
+      
+      // Fallback checks if data-testid is not reliable or changes
+      const sendBtn = document.querySelector(this.getSendButtonSelector());
+      if (sendBtn) {
+        const ariaLabel = sendBtn.getAttribute('aria-label') || '';
+        if (ariaLabel.toLowerCase().includes('stop')) {
+          return true;
+        }
+        const btnText = sendBtn.textContent || '';
+        if (btnText.toLowerCase().includes('stop') || btnText.toLowerCase().includes('停止')) {
+          return true;
+        }
+      }
+      return false;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} isQueryingMode error:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * 停止当前正在进行的查询
+   * ChatGPT的停止按钮就是发送按钮，当正在生成时，按钮会变成停止状态
+   * @returns {Promise<boolean>}
+   */
+  async stopQuery() {
+    try {
+      const btn = await this.waitForElement(this.getSendButtonSelector(), 5000);
+      if (btn) {
+        // ChatGPT的发送按钮在生成时会变成停止按钮，直接点击即可
+        // 检查按钮是否可见且可点击
+        if (btn.offsetParent !== null && !btn.disabled) {
+          btn.click();
+          console.log(`[MultiAI] ${this.name} stopped query ✓`);
+          return true;
+        }
+      }
+      console.log(`[MultiAI] ${this.name} stop button not found or not available`);
+      return false;
+    } catch (error) {
+      console.error(`[MultiAI] ${this.name} stopQuery error:`, error);
+      return false;
+    }
   }
 
   /**
