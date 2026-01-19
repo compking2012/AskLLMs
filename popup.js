@@ -2140,8 +2140,17 @@ function updateFileInfo() {
 }
 
 
+// 发送状态
+let isSending = false;
+
 // 发送函数
 async function sendQuery() {
+  // 如果当前正在发送，则执行中断逻辑
+  if (isSending) {
+    handleStopAll();
+    return;
+  }
+
   // 如果正在录音，停止录音并处理待处理的临时结果
   if (isRecording && recognition) {
     isUserStopped = true;
@@ -2291,7 +2300,7 @@ async function sendQuery() {
   }
   
   // 禁用输入框，按钮显示"停止"
-  setInputAndButtonState(false);
+  textarea.disabled = true;
   
   // 重置进度条UI（但不重置按钮状态）
   progressContainer.classList.remove('active');
@@ -2318,8 +2327,10 @@ async function sendQuery() {
     activePlatforms.add(platform);
   });
   
-  // 进入发送态：禁用所有输入控件，按钮显示"中止"
-  setInputAndButtonState(false);
+  // 进入发送态：禁用所有输入控件
+  textarea.disabled = true;
+  if (fileInput) fileInput.disabled = true;
+  if (voiceInputBtn) voiceInputBtn.disabled = true;
   
   // 禁用所有未选中的平台按钮（发送态时所有平台按钮都禁用选择）
   platformBtns.forEach(btn => {
@@ -2347,7 +2358,11 @@ async function sendQuery() {
   }).catch(() => {});
   startProgressListening();
   
-  // 发送消息到 background，包含选中的平台和新对话状态
+  // 发送消息给 background
+  
+  isSending = true;
+  updateSendButtonState();
+  
   const fileInfo = fileData ? (Array.isArray(fileData) ? `${fileData.length} file(s)` : fileData.name) : null;
   console.log('[Popup] Sending query with startNewChat:', startNewChatEnabled, 'deepThink:', deepThinkEnabled, 'webSearch:', webSearchEnabled, 'genImage:', genImageEnabled, 'file:', fileInfo);
   chrome.runtime.sendMessage({ 
@@ -2361,6 +2376,8 @@ async function sendQuery() {
     genImage: genImageEnabled
   }, (response) => {
     if (chrome.runtime.lastError) {
+      isSending = false;
+      updateSendButtonState();
       stopProgressListening();
       showStatus(i18n('errorSendFailed', [chrome.runtime.lastError.message]), 'error');
       resetProgress();
@@ -2391,12 +2408,6 @@ function showStatus(message, type) {
 
 // 点击发送按钮
 sendBtn.addEventListener('click', (e) => {
-  // 如果正在发送中，点击时停止所有查询
-  if (sendBtn.classList.contains('sending')) {
-    stopQuery(); // 不传platform参数，停止所有
-    return;
-  }
-  // 否则正常发送
   sendQuery();
 });
 

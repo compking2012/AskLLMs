@@ -16,7 +16,11 @@ class ChatGPT extends AIModel {
   }
 
   getSendButtonSelector() {
-    return 'button#composer-submit-button';
+    return 'button#composer-submit-button[data-testid="send-button"]';
+  }
+
+  getStopSendButtonSelecctor() {
+    return 'button#composer-submit-button[data-testid="stop-button"]';
   }
 
   /**
@@ -56,6 +60,14 @@ class ChatGPT extends AIModel {
   getWebSearchButtonSelector() {
     // ChatGPT 的网络搜索按钮选择器（需要根据实际 DOM 调整）
     return 'div[data-side="right"] div[role="group"] div[role="menuitemradio"]:nth-of-type(2)';
+  }
+  
+  getSendButtonSelector() {
+    return 'button#composer-submit-button[data-testid="send-button"]';
+  }
+
+  getStopSendButtonSelecctor() {
+    return 'button#composer-submit-button[data-testid="stop-button"]';
   }
 
   getRemoveWebSearchButtonSelector() {
@@ -702,13 +714,25 @@ class ChatGPT extends AIModel {
         return element.innerText || element.textContent || '';
       };
       
-      // 检查是否完成（通过检查是否有停止按钮或响应不再变化）
+      // 检查是否完成
       const checkCompletion = () => {
-        // ChatGPT 通常会在响应完成时移除加载状态
-        const stopButton = document.querySelector('button[aria-label*="Stop"]');
-        const isStreaming = stopButton !== null;
-        return !isStreaming;
+        try {
+          // 1. 检查 Stop 按钮是否存在
+          const stopSelector = this.getStopSendButtonSelecctor();
+          if (document.querySelector(stopSelector)) {
+            return false; // 还在生成
+          }
+          
+          // 2. 如果没有 Stop 按钮，认为已完成
+          return true;
+        } catch (e) {
+          console.warn('checkCompletion error:', e);
+          return false;
+        }
       };
+      
+      let lastContentLength = 0;
+      let lastContentTime = Date.now();
       
       // 轮询检查响应
       const pollInterval = setInterval(() => {
@@ -726,24 +750,39 @@ class ChatGPT extends AIModel {
           const currentContent = extractText(responseElement);
           
           // 如果内容有更新，调用回调
-          if (currentContent !== lastContent && onUpdate) {
-            onUpdate(currentContent);
+          if (currentContent !== lastContent) {
+             if (onUpdate) onUpdate(currentContent);
+             lastContentLength = currentContent.length;
+             lastContentTime = Date.now();
           }
           
           lastContent = currentContent;
           
           // 检查是否完成
-          if (checkCompletion() && !isComplete) {
-            // 等待一段时间确保内容稳定
-            setTimeout(() => {
-              const finalContent = extractText(responseElement);
-              if (finalContent === lastContent) {
-                isComplete = true;
-                clearInterval(pollInterval);
-                if (observer) observer.disconnect();
-                resolve(finalContent);
-              }
-            }, 2000);
+          if (checkCompletion()) {
+             if (!isComplete) {
+               isComplete = true;
+               clearInterval(pollInterval);
+               if (observer) observer.disconnect();
+               resolve(lastContent);
+             }
+          } else {
+             // 兜底检测：如果内容非空，且超过 10 秒没有变化，且没有 Stop 按钮，视为完成
+             if (currentContent.length > 0 && 
+                 currentContent.length === lastContentLength && 
+                 (Date.now() - lastContentTime) > 10000) {
+                 
+                 const stopSelector = this.getStopSendButtonSelecctor();
+                 const hasStopButton = document.querySelector(stopSelector);
+                 
+                 if (!hasStopButton) {
+                   console.log('[ChatGPT] Content stable for 10s and no stop button, assuming complete');
+                   isComplete = true;
+                   clearInterval(pollInterval);
+                   if (observer) observer.disconnect();
+                   resolve(lastContent);
+                 }
+             }
           }
         }
       }, 500);
@@ -758,6 +797,7 @@ class ChatGPT extends AIModel {
             
             if (currentContent !== lastContent) {
               lastContent = currentContent;
+              lastContentTime = Date.now(); // 更新最后变动时间
               if (onUpdate) {
                 onUpdate(currentContent);
               }
@@ -769,10 +809,11 @@ class ChatGPT extends AIModel {
                   if (finalContent === lastContent) {
                     isComplete = true;
                     clearInterval(pollInterval);
+                    clearInterval(silenceCheckInterval);
                     observer.disconnect();
                     resolve(finalContent);
                   }
-                }, 2000);
+                }, 1000);
               }
             }
           }

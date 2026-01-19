@@ -20,6 +20,10 @@ let modelsLoadingPromise = null;
 // 响应数据存储（用于监控窗口）
 let responseData = new Map();
 
+// 运行中的任务（用于中断控制）
+let runningTasks = new Map();
+let isGlobalStopSignal = false;
+
 // 需要加载/注入的模型脚本清单（顺序很重要：`models/index.js` 依赖前面的类定义）
 const MODEL_SCRIPT_FILES = [
   'models/AIModel.js',
@@ -395,11 +399,21 @@ async function getDefaultSettings() {
     // 等待页面加载完成（tab监听器会自动更新状态为loading和complete）
     await waitForTabLoad(tab.id);
     
+    // 检查任务是否已取消
+    if (!runningTasks.has(siteName) || isGlobalStopSignal) {
+      throw new Error('Task cancelled');
+    }
+    
     // 新标签页需要更长的等待时间，让JS完全初始化
     if (isNewTab) {
       await new Promise(r => setTimeout(r, 3000));
     } else {
       await new Promise(r => setTimeout(r, 2000));
+    }
+    
+    // 检查任务是否已取消
+    if (!runningTasks.has(siteName) || isGlobalStopSignal) {
+      throw new Error('Task cancelled');
     }
   
     // 脚本注入重试机制
@@ -407,6 +421,11 @@ async function getDefaultSettings() {
     let lastError = null;
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      // 检查任务是否已取消
+      if (!runningTasks.has(siteName) || isGlobalStopSignal) {
+        throw new Error('Task cancelled');
+      }
+
       try {
         console.log(`[Background] Injection attempt ${attempt}/${maxRetries} for tab ${tab.id}`);
         
@@ -418,6 +437,11 @@ async function getDefaultSettings() {
         console.log('[Background] Model classes injected to tab:', tab.id);
         
         // 等待一小段时间确保模型类已加载
+        
+        // 检查任务是否已取消
+        if (!runningTasks.has(siteName) || isGlobalStopSignal) {
+          throw new Error('Task cancelled');
+        }
 
         await new Promise(r => setTimeout(r, 500));
         
@@ -476,7 +500,8 @@ async function getDefaultSettings() {
                   if (result && typeof model.fetchResponse === 'function') {
                     console.log('[MultiAI] Starting fetchResponse for:', siteName);
                     try {
-                      // 使用流式回调实时更新响应
+                      // 使用流式回调实时更新响应，并等待完成
+                      // 增加超时时间到 120 秒，以覆盖长回答
                       await model.fetchResponse((content) => {
                         // 发送响应更新到 background
                         chrome.runtime.sendMessage({
@@ -487,7 +512,7 @@ async function getDefaultSettings() {
                         }).catch(() => {
                           // 忽略错误（background 可能未准备好）
                         });
-                      }, 60000).then((finalContent) => {
+                      }, 120000).then((finalContent) => {
                         // 响应完成
                         chrome.runtime.sendMessage({
                           action: 'responseUpdate',
@@ -507,6 +532,7 @@ async function getDefaultSettings() {
                         }).catch(() => {
                           // 忽略错误
                         });
+                        // 即使 fetchResponse 失败，只要 sendQuery 成功，也视为发送成功，但不抛出异常中断流程
                       });
                     } catch (fetchError) {
                       console.error('[MultiAI] Error calling fetchResponse:', fetchError);
@@ -563,7 +589,8 @@ async function getDefaultSettings() {
         sendProgressUpdate(progressTracker.getProgress());
         
         // 启动查询状态检查（如果还没启动）
-        progressTracker.startQueryStatusCheck();
+        // 禁用状态检查，因为我们现在通过 openAndSend 等待 fetchResponse 完成
+        // progressTracker.startQueryStatusCheck();
         
         // 成功，退出重试循环
         break;
@@ -712,10 +739,12 @@ async function getDefaultSettings() {
         }
         // 当tab加载完成时
         else if (changeInfo.status === 'complete') {
-          console.log('[Background] Tab', tabId, 'completed loading for', this.tabMap[tabId]);
-          this.updateTabStatus(tabId, 'complete').catch(err => {
-            console.error('[Background] Error updating tab status:', err);
-          });
+          console.log('[Background] Tab', tabId, 'resource loaded for', this.tabMap[tabId]);
+          // 忽略 complete 事件，因为这只表示页面资源加载完成，不代表 AI 回答完成
+          // 我们的 openAndSend 会在脚本执行完成后才标记 completed
+          // 仅当状态还不是 loading 时才更新（例如从 opening -> complete）
+          // 但通常 opening -> loading (start load) -> complete
+          // 所以这里不做任何状态变更，防止覆盖 loading 状态
         }
       };
       
@@ -1205,6 +1234,35 @@ async function getDefaultSettings() {
       return true; // 保持消息通道开放以进行异步响应
     }
     
+    // 处理停止所有任务
+    if (request.action === 'stopAll') {
+      console.log('[Background] Stopping all tasks...');
+      isGlobalStopSignal = true;
+      
+      // 中断所有正在进行的 Promise
+      runningTasks.forEach((controller, platform) => {
+        if (controller && typeof controller.reject === 'function') {
+           console.log('[Background] Rejecting task promise for:', platform);
+           controller.reject(new Error('Task cancelled'));
+        }
+      });
+      
+      runningTasks.clear();
+      sendResponse({ success: true });
+      return true;
+    }
+    
+    // 处理停止单个任务
+    if (request.action === 'stopOne') {
+      const platform = request.platform;
+      if (platform && runningTasks.has(platform)) {
+        console.log('[Background] Stopping task:', platform);
+        runningTasks.delete(platform);
+      }
+      sendResponse({ success: true });
+      return true;
+    }
+    
     if (request.action === 'sendToAllAIs') {
       (async () => {
         try {
@@ -1243,19 +1301,50 @@ async function getDefaultSettings() {
           const fileInfo = fileData ? (Array.isArray(fileData) ? `${fileData.length} file(s)` : fileData.name) : null;
           console.log('[Background] StartNewChat:', startNewChat, 'DeepThink:', deepThink, 'WebSearch:', webSearch, 'GenImage:', genImage, 'File:', fileInfo);
           
+          // 重置全局停止信号
+          isGlobalStopSignal = false;
+          runningTasks.clear();
+          
           for (const site of sitesToOpen) {
+            // 检查全局停止信号
+            if (isGlobalStopSignal) break;
+            
+            // 创建可控 Promise
+            let rejectFunc = null;
+            const taskPromise = new Promise((resolve, reject) => {
+               rejectFunc = reject;
+               // 执行真正的逻辑
+               openAndSend(site.url, query, progressTracker, site.name, startNewChat, deepThink, webSearch, genImage, fileData)
+                 .then(resolve)
+                 .catch(reject);
+            });
+
+            // 注册任务控制器
+            runningTasks.set(site.name, { 
+              startTime: Date.now(),
+              reject: rejectFunc
+            });
+            
             console.log('[Background] Processing:', site.name, site.url);
-            // 直接传递 progressTracker、siteName 和所有选项
-            const promise = openAndSend(site.url, query, progressTracker, site.name, startNewChat, deepThink, webSearch, genImage, fileData).then(id => {
+            
+            // 包装 taskPromise 以处理完成和清理
+            const promise = taskPromise.then(id => {
               console.log('[Background] Completed:', site.name, 'tab id:', id);
+              runningTasks.delete(site.name); // 任务完成，移除
               return id;
             }).catch(async (err) => {
-              console.error('[Background] Failed:', site.name, err);
+              if (err.message === 'Task cancelled') {
+                console.log('[Background] Task cancelled:', site.name);
+              } else {
+                console.error('[Background] Failed:', site.name, err);
+              }
               // 即使失败也标记为完成
               await progressTracker.updateStatus(site.name, 'completed');
               sendProgressUpdate(progressTracker.getProgress());
+              runningTasks.delete(site.name); // 任务失败或取消，移除
               return null; // 返回 null 而不是 undefined
             });
+            
             promises.push(promise);
           }
           
