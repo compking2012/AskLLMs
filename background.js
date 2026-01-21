@@ -1239,15 +1239,40 @@ async function getDefaultSettings() {
       console.log('[Background] Stopping all tasks...');
       isGlobalStopSignal = true;
       
-      // 中断所有正在进行的 Promise
+      // 1. 中断所有正在进行的 Promise (openAndSend 层面)
       runningTasks.forEach((controller, platform) => {
         if (controller && typeof controller.reject === 'function') {
            console.log('[Background] Rejecting task promise for:', platform);
            controller.reject(new Error('Task cancelled'));
         }
       });
-      
       runningTasks.clear();
+
+      // 2. 尝试调用页面内的 stopQuery 方法 (内容脚本层面)
+      if (currentProgressTracker) {
+        const activePlatforms = currentProgressTracker.getActivePlatforms();
+        for (const siteName of activePlatforms) {
+            const tabId = currentProgressTracker.getTabIdForPlatform(siteName);
+            if (tabId) {
+                chrome.scripting.executeScript({
+                    target: { tabId: tabId },
+                    func: async () => {
+                        const host = window.location.hostname;
+                        if (typeof getModelByHostname === 'function') {
+                            const model = getModelByHostname(host);
+                            if (model && typeof model.stopQuery === 'function') {
+                                await model.stopQuery();
+                            }
+                        }
+                    }
+                }).catch(err => console.warn('[Background] Failed to stop query in tab:', err));
+            }
+            // 立即更新状态为 completed
+            currentProgressTracker.updateStatus(siteName, 'completed');
+        }
+        sendProgressUpdate(currentProgressTracker.getProgress());
+      }
+      
       sendResponse({ success: true });
       return true;
     }
@@ -1331,6 +1356,35 @@ async function getDefaultSettings() {
             const promise = taskPromise.then(id => {
               console.log('[Background] Completed:', site.name, 'tab id:', id);
               runningTasks.delete(site.name); // 任务完成，移除
+              
+              // 标记为完成
+              progressTracker.updateStatus(site.name, 'completed');
+              sendProgressUpdate(progressTracker.getProgress());
+              
+              // 检查是否所有任务都已完成
+              const remainingActive = progressTracker.getActivePlatforms();
+              if (remainingActive.length === 0) {
+                 console.log('[Background] All tasks completed');
+                 // 设置完成标志
+                 const finalProgress = progressTracker.getProgress();
+                 chrome.storage.local.set({ 
+                   progressUpdate: finalProgress,
+                   progressUpdateTime: Date.now()
+                 }).then(() => {
+                   setTimeout(() => {
+                     chrome.storage.local.set({ 
+                       progressComplete: true
+                     }).catch(() => {});
+                   }, 100);
+                 }).catch(() => {});
+                 
+                 // 清理
+                 progressTracker.cleanup();
+                 if (currentProgressTracker === progressTracker) {
+                   currentProgressTracker = null;
+                 }
+              }
+              
               return id;
             }).catch(async (err) => {
               if (err.message === 'Task cancelled') {
@@ -1342,6 +1396,31 @@ async function getDefaultSettings() {
               await progressTracker.updateStatus(site.name, 'completed');
               sendProgressUpdate(progressTracker.getProgress());
               runningTasks.delete(site.name); // 任务失败或取消，移除
+              
+              // 检查是否所有任务都已完成
+              const remainingActive = progressTracker.getActivePlatforms();
+              if (remainingActive.length === 0) {
+                 console.log('[Background] All tasks completed (after error)');
+                 // 设置完成标志
+                 const finalProgress = progressTracker.getProgress();
+                 chrome.storage.local.set({ 
+                   progressUpdate: finalProgress,
+                   progressUpdateTime: Date.now()
+                 }).then(() => {
+                   setTimeout(() => {
+                     chrome.storage.local.set({ 
+                       progressComplete: true
+                     }).catch(() => {});
+                   }, 100);
+                 }).catch(() => {});
+                 
+                 // 清理
+                 progressTracker.cleanup();
+                 if (currentProgressTracker === progressTracker) {
+                   currentProgressTracker = null;
+                 }
+              }
+              
               return null; // 返回 null 而不是 undefined
             });
             
@@ -1421,6 +1500,47 @@ async function getDefaultSettings() {
         try {
           const platform = request.platform; // 如果指定平台，只停止该平台；否则停止所有
           
+          if (!platform) {
+             // 如果没有指定平台，视为 stopAll
+             console.log('[Background] stopQuery called without platform, delegating to stopAll logic');
+             isGlobalStopSignal = true;
+             
+             // 1. 中断 Promise
+             runningTasks.forEach((controller, p) => {
+                if (controller && typeof controller.reject === 'function') {
+                   controller.reject(new Error('Task cancelled'));
+                }
+             });
+             runningTasks.clear();
+             
+             // 2. 页面内停止
+             if (currentProgressTracker) {
+                const activePlatforms = currentProgressTracker.getActivePlatforms();
+                for (const siteName of activePlatforms) {
+                    const tabId = currentProgressTracker.getTabIdForPlatform(siteName);
+                    if (tabId) {
+                        chrome.scripting.executeScript({
+                            target: { tabId: tabId },
+                            func: async () => {
+                                const host = window.location.hostname;
+                                if (typeof getModelByHostname === 'function') {
+                                    const model = getModelByHostname(host);
+                                    if (model && typeof model.stopQuery === 'function') {
+                                        await model.stopQuery();
+                                    }
+                                }
+                            }
+                        }).catch(() => {});
+                    }
+                    currentProgressTracker.updateStatus(siteName, 'completed');
+                }
+                sendProgressUpdate(currentProgressTracker.getProgress());
+             }
+             
+             sendResponse({ success: true });
+             return;
+          }
+
           if (!currentProgressTracker) {
             sendResponse({ success: false, error: 'No active query to stop' });
             return;

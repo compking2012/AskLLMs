@@ -105,6 +105,15 @@ class ChatGPT extends AIModel {
   }
 
   /**
+   * 获取响应区域选择器（ChatGPT 特殊实现）
+   * @returns {string} 返回响应区域的选择器
+   */
+  getResponseSelector() {
+    // ChatGPT 的响应区域通常在对话消息中
+    return 'div[data-message-author-role="assistant"] div.markdown';
+  }
+
+  /**
    * 判断是否可进行深度思考
    *
    * 说明：ChatGPT 的"深度思考/思考"通过点击输入框左侧"+"菜单开启。
@@ -673,15 +682,6 @@ class ChatGPT extends AIModel {
   }
 
   /**
-   * 获取响应区域选择器（ChatGPT 特殊实现）
-   * @returns {string} 返回响应区域的选择器
-   */
-  getResponseSelector() {
-    // ChatGPT 的响应区域通常在对话消息中
-    return 'div[data-message-author-role="assistant"] div.markdown';
-  }
-
-  /**
    * 获取模型输出的 DOM 结果（ChatGPT 特殊实现）
    * @param {Function|null} onUpdate - 可选的回调函数，用于流式返回更新
    * @param {number} timeout - 超时时间（毫秒）
@@ -745,6 +745,9 @@ class ChatGPT extends AIModel {
           return;
         }
         
+        // Debug: 检查轮询状态
+        console.log(`[ChatGPT] Polling response, elapsed: ${elapsed}ms`);
+        
         const responseElement = checkForResponse();
         if (responseElement) {
           const currentContent = extractText(responseElement);
@@ -762,6 +765,7 @@ class ChatGPT extends AIModel {
           if (checkCompletion()) {
              if (!isComplete) {
                isComplete = true;
+               console.log('[ChatGPT] fetchResponse completed, stopping pollInterval');
                clearInterval(pollInterval);
                if (observer) observer.disconnect();
                resolve(lastContent);
@@ -809,7 +813,6 @@ class ChatGPT extends AIModel {
                   if (finalContent === lastContent) {
                     isComplete = true;
                     clearInterval(pollInterval);
-                    clearInterval(silenceCheckInterval);
                     observer.disconnect();
                     resolve(finalContent);
                   }
