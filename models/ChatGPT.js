@@ -627,7 +627,7 @@ class ChatGPT extends AIModel {
    */
   async stopQuery() {
     try {
-      const btn = await this.waitForElement(this.getSendButtonSelector(), 5000);
+      const btn = await this.waitForElement(this.getStopSendButtonSelector(), 5000);
       if (btn) {
         // ChatGPT的发送按钮在生成时会变成停止按钮，直接点击即可
         // 检查按钮是否可见且可点击
