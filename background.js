@@ -445,6 +445,13 @@ async function getDefaultSettings() {
 
         await new Promise(r => setTimeout(r, 500));
         
+        // 更新状态为loading（查询已发送，正在执行）
+        // 提前设置 loading 状态，确保在 executeScript 等待响应期间 UI 显示正确
+        await progressTracker.updateStatus(siteName, 'loading');
+        // 记录loading开始时间
+        progressTracker.loadingStartTime[siteName] = Date.now();
+        sendProgressUpdate(progressTracker.getProgress());
+
         // 直接执行查询（内联 sendQueryToPage 逻辑）
         await chrome.scripting.executeScript({
           target: { tabId: tab.id },
@@ -581,12 +588,6 @@ async function getDefaultSettings() {
         // 等待一小段时间确保执行完成
         await new Promise(r => setTimeout(r, 1000));
         console.log('[Background] Script injected and executed successfully for tab:', tab.id);
-        
-        // 更新状态为loading（查询已发送，正在执行）
-        await progressTracker.updateStatus(siteName, 'loading');
-        // 记录loading开始时间
-        progressTracker.loadingStartTime[siteName] = Date.now();
-        sendProgressUpdate(progressTracker.getProgress());
         
         // 启动查询状态检查（如果还没启动）
         // 禁用状态检查，因为我们现在通过 openAndSend 等待 fetchResponse 完成
@@ -732,10 +733,14 @@ async function getDefaultSettings() {
         
         // 当tab开始加载时
         if (changeInfo.status === 'loading') {
+          // OPTIMIZATION: Don't auto-set loading here. Let openAndSend control it when query actually starts.
+          // This distinguishes "Opening/PageLoading" from "AI Processing".
+          /*
           console.log('[Background] Tab', tabId, 'started loading for', this.tabMap[tabId]);
           this.updateTabStatus(tabId, 'loading').catch(err => {
             console.error('[Background] Error updating tab status:', err);
           });
+          */
         }
         // 当tab加载完成时
         else if (changeInfo.status === 'complete') {
