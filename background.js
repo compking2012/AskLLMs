@@ -347,7 +347,7 @@ async function getDefaultSettings() {
   }
   
   // 打开或复用 AI 标签页并发送
-  async function openAndSend(url, query, progressTracker, siteName, startNewChat = false, deepThink = false, webSearch = false, genImage = false, fileData = null) {
+  async function openAndSend(url, query, siteName, startNewChat = false, deepThink = false, webSearch = false, genImage = false, fileData = null) {
     console.log('[Background] ===== openAndSend START =====');
     console.log('[Background] Site:', siteName, 'URL:', url, 'Query:', query.substring(0, 50) + '...');
     const fileInfo = fileData ? (Array.isArray(fileData) ? `${fileData.length} file(s)` : fileData.name) : null;
@@ -378,8 +378,8 @@ async function getDefaultSettings() {
       // 复用已存在的标签页
       tab = existingTab;
       // 注册tab（在reload之前，这样监听器能捕获到reload事件）
-      progressTracker.registerTab(tab.id, siteName);
-      sendProgressUpdate(progressTracker.getProgress());
+      globalTaskRegistry.registerTab(siteName, tab.id);
+      globalTaskRegistry.updateState(siteName, TaskState.CONNECTING);
       
       await chrome.tabs.update(tab.id, { active: false }); // 不抢焦点
       await chrome.tabs.reload(tab.id); // 刷新页面以确保干净状态
@@ -389,8 +389,8 @@ async function getDefaultSettings() {
       // 创建新标签页
       tab = await chrome.tabs.create({ url, active: false });
       // 注册tab（创建后立即注册，监听器会捕获后续的loading状态）
-      progressTracker.registerTab(tab.id, siteName);
-      sendProgressUpdate(progressTracker.getProgress());
+      globalTaskRegistry.registerTab(siteName, tab.id);
+      globalTaskRegistry.updateState(siteName, TaskState.CONNECTING);
       
       isNewTab = true;
       console.log('[Background] Created new tab:', tab.id);
@@ -447,10 +447,7 @@ async function getDefaultSettings() {
         
         // 更新状态为loading（查询已发送，正在执行）
         // 提前设置 loading 状态，确保在 executeScript 等待响应期间 UI 显示正确
-        await progressTracker.updateStatus(siteName, 'loading');
-        // 记录loading开始时间
-        progressTracker.loadingStartTime[siteName] = Date.now();
-        sendProgressUpdate(progressTracker.getProgress());
+        globalTaskRegistry.updateState(siteName, TaskState.INJECTING);
 
         // 直接执行查询（内联 sendQueryToPage 逻辑）
         await chrome.scripting.executeScript({
@@ -500,8 +497,27 @@ async function getDefaultSettings() {
                 model = getModelByHostname(host);
                 if (model) {
                   console.log('[MultiAI] Detected:', host, 'using model:', model.name);
+                  chrome.runtime.sendMessage({ action: 'taskStateChange', platform: siteName, state: 'EXECUTING' }).catch(()=>{});
                   const result = await model.sendQuery(query, startNewChat, deepThink, webSearch, genImage, files);
                   console.log('[MultiAI] Query execution result:', result);
+                  
+                  // 发送查询后，等待进入查询模式（解决按钮切换的延迟）
+                  if (typeof model.isQueryingMode === 'function') {
+                    let waitQueryStartAttempts = 0;
+                    let hasEnteredQuery = false;
+                    while (waitQueryStartAttempts < 30) { // 最多等 15 秒
+                      if (await model.isQueryingMode()) {
+                        console.log('[MultiAI] Entered query mode');
+                        hasEnteredQuery = true;
+                        break;
+                      }
+                      await new Promise(r => setTimeout(r, 500));
+                      waitQueryStartAttempts++;
+                    }
+                    if (!hasEnteredQuery) {
+                      console.log('[MultiAI] Warning: Did not detect querying mode start after 15s');
+                    }
+                  }
                   
                   // 发送查询后，开始获取响应
                   if (result && typeof model.fetchResponse === 'function') {
@@ -529,6 +545,8 @@ async function getDefaultSettings() {
                         }).catch(() => {
                           // 忽略错误
                         });
+                        // 触发任务完成
+                        chrome.runtime.sendMessage({ action: 'taskStateChange', platform: siteName, state: 'COMPLETED' }).catch(()=>{});
                       }).catch((error) => {
                         console.error('[MultiAI] fetchResponse error:', error);
                         chrome.runtime.sendMessage({
@@ -539,11 +557,18 @@ async function getDefaultSettings() {
                         }).catch(() => {
                           // 忽略错误
                         });
-                        // 即使 fetchResponse 失败，只要 sendQuery 成功，也视为发送成功，但不抛出异常中断流程
+        // 即使 fetchResponse 失败，只要 sendQuery 成功，也视为发送成功，但不抛出异常中断流程
+                        // 这里不需要在错误时更新状态为ERROR，因为如果页面还在，用户可能还在看结果
+                        // 但如果是导航离开了页面，会被 tab 监听器捕捉到
                       });
                     } catch (fetchError) {
                       console.error('[MultiAI] Error calling fetchResponse:', fetchError);
                     }
+                  } else {
+                    // 如果没有 fetchResponse，假定发送完后过一会就视为完成
+                    setTimeout(() => {
+                      globalTaskRegistry.updateState(siteName, TaskState.COMPLETED);
+                    }, 5000);
                   }
                   
                   return result;
@@ -591,7 +616,7 @@ async function getDefaultSettings() {
         
         // 启动查询状态检查（如果还没启动）
         // 禁用状态检查，因为我们现在通过 openAndSend 等待 fetchResponse 完成
-        // progressTracker.startQueryStatusCheck();
+        globalTaskRegistry.updateState(siteName, TaskState.COMPLETED);
         
         // 成功，退出重试循环
         break;
@@ -612,8 +637,7 @@ async function getDefaultSettings() {
         } else {
           // 最后一次尝试也失败
           console.error("[Background] All injection attempts failed for", url, e);
-          progressTracker.updateStatus(siteName, 'completed');
-          sendProgressUpdate(progressTracker.getProgress());
+          globalTaskRegistry.updateState(siteName, TaskState.ERROR, { error: e.message });
           throw e; // 重新抛出错误以便上层处理
         }
       }
@@ -623,304 +647,181 @@ async function getDefaultSettings() {
     return tab.id;
   }
   
-  // 全局跟踪当前正在执行的查询
-  let currentProgressTracker = null;
-  
-  // 进度跟踪器类
-  class ProgressTracker {
-    constructor(total, sites) {
-      this.total = total;
-      this.sites = sites; // [{name, url}]
-      this.statuses = {}; // {siteName: 'opening'|'loading'|'completed'}
-      this.tabMap = {}; // {tabId: siteName} - 映射tab ID到site名称
-      this.tabIdToSiteName = {}; // {tabId: siteName} - 反向映射
-      this.currentAction = '';
-      this.tabUpdateListener = null;
-      this.queryCheckInterval = null; // 查询状态检查定时器
-      this.hasEnteredQueryMode = {}; // {siteName: boolean} - 跟踪平台是否曾经进入查询状态
-      this.loadingStartTime = {}; // {siteName: timestamp} - 记录loading状态的开始时间
+  // 全局跟踪当前正在执行的任务注册表
+  const TaskState = {
+    IDLE: 'IDLE',
+    CONNECTING: 'CONNECTING',
+    INJECTING: 'INJECTING',
+    EXECUTING: 'EXECUTING',
+    COMPLETED: 'COMPLETED',
+    ERROR: 'ERROR',
+    STOPPED: 'STOPPED'
+  };
+
+  class TaskRegistry {
+    constructor() {
+      this.tasks = new Map();
+      this.totalTasks = 0;
     }
-    
-    // 注册tab ID和site名称的映射
-    registerTab(tabId, siteName) {
-      this.tabMap[tabId] = siteName;
-      this.tabIdToSiteName[tabId] = siteName;
-      // 初始状态为opening
-      if (!this.statuses[siteName]) {
-        this.statuses[siteName] = 'opening';
+
+    initSession(platforms) {
+      this.tasks.clear();
+      this.totalTasks = platforms.length;
+      platforms.forEach(p => {
+        this.tasks.set(p, {
+          state: TaskState.IDLE,
+          tabId: null,
+          startTime: Date.now(),
+          updateTime: Date.now()
+        });
+      });
+      this.notify();
+    }
+
+    registerTab(platform, tabId) {
+      if (this.tasks.has(platform)) {
+        this.tasks.get(platform).tabId = tabId;
       }
     }
-    
-    // 获取正在执行中的平台列表（opening或loading状态）
+
+    updateState(platform, state, data = {}) {
+      if (!this.tasks.has(platform)) return;
+      const task = this.tasks.get(platform);
+      
+      const terminalStates = [TaskState.COMPLETED, TaskState.ERROR, TaskState.STOPPED];
+      if (terminalStates.includes(task.state) && !terminalStates.includes(state)) {
+        console.warn(`[TaskRegistry] Cannot transition ${platform} from ${task.state} to ${state}`);
+        return;
+      }
+
+      Object.assign(task, data, { state, updateTime: Date.now() });
+      console.log(`[TaskRegistry] ${platform} -> ${state}`, data);
+      this.notify();
+    }
+
+    getTask(platform) {
+      return this.tasks.get(platform);
+    }
+
+    getTabId(platform) {
+      return this.tasks.get(platform)?.tabId;
+    }
+
+    getPlatformByTabId(tabId) {
+      for (const [platform, task] of this.tasks.entries()) {
+        if (task.tabId === tabId) return platform;
+      }
+      return null;
+    }
+
+    isAllFinished() {
+      if (this.tasks.size === 0) return true;
+      const terminalStates = [TaskState.COMPLETED, TaskState.ERROR, TaskState.STOPPED];
+      let allFinished = true;
+      for (const task of this.tasks.values()) {
+        if (!terminalStates.includes(task.state)) {
+          allFinished = false;
+          break;
+        }
+      }
+      return allFinished;
+    }
+
     getActivePlatforms() {
-      return Object.entries(this.statuses)
-        .filter(([name, status]) => status === 'opening' || status === 'loading')
-        .map(([name]) => name);
-    }
-    
-    // 获取指定平台的tabId
-    getTabIdForPlatform(siteName) {
-      return Object.entries(this.tabIdToSiteName)
-        .find(([tabId, name]) => name === siteName)?.[0] || null;
-    }
-    
-    // 根据tab的实际状态更新进度
-    async updateTabStatus(tabId, status) {
-      const siteName = this.tabMap[tabId];
-      if (!siteName) return;
-      
-      // status可能是 'loading' 或 'complete'
-      if (status === 'loading') {
-        this.statuses[siteName] = 'loading';
-      } else if (status === 'complete') {
-        this.statuses[siteName] = 'completed';
+      const active = [];
+      const activeStates = [TaskState.CONNECTING, TaskState.INJECTING, TaskState.EXECUTING];
+      for (const [platform, task] of this.tasks.entries()) {
+        if (activeStates.includes(task.state)) {
+          active.push(platform);
+        }
       }
-      
-      await this.updateCurrentAction();
-      sendProgressUpdate(this.getProgress());
+      return active;
     }
-    
-    // 手动更新状态（用于特殊情况）
-    async updateStatus(siteName, status) {
-      this.statuses[siteName] = status;
-      await this.updateCurrentAction();
-    }
-    
-    async updateCurrentAction() {
-      // 更新当前操作文本
-      const loadingSites = this.getSitesByStatus('loading');
-      const openingSites = this.getSitesByStatus('opening');
-      
-      if (loadingSites.length > 0) {
-        const platformName = await getPlatformDisplayName(loadingSites[0]);
-        this.currentAction = chrome.i18n.getMessage('actionLoading', [platformName]);
-      } else if (openingSites.length > 0) {
-        const platformName = await getPlatformDisplayName(openingSites[0]);
-        this.currentAction = chrome.i18n.getMessage('actionOpening', [platformName]);
+
+    async getProgress() {
+      let completed = 0;
+      let loading = 0;
+      let opened = 0;
+      let error = 0;
+      let stopped = 0;
+
+      const statuses = {};
+      const terminalStates = [TaskState.COMPLETED, TaskState.ERROR, TaskState.STOPPED];
+
+      for (const [platform, task] of this.tasks.entries()) {
+        let uiStatus = 'opening';
+        if (task.state === TaskState.CONNECTING || task.state === TaskState.INJECTING) {
+          uiStatus = 'opening';
+          opened++;
+        } else if (task.state === TaskState.EXECUTING) {
+          uiStatus = 'loading';
+          opened++;
+          loading++;
+        } else if (task.state === TaskState.COMPLETED) {
+          uiStatus = 'completed';
+          opened++;
+          completed++;
+      } else if (task.state === TaskState.ERROR) {
+        uiStatus = 'error';
+        error++;
+      } else if (task.state === TaskState.STOPPED) {
+        uiStatus = 'stopped'; 
+        opened++;
+        stopped++;
       } else {
-        this.currentAction = '';
+          uiStatus = 'opening';
+        }
+        statuses[platform] = uiStatus;
       }
-    }
-    
-    getSitesByStatus(status) {
-      return Object.entries(this.statuses)
-        .filter(([name, s]) => s === status)
-        .map(([name]) => name);
-    }
-    
-    getProgress() {
-      const opened = Object.keys(this.statuses).length;
-      const loading = this.getSitesByStatus('loading').length;
-      const completed = this.getSitesByStatus('completed').length;
-      
+
+      let currentAction = '';
+      const activePlatforms = this.getActivePlatforms();
+      if (loading > 0) {
+        let platformName = '';
+        try { platformName = activePlatforms.length > 0 ? await getPlatformDisplayName(activePlatforms[0]) : ''; } catch (e) {}
+        currentAction = chrome.i18n.getMessage('actionLoading', [platformName]) || `${platformName} 正在生成...`;
+      } else if (opened > completed + stopped + error && activePlatforms.length > 0) {
+        let platformName = '';
+        try { platformName = await getPlatformDisplayName(activePlatforms[0]); } catch (e) {}
+        currentAction = chrome.i18n.getMessage('actionOpening', [platformName]) || `正在准备 ${platformName}...`;
+      } else if (this.isAllFinished()) {
+        currentAction = chrome.i18n.getMessage('progressAllCompleted') || '所有任务已完成';
+      }
+
       return {
-        total: this.total,
+        total: this.totalTasks,
         opened: opened,
         loading: loading,
-        completed: completed,
-        currentAction: this.currentAction,
-        statuses: { ...this.statuses } // 返回每个平台的状态
+        completed: completed + stopped + error,
+        currentAction,
+        statuses
       };
     }
-    
-    // 设置tab更新监听器
-    setupTabListener() {
-      if (this.tabUpdateListener) return; // 已经设置过了
+
+    async notify() {
+      const progress = await this.getProgress();
+      sendProgressUpdate(progress);
       
-      this.tabUpdateListener = (tabId, changeInfo, tab) => {
-        // 只处理我们跟踪的tab
-        if (!this.tabMap[tabId]) return;
-        
-        // 当tab开始加载时
-        if (changeInfo.status === 'loading') {
-          // OPTIMIZATION: Don't auto-set loading here. Let openAndSend control it when query actually starts.
-          // This distinguishes "Opening/PageLoading" from "AI Processing".
-          /*
-          console.log('[Background] Tab', tabId, 'started loading for', this.tabMap[tabId]);
-          this.updateTabStatus(tabId, 'loading').catch(err => {
-            console.error('[Background] Error updating tab status:', err);
-          });
-          */
-        }
-        // 当tab加载完成时
-        else if (changeInfo.status === 'complete') {
-          console.log('[Background] Tab', tabId, 'resource loaded for', this.tabMap[tabId]);
-          // 忽略 complete 事件，因为这只表示页面资源加载完成，不代表 AI 回答完成
-          // 我们的 openAndSend 会在脚本执行完成后才标记 completed
-          // 仅当状态还不是 loading 时才更新（例如从 opening -> complete）
-          // 但通常 opening -> loading (start load) -> complete
-          // 所以这里不做任何状态变更，防止覆盖 loading 状态
-        }
-      };
-      
-      chrome.tabs.onUpdated.addListener(this.tabUpdateListener);
-      console.log('[Background] Tab update listener registered');
-    }
-    
-    // 启动查询状态检查（使用isQueryingMode判断）
-    startQueryStatusCheck() {
-      if (this.queryCheckInterval) {
-        return; // 已经启动了
-      }
-      
-      console.log('[Background] Starting query status check using isQueryingMode');
-      
-      // 每2秒检查一次查询状态
-      this.queryCheckInterval = setInterval(async () => {
-        const activePlatforms = this.getActivePlatforms();
-        
-        if (activePlatforms.length === 0) {
-          // 没有活跃平台，停止检查
-          this.stopQueryStatusCheck();
-          return;
-        }
-        
-        // 检查每个活跃平台的查询状态
-        for (const siteName of activePlatforms) {
-          const tabId = this.getTabIdForPlatform(siteName);
-          if (!tabId) {
-            console.warn(`[Background] No tab ID found for platform: ${siteName}`);
-            continue;
-          }
-          
-          try {
-            // 检查该平台是否还在查询中
-            const result = await chrome.scripting.executeScript({
-              target: { tabId: parseInt(tabId) },
-              func: async () => {
-                const host = window.location.hostname;
-                if (typeof getModelByHostname === 'function') {
-                  const model = getModelByHostname(host);
-                  if (model && typeof model.isQueryingMode === 'function') {
-                    return await model.isQueryingMode();
-                  }
-                }
-                return false; // 如果无法判断，返回false（视为完成）
-              }
-            });
-            
-            const isQuerying = result && result[0] && result[0].result === true;
-            const currentStatus = this.statuses[siteName];
-            const loadingStartTime = this.loadingStartTime[siteName] || Date.now();
-            const loadingDuration = Date.now() - loadingStartTime;
-            
-            if (isQuerying) {
-              // 检测到正在查询中，标记为已进入查询状态
-              if (!this.hasEnteredQueryMode[siteName]) {
-                console.log(`[Background] Platform ${siteName} entered query mode (isQueryingMode=true)`);
-                this.hasEnteredQueryMode[siteName] = true;
-              }
-            } else {
-              // isQueryingMode() == false
-              // 需要判断是否真的完成，还是还在加载/启动阶段
-              
-              if (this.hasEnteredQueryMode[siteName]) {
-                // 曾经进入过查询状态，现在返回false，说明查询已完成
-                console.log(`[Background] Platform ${siteName} query completed (was querying, now isQueryingMode=false)`);
-                await this.updateStatus(siteName, 'completed');
-                sendProgressUpdate(this.getProgress());
-              } else if (currentStatus === 'loading' && loadingDuration < 30000) {
-                // 还在loading状态，且loading时间少于30秒，且从未进入查询状态
-                // 说明可能还在页面加载或查询启动阶段，保持loading状态
-                console.log(`[Background] Platform ${siteName} still in loading phase (${Math.round(loadingDuration/1000)}s), isQueryingMode=false but not completed yet`);
-                // 不更新状态，继续等待
-              } else if (currentStatus === 'loading' && loadingDuration >= 30000) {
-                // loading状态超过30秒，且从未进入查询状态，可能是页面加载失败或查询启动失败
-                // 标记为完成（避免无限等待）
-                console.log(`[Background] Platform ${siteName} loading timeout (${Math.round(loadingDuration/1000)}s), marking as completed`);
-                await this.updateStatus(siteName, 'completed');
-                sendProgressUpdate(this.getProgress());
-              } else if (currentStatus === 'opening') {
-                // 还在opening状态，保持opening状态
-                console.log(`[Background] Platform ${siteName} still opening, isQueryingMode=false but not completed yet`);
-                // 不更新状态，继续等待
-              } else {
-                // 其他情况，标记为完成
-                console.log(`[Background] Platform ${siteName} query completed (isQueryingMode=false, status=${currentStatus})`);
-                await this.updateStatus(siteName, 'completed');
-                sendProgressUpdate(this.getProgress());
-              }
-            }
-            
-            // 如果当前平台被标记为completed，检查是否所有平台都已完成
-            if (this.statuses[siteName] === 'completed') {
-              // 检查是否所有平台都已完成
-              const remainingActive = this.getActivePlatforms();
-              if (remainingActive.length === 0) {
-                console.log('[Background] All platforms completed');
-                this.stopQueryStatusCheck();
-                
-                // 设置完成标志
-                const finalProgress = this.getProgress();
-                chrome.storage.local.set({ 
-                  progressUpdate: finalProgress,
-                  progressUpdateTime: Date.now()
-                }).then(() => {
-                  setTimeout(() => {
-                    chrome.storage.local.set({ 
-                      progressComplete: true
-                    }).catch(() => {});
-                  }, 100);
-                }).catch(() => {});
-                
-                // 清理并清除当前查询跟踪
-                this.cleanup();
-                if (currentProgressTracker === this) {
-                  currentProgressTracker = null;
-                }
-              }
-            }
-          } catch (error) {
-            console.error(`[Background] Error checking query status for ${siteName}:`, error);
-            // 如果检查失败，可能是tab已关闭或其他原因，标记为完成
-            await this.updateStatus(siteName, 'completed');
-            sendProgressUpdate(this.getProgress());
-            
-            // 检查是否所有平台都已完成
-            const remainingActive = this.getActivePlatforms();
-            if (remainingActive.length === 0) {
-              this.stopQueryStatusCheck();
-              const finalProgress = this.getProgress();
-              chrome.storage.local.set({ 
-                progressUpdate: finalProgress,
-                progressUpdateTime: Date.now()
-              }).then(() => {
-                setTimeout(() => {
-                  chrome.storage.local.set({ 
-                    progressComplete: true
-                  }).catch(() => {});
-                }, 100);
-              }).catch(() => {});
-              
-              this.cleanup();
-              if (currentProgressTracker === this) {
-                currentProgressTracker = null;
-              }
-            }
-          }
-        }
-      }, 2000); // 每2秒检查一次
-    }
-    
-    // 停止查询状态检查
-    stopQueryStatusCheck() {
-      if (this.queryCheckInterval) {
-        clearInterval(this.queryCheckInterval);
-        this.queryCheckInterval = null;
-        console.log('[Background] Query status check stopped');
+      if (this.isAllFinished()) {
+        console.log('[TaskRegistry] All tasks finished.');
+        chrome.storage.local.set({ 
+          progressUpdate: progress,
+          progressUpdateTime: Date.now()
+        }).then(() => {
+          setTimeout(() => {
+            chrome.storage.local.set({ progressComplete: true }).catch(() => {});
+          }, 100);
+        }).catch(() => {});
       }
     }
-    
-    // 清理监听器
-    cleanup() {
-      if (this.tabUpdateListener) {
-        chrome.tabs.onUpdated.removeListener(this.tabUpdateListener);
-        this.tabUpdateListener = null;
-        console.log('[Background] Tab update listener removed');
-      }
-      this.stopQueryStatusCheck();
+
+    clear() {
+      this.tasks.clear();
+      this.totalTasks = 0;
     }
   }
+
+  const globalTaskRegistry = new TaskRegistry();
   
   // 创建标签组或复用现有组
   async function createTabGroup(tabIds) {
@@ -1171,6 +1072,14 @@ async function getDefaultSettings() {
   
   // 监听页面发来的发送请求
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    // 处理状态变更
+    if (request.action === 'taskStateChange') {
+      const { platform, state, data } = request;
+      globalTaskRegistry.updateState(platform, TaskState[state], data);
+      sendResponse({ success: true });
+      return true;
+    }
+    
     // 处理响应更新
     if (request.action === 'responseUpdate') {
       const { platform, content, status } = request;
@@ -1313,13 +1222,8 @@ async function getDefaultSettings() {
             return;
           }
           
-          // 创建进度跟踪器
-          const progressTracker = new ProgressTracker(sitesToOpen.length, sitesToOpen);
-          // 保存为当前正在执行的查询
-          currentProgressTracker = progressTracker;
-          
-          // 设置tab状态监听器（监听所有tab的加载状态）
-          progressTracker.setupTabListener();
+          // 初始化 TaskRegistry
+          globalTaskRegistry.initSession(sitesToOpen.map(s => s.name));
           
           const promises = [];
           
@@ -1344,7 +1248,7 @@ async function getDefaultSettings() {
             const taskPromise = new Promise((resolve, reject) => {
                rejectFunc = reject;
                // 执行真正的逻辑
-               openAndSend(site.url, query, progressTracker, site.name, startNewChat, deepThink, webSearch, genImage, fileData)
+               openAndSend(site.url, query, site.name, startNewChat, deepThink, webSearch, genImage, fileData)
                  .then(resolve)
                  .catch(reject);
             });
@@ -1362,34 +1266,6 @@ async function getDefaultSettings() {
               console.log('[Background] Completed:', site.name, 'tab id:', id);
               runningTasks.delete(site.name); // 任务完成，移除
               
-              // 标记为完成
-              progressTracker.updateStatus(site.name, 'completed');
-              sendProgressUpdate(progressTracker.getProgress());
-              
-              // 检查是否所有任务都已完成
-              const remainingActive = progressTracker.getActivePlatforms();
-              if (remainingActive.length === 0) {
-                 console.log('[Background] All tasks completed');
-                 // 设置完成标志
-                 const finalProgress = progressTracker.getProgress();
-                 chrome.storage.local.set({ 
-                   progressUpdate: finalProgress,
-                   progressUpdateTime: Date.now()
-                 }).then(() => {
-                   setTimeout(() => {
-                     chrome.storage.local.set({ 
-                       progressComplete: true
-                     }).catch(() => {});
-                   }, 100);
-                 }).catch(() => {});
-                 
-                 // 清理
-                 progressTracker.cleanup();
-                 if (currentProgressTracker === progressTracker) {
-                   currentProgressTracker = null;
-                 }
-              }
-              
               return id;
             }).catch(async (err) => {
               if (err.message === 'Task cancelled') {
@@ -1397,34 +1273,7 @@ async function getDefaultSettings() {
               } else {
                 console.error('[Background] Failed:', site.name, err);
               }
-              // 即使失败也标记为完成
-              await progressTracker.updateStatus(site.name, 'completed');
-              sendProgressUpdate(progressTracker.getProgress());
               runningTasks.delete(site.name); // 任务失败或取消，移除
-              
-              // 检查是否所有任务都已完成
-              const remainingActive = progressTracker.getActivePlatforms();
-              if (remainingActive.length === 0) {
-                 console.log('[Background] All tasks completed (after error)');
-                 // 设置完成标志
-                 const finalProgress = progressTracker.getProgress();
-                 chrome.storage.local.set({ 
-                   progressUpdate: finalProgress,
-                   progressUpdateTime: Date.now()
-                 }).then(() => {
-                   setTimeout(() => {
-                     chrome.storage.local.set({ 
-                       progressComplete: true
-                     }).catch(() => {});
-                   }, 100);
-                 }).catch(() => {});
-                 
-                 // 清理
-                 progressTracker.cleanup();
-                 if (currentProgressTracker === progressTracker) {
-                   currentProgressTracker = null;
-                 }
-              }
               
               return null; // 返回 null 而不是 undefined
             });
@@ -1470,13 +1319,7 @@ async function getDefaultSettings() {
           }).catch(async (err) => {
             console.error('[Background] Error in Promise.all:', err);
             
-            // 清理tab监听器
-            progressTracker.cleanup();
             // 清除当前查询跟踪
-            if (currentProgressTracker === progressTracker) {
-              currentProgressTracker = null;
-            }
-            
             // 发送错误消息
             try {
               chrome.runtime.sendMessage({
@@ -1519,39 +1362,36 @@ async function getDefaultSettings() {
              runningTasks.clear();
              
              // 2. 页面内停止
-             if (currentProgressTracker) {
-                const activePlatforms = currentProgressTracker.getActivePlatforms();
-                for (const siteName of activePlatforms) {
-                    const tabId = currentProgressTracker.getTabIdForPlatform(siteName);
-                    if (tabId) {
-                        chrome.scripting.executeScript({
-                            target: { tabId: tabId },
-                            func: async () => {
-                                const host = window.location.hostname;
-                                if (typeof getModelByHostname === 'function') {
-                                    const model = getModelByHostname(host);
-                                    if (model && typeof model.stopQuery === 'function') {
-                                        await model.stopQuery();
-                                    }
-                                }
-                            }
-                        }).catch(() => {});
-                    }
-                    currentProgressTracker.updateStatus(siteName, 'completed');
-                }
-                sendProgressUpdate(currentProgressTracker.getProgress());
+             const activePlatforms = globalTaskRegistry.getActivePlatforms();
+             for (const siteName of activePlatforms) {
+                 const tabId = globalTaskRegistry.getTabId(siteName);
+                 if (tabId) {
+                     chrome.scripting.executeScript({
+                         target: { tabId: tabId },
+                         func: async () => {
+                             const host = window.location.hostname;
+                             if (typeof getModelByHostname === 'function') {
+                                 const model = getModelByHostname(host);
+                                 if (model && typeof model.stopQuery === 'function') {
+                                     await model.stopQuery();
+                                 }
+                             }
+                         }
+                     }).catch(() => {});
+                 }
+                 globalTaskRegistry.updateState(siteName, TaskState.STOPPED);
              }
              
              sendResponse({ success: true });
              return;
           }
 
-          if (!currentProgressTracker) {
+          if (globalTaskRegistry.getActivePlatforms().length === 0) {
             sendResponse({ success: false, error: 'No active query to stop' });
             return;
           }
           
-          const activePlatforms = currentProgressTracker.getActivePlatforms();
+          const activePlatforms = globalTaskRegistry.getActivePlatforms();
           if (activePlatforms.length === 0) {
             sendResponse({ success: false, error: 'No active platforms to stop' });
             return;
@@ -1561,7 +1401,7 @@ async function getDefaultSettings() {
           const stoppedPlatforms = [];
           
           for (const siteName of platformsToStop) {
-            const tabId = currentProgressTracker.getTabIdForPlatform(siteName);
+            const tabId = globalTaskRegistry.getTabId(siteName);
             if (!tabId) {
               console.warn(`[Background] No tab ID found for platform: ${siteName}`);
               continue;
@@ -1604,44 +1444,21 @@ async function getDefaultSettings() {
               console.log(`[Background] stopQuery completed for ${siteName}, result:`, stopSuccess);
               
               // 更新状态为completed（停止后视为完成）
-              await currentProgressTracker.updateStatus(siteName, 'completed');
+              globalTaskRegistry.updateState(siteName, TaskState.STOPPED);
               stoppedPlatforms.push(siteName);
               console.log(`[Background] Stopped query for platform: ${siteName}`);
             } catch (error) {
               console.error(`[Background] Error stopping query for ${siteName}:`, error);
               // 即使出错，也标记为完成，避免阻塞状态转换
-              await currentProgressTracker.updateStatus(siteName, 'completed');
+              globalTaskRegistry.updateState(siteName, TaskState.ERROR, { error: error.message });
               stoppedPlatforms.push(siteName);
             }
-          }
-          
-          // 发送进度更新
-          sendProgressUpdate(currentProgressTracker.getProgress());
-          
-          // 检查是否所有平台都已完成
-          const remainingActive = currentProgressTracker.getActivePlatforms();
-          if (remainingActive.length === 0) {
-            // 所有平台都已完成，标记为完成
-            const finalProgress = currentProgressTracker.getProgress();
-            chrome.storage.local.set({ 
-              progressUpdate: finalProgress,
-              progressUpdateTime: Date.now()
-            }).then(() => {
-              setTimeout(() => {
-                chrome.storage.local.set({ 
-                  progressComplete: true
-                }).catch(() => {});
-              }, 100);
-            }).catch(() => {});
-            
-            currentProgressTracker.cleanup();
-            currentProgressTracker = null;
           }
           
           sendResponse({ 
             success: true, 
             stoppedPlatforms: stoppedPlatforms,
-            remainingActive: remainingActive
+            remainingActive: globalTaskRegistry.getActivePlatforms()
           });
         } catch (error) {
           console.error('[Background] Error in stopQuery:', error);
@@ -1664,4 +1481,15 @@ async function getDefaultSettings() {
   // 快捷键也触发
   // 注意：_execute_action 已绑定到 action.onClicked（见 manifest）
   // 所以无需额外监听 commands
-  // 所以无需额外监听 commands
+
+// 监听标签页关闭，更新任务状态
+chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
+  const platform = globalTaskRegistry.getPlatformByTabId(tabId);
+  if (platform) {
+    const task = globalTaskRegistry.getTask(platform);
+    if (task && ![TaskState.COMPLETED, TaskState.ERROR, TaskState.STOPPED].includes(task.state)) {
+      console.log(`[Background] Tab ${tabId} closed for ${platform}, marking as ERROR`);
+      globalTaskRegistry.updateState(platform, TaskState.ERROR, { error: 'Tab closed' });
+    }
+  }
+});

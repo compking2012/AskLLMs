@@ -447,11 +447,11 @@ class Kimi extends AIModel {
    * Kimi的发送按钮在生成时会变成停止状态
    * @returns {boolean}
    */
-  async isQueryingMode() {
+  isQueryingMode() {
     try {
-      let btn = await this.waitForElement(this.getSendButtonSelector(), 3000);
+      let btn = document.querySelector(this.getSendButtonSelector());
       
-      if (!btn) return false;
+      if (!btn || btn.offsetParent === null) return false;
       
       // 检查按钮文本或aria-label是否包含停止相关关键词
       const ariaLabel = btn.getAttribute('aria-label') || '';
@@ -530,8 +530,7 @@ class Kimi extends AIModel {
       };
       
       const checkCompletion = () => {
-        const isStreaming = document.querySelector('div[class*="loading"], div[class*="streaming"]') !== null;
-        return !isStreaming;
+        return !this.isQueryingMode();
       };
       
       const pollInterval = setInterval(() => {

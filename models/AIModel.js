@@ -779,9 +779,10 @@ class AIModel {
    * @returns {HTMLElement|null}
    */
   findSendButton(selectors) {
-    for (const selector of selectors) {
+    const selectorArray = Array.isArray(selectors) ? selectors : [selectors];
+    for (const selector of selectorArray) {
       const btn = document.querySelector(selector);
-      if (btn && !btn.disabled) {
+      if (btn && !btn.disabled && btn.offsetParent !== null) {
         return btn;
       }
     }
@@ -805,7 +806,7 @@ class AIModel {
         text.includes(kw) || ariaLabel.includes(kw) || dataTestId.includes(kw) || className.includes(kw)
       );
       
-      return matches && !b.disabled;
+      return matches && !b.disabled && b.offsetParent !== null;
     }) || null;
   }
 

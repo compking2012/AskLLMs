@@ -599,13 +599,13 @@ class ChatGPT extends AIModel {
   isQueryingMode() {
     try {
       const btn = document.querySelector('button#composer-submit-button[data-testid="stop-button"]');
-      if (btn) return true;     
+      if (btn && btn.offsetParent !== null) return true;     
       
       // Fallback checks if data-testid is not reliable or changes
-      const sendBtn = document.querySelector(this.getSendButtonSelector());
-      if (sendBtn) {
+      const sendBtn = document.querySelector('button#composer-submit-button') || document.querySelector(this.getSendButtonSelector());
+      if (sendBtn && sendBtn.offsetParent !== null) {
         const ariaLabel = sendBtn.getAttribute('aria-label') || '';
-        if (ariaLabel.toLowerCase().includes('stop')) {
+        if (ariaLabel.toLowerCase().includes('stop') || ariaLabel.toLowerCase().includes('停止')) {
           return true;
         }
         const btnText = sendBtn.textContent || '';
@@ -716,19 +716,7 @@ class ChatGPT extends AIModel {
       
       // 检查是否完成
       const checkCompletion = () => {
-        try {
-          // 1. 检查 Stop 按钮是否存在
-          const stopSelector = this.getStopSendButtonSelecctor();
-          if (document.querySelector(stopSelector)) {
-            return false; // 还在生成
-          }
-          
-          // 2. 如果没有 Stop 按钮，认为已完成
-          return true;
-        } catch (e) {
-          console.warn('checkCompletion error:', e);
-          return false;
-        }
+        return !this.isQueryingMode();
       };
       
       let lastContentLength = 0;

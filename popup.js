@@ -739,8 +739,9 @@ async function checkAndRestoreProgress() {
         });
       }
       
-      // 禁用输入框，按钮显示"停止"
-      setInputAndButtonState(false);
+      isSending = activePlatforms.size > 0;
+      // 更新发送按钮和输入框状态
+      updateSendButtonState();
       
       // 禁用所有平台按钮（发送态时所有平台按钮都禁用选择）
       platformBtns.forEach(btn => {
@@ -1011,7 +1012,19 @@ function updatePlatformProgress(platform, status) {
     btn.disabled = true; // 禁用按钮，防止选择/取消选择
   } else if (status === 'completed') {
     progress = 100; // 100% - 完成
-    btn.classList.remove('loading');
+    btn.classList.remove('loading', 'error');
+    btn.classList.add('completed');
+    activePlatforms.delete(platform);
+    btn.disabled = false; // 恢复按钮
+  } else if (status === 'error') {
+    progress = 100; // 100% - 出错
+    btn.classList.remove('loading', 'completed');
+    btn.classList.add('error');
+    activePlatforms.delete(platform);
+    btn.disabled = false; // 恢复按钮
+  } else if (status === 'stopped') {
+    progress = 100; // 100% - 中止
+    btn.classList.remove('loading', 'error');
     btn.classList.add('completed');
     activePlatforms.delete(platform);
     btn.disabled = false; // 恢复按钮
@@ -1108,8 +1121,9 @@ function resetProgress() {
   
   // 清空正在执行中的平台
   activePlatforms.clear();
+  isSending = false;
   // 恢复输入框和按钮状态
-  setInputAndButtonState(true);
+  updateSendButtonState();
 }
 
 // 同步设置所有输入控件和按钮状态
@@ -1182,9 +1196,12 @@ function setInputAndButtonState(enabled) {
   }
 }
 
-// 更新发送按钮状态（根据activePlatforms，保持向后兼容）
+// 发送状态
+let isSending = false;
+
+// 更新发送按钮状态
 function updateSendButtonState() {
-  const isSending = activePlatforms.size > 0;
+  console.log('[Popup] updateSendButtonState -> isSending:', isSending, 'activePlatforms:', Array.from(activePlatforms));
   setInputAndButtonState(!isSending);
 }
 
@@ -1275,45 +1292,9 @@ function startProgressListening() {
   };
   
   chrome.storage.onChanged.addListener(storageChangeListener);
-  
-  // 方式2: 轮询作为备选（每500ms检查一次）
-  const pollInterval = setInterval(() => {
-    chrome.storage.local.get(['progressUpdate', 'progressComplete'], (result) => {
-      if (result.progressUpdate) {
-        console.log('[Popup] Progress update via polling:', result.progressUpdate);
-        updateProgress(result.progressUpdate);
-        
-        if (result.progressComplete) {
-          console.log('[Popup] Progress complete via polling!');
-          clearInterval(pollInterval);
-          stopProgressListening();
-          setTimeout(() => {
-            showStatus(i18n('statusSuccess', [result.progressUpdate.total.toString()]), 'success');
-            resetProgress();
-            textarea.value = '';
-            textarea.style.height = 'auto';
-            setInputAndButtonState(true);
-            
-            chrome.storage.local.remove(['progressUpdate', 'progressUpdateTime', 'progressComplete', 'currentQuery']);
-            
-            setTimeout(() => {
-              window.close();
-            }, 2000);
-          }, 500);
-        }
-      }
-    });
-  }, 500);
-  
-  // 保存 interval ID 以便清理
-  window._progressPollInterval = pollInterval;
 }
 
 function stopProgressListening() {
-  if (window._progressPollInterval) {
-    clearInterval(window._progressPollInterval);
-    window._progressPollInterval = null;
-  }
   if (storageChangeListener) {
     chrome.storage.onChanged.removeListener(storageChangeListener);
     storageChangeListener = null;
@@ -1322,38 +1303,6 @@ function stopProgressListening() {
   console.log('[Popup] Progress listener stopped');
 }
 
-// 暂时禁用进度监听功能
-// chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-//   if (message.action === 'progressUpdate') {
-//     updateProgress(message.progress);
-//     chrome.storage.local.set({ 
-//       progressUpdate: message.progress,
-//       progressUpdateTime: Date.now()
-//     });
-//   } else if (message.action === 'progressComplete') {
-//     stopProgressListening();
-//     updateProgress(message.progress);
-//     setTimeout(() => {
-//       showStatus(i18n('statusSuccess', [message.progress.total.toString()]), 'success');
-//       resetProgress();
-//       textarea.value = '';
-//       textarea.style.height = 'auto';
-//       sendBtn.disabled = false;
-//       sendBtn.textContent = i18n('sendButton');
-//       chrome.storage.local.remove(['progressUpdate', 'progressUpdateTime', 'progressComplete']);
-//       setTimeout(() => {
-//         window.close();
-//       }, 2000);
-//     }, 500);
-//   } else if (message.action === 'progressError') {
-//     stopProgressListening();
-//     showStatus(i18n('errorSendFailed', [message.error || '']), 'error');
-//     resetProgress();
-//     sendBtn.disabled = false;
-//     sendBtn.textContent = i18n('sendButton');
-//     chrome.storage.local.remove(['progressUpdate', 'progressUpdateTime', 'progressComplete']);
-//   }
-// });
 
 // 历史记录管理
 const MAX_HISTORY_COUNT = 50; // 最多保存50条历史记录
@@ -2140,14 +2089,18 @@ function updateFileInfo() {
 }
 
 
-// 发送状态
-let isSending = false;
+// 更新发送按钮状态（根据activePlatforms，保持向后兼容）
+function updateSendButtonState() {
+  isSending = activePlatforms.size > 0;
+  console.log('[Popup] updateSendButtonState -> isSending:', isSending, 'activePlatforms:', Array.from(activePlatforms));
+  setInputAndButtonState(!isSending);
+}
 
 // 发送函数
 async function sendQuery() {
   // 如果当前正在发送，则执行中断逻辑
   if (isSending) {
-    handleStopAll();
+    stopQuery();
     return;
   }
 
@@ -2396,6 +2349,7 @@ function showStatus(message, type) {
 
 // 点击发送按钮
 sendBtn.addEventListener('click', (e) => {
+  e.preventDefault();
   sendQuery();
 });
 

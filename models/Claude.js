@@ -471,8 +471,12 @@ class Claude extends AIModel {
    */
   isQueryingMode() {
     try {
-      const btn = document.querySelector('button[aria-label="Stop response"]');
-      if (btn) return true;
+      const btn = document.querySelector('button[aria-label*="Stop"], button[aria-label*="stop"], button[aria-label*="停止"]');
+      if (btn && btn.offsetParent !== null) return true;
+      
+      // Fallback: check if generating indicator exists
+      const isStreaming = document.querySelector('div[data-testid="message-content"] div[class*="loading"]') !== null;
+      if (isStreaming) return true;
             
       return false;
     } catch (error) {
@@ -543,9 +547,7 @@ class Claude extends AIModel {
       };
       
       const checkCompletion = () => {
-        // Claude 通常会在响应完成时移除加载状态
-        const isStreaming = document.querySelector('div[data-testid="message-content"] div[class*="loading"]') !== null;
-        return !isStreaming;
+        return !this.isQueryingMode();
       };
       
       const pollInterval = setInterval(() => {

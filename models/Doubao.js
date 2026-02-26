@@ -577,7 +577,7 @@ class Doubao extends AIModel {
         btn = this.findSendButtonByKeywords(['停止', 'stop', '取消', 'cancel']);
       }
       
-      if (!btn) return false;
+      if (!btn || btn.offsetParent === null) return false;
       
       // 检查按钮文本或aria-label是否包含停止相关关键词
       const ariaLabel = btn.getAttribute('aria-label') || '';
@@ -660,8 +660,7 @@ class Doubao extends AIModel {
       };
       
       const checkCompletion = () => {
-        const isStreaming = document.querySelector('div[class*="loading"], div[class*="streaming"]') !== null;
-        return !isStreaming;
+        return !this.isQueryingMode();
       };
       
       const pollInterval = setInterval(() => {

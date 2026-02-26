@@ -565,8 +565,7 @@ class Wenxin extends AIModel {
       };
       
       const checkCompletion = () => {
-        const isStreaming = document.querySelector('div[class*="loading"], div[class*="streaming"]') !== null;
-        return !isStreaming;
+        return !this.isQueryingMode();
       };
       
       const pollInterval = setInterval(() => {
