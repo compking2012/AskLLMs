@@ -19,7 +19,7 @@ class ChatGPT extends AIModel {
     return 'button#composer-submit-button[data-testid="send-button"]';
   }
 
-  getStopSendButtonSelecctor() {
+  getStopSendButtonSelector() {
     return 'button#composer-submit-button[data-testid="stop-button"]';
   }
 
@@ -66,7 +66,7 @@ class ChatGPT extends AIModel {
     return 'button#composer-submit-button[data-testid="send-button"]';
   }
 
-  getStopSendButtonSelecctor() {
+  getStopSendButtonSelector() {
     return 'button#composer-submit-button[data-testid="stop-button"]';
   }
 
@@ -764,7 +764,7 @@ class ChatGPT extends AIModel {
                  currentContent.length === lastContentLength && 
                  (Date.now() - lastContentTime) > 10000) {
                  
-                 const stopSelector = this.getStopSendButtonSelecctor();
+                 const stopSelector = this.getStopSendButtonSelector();
                  const hasStopButton = document.querySelector(stopSelector);
                  
                  if (!hasStopButton) {
